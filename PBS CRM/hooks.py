@@ -1,11 +1,11 @@
 app_name = "crm"
-app_title = "Frappe CRM"
-app_publisher = "Frappe Technologies Pvt. Ltd."
-app_description = "Kick-ass Open Source CRM"
+app_title = "PBS CRM"
+app_publisher = "Pioneer Business Solutions"
+app_description = "Pioneer Business Solutions CRM"
 app_email = "shariq@frappe.io"
 app_license = "AGPLv3"
 app_icon_url = "/assets/crm/images/logo.svg"
-app_icon_title = "CRM"
+app_icon_title = "PBS CRM"
 app_icon_route = "/crm"
 
 # Apps
