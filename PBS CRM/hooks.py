@@ -1,5 +1,5 @@
 app_name = "crm"
-app_title = "PBS CRM"
+app_title = "PBSCRM"
 app_publisher = "Pioneer Business Solutions"
 app_description = "Pioneer Business Solutions CRM"
 app_email = "shariq@frappe.io"
