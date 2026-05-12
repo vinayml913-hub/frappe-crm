@@ -2,10 +2,10 @@ app_name = "crm"
 app_title = "PBSCRM"
 app_publisher = "Pioneer Business Solutions"
 app_description = "Pioneer Business Solutions CRM"
-app_email = "shariq@frappe.io"
+app_email = "Pioneerbusinesssolutions03@gmail.com"
 app_license = "AGPLv3"
 app_icon_url = "/assets/crm/images/logo.svg"
-app_icon_title = "PBS CRM"
+app_icon_title = "PBSCRM"
 app_icon_route = "/crm"
 
 # Apps
