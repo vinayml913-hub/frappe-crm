@@ -253,7 +253,7 @@ onMounted(async () => {
 })
 
 const breadcrumbs = computed(() => {
-  let items = [{ label: __('Organizations'), route: { name: 'Organizations' } }]
+  let items = [{ label: __('Client'), route: { name: 'Organizations' } }]
 
   if (route.query.view || route.query.viewType) {
     let view = getView(
