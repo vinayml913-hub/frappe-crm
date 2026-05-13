@@ -241,7 +241,7 @@ const links = [
   // },
     {
   label: 'Client',
-  icon: SomeIcon,
+  icon: OrganizationsIcon,
   to: 'Organization'
   },
   {
