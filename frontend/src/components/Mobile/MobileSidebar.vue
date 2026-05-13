@@ -126,7 +126,7 @@ const links = [
     to: 'Contacts',
   },
   {
-    label: 'Organizations',
+    label: 'Client',
     icon: OrganizationsIcon,
     to: 'Organizations',
   },
