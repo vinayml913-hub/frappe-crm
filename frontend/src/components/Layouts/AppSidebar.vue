@@ -242,7 +242,7 @@ const links = [
     {
   label: 'Client',
   icon: OrganizationsIcon,
-  to: 'Organization'
+  to: 'Organizations'
   },
   {
     label: 'Notes',
