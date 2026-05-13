@@ -234,10 +234,15 @@ const links = [
     icon: ContactsIcon,
     to: 'Contacts',
   },
-  {
-    label: 'Organizations',
-    icon: OrganizationsIcon,
-    to: 'Organizations',
+  // {
+  //   label: 'Organizations',
+  //   icon: OrganizationsIcon,
+  //   to: 'Organizations',
+  // },
+    {
+  label: 'Client',
+  icon: SomeIcon,
+  to: 'Organization'
   },
   {
     label: 'Notes',
