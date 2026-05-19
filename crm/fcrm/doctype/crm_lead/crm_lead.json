@@ -70,7 +70,8 @@
   "facebook_form_id",
   "lost_details_tab",
   "lost_reason",
-  "lost_notes"
+  "lost_notes",
+  "description"
  ],
  "fields": [
   {
@@ -419,6 +420,13 @@
   {
    "fieldname": "column_break_opsm",
    "fieldtype": "Column Break"
+  },
+    {
+   "fieldname": "description",
+   "fieldtype": "Text Editor",
+   "label": "Description",
+   "in_list_view": 0,
+   "in_standard_filter": 0
   }
  ],
  "grid_page_length": 50,
