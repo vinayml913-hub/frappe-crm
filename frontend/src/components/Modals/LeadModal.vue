@@ -124,36 +124,48 @@ async function createNewLead() {
     },
     {
       validate() {
-        error.value = null
-        if (!lead.doc.first_name) {
-          error.value = __('First Name is mandatory')
-          return error.value
-        }
-        if (lead.doc.annual_revenue) {
-          if (typeof lead.doc.annual_revenue === 'string') {
-            lead.doc.annual_revenue = lead.doc.annual_revenue.replace(/,/g, '')
-          } else if (isNaN(lead.doc.annual_revenue)) {
-            error.value = __('Annual Revenue should be a number')
-            return error.value
-          }
-        }
-        if (
-          lead.doc.mobile_no &&
-          isNaN(lead.doc.mobile_no.replace(/[-+() ]/g, ''))
-        ) {
-          error.value = __('Mobile No. should be a number')
-          return error.value
-        }
-        if (lead.doc.email && !lead.doc.email.includes('@')) {
-          error.value = __('Invalid email address')
-          return error.value
-        }
-        if (!lead.doc.status) {
-          error.value = __('Status is required')
-          return error.value
-        }
-        isLeadCreating.value = true
-      },
+  error.value = null
+  if (!lead.doc.first_name) {
+    error.value = __('First Name is mandatory')
+    return error.value
+  }
+  if (!lead.doc.organization) {
+    error.value = __('Account Name is mandatory')
+    return error.value
+  }
+  if (!lead.doc.email) {
+    error.value = __('Email is mandatory')
+    return error.value
+  }
+  if (!lead.doc.mobile_no) {
+    error.value = __('Mobile No. is mandatory')
+    return error.value
+  }
+  if (lead.doc.annual_revenue) {
+    if (typeof lead.doc.annual_revenue === 'string') {
+      lead.doc.annual_revenue = lead.doc.annual_revenue.replace(/,/g, '')
+    } else if (isNaN(lead.doc.annual_revenue)) {
+      error.value = __('Annual Revenue should be a number')
+      return error.value
+    }
+  }
+  if (
+    lead.doc.mobile_no &&
+    isNaN(lead.doc.mobile_no.replace(/[-+() ]/g, ''))
+  ) {
+    error.value = __('Mobile No. should be a number')
+    return error.value
+  }
+  if (lead.doc.email && !lead.doc.email.includes('@')) {
+    error.value = __('Invalid email address')
+    return error.value
+  }
+  if (!lead.doc.status) {
+    error.value = __('Status is required')
+    return error.value
+  }
+  isLeadCreating.value = true
+},
       onSuccess(data) {
         capture('lead_created')
         isLeadCreating.value = false
