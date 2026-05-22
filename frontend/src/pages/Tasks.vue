@@ -379,9 +379,9 @@ function actions(name) {
     {
       label: __('Delete'),
       icon: 'trash-2',
-      onClick: () => {
-        deletetask(name)
-        tasks.value.reload()
+      onClick: async () => {
+  await deletetask(name)
+  await tasks.value.reload()
       },
     },
   ]
