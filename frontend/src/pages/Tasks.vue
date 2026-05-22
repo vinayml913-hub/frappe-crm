@@ -388,7 +388,7 @@ function actions(name) {
 }
 
 async function deletetask(name) {
-  await call('frappe.client.delete', {
+  return await call('frappe.client.delete', {
     doctype: 'CRM Task',
     name,
   })
