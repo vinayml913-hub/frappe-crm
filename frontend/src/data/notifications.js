@@ -14,9 +14,12 @@ export const useEventNotifications = () => {
   return useEvent({
     filters: {
       status: 'Open',
-      owner: user,
       ends_on: ['>=', dayjs().toISOString()],
     },
+    orFilters: [
+      ['owner', '=', user],
+      ['Event Participants', 'email', '=', user],
+    ],
     notifications: false,
   })
 }
