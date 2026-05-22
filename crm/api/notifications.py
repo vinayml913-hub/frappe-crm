@@ -28,7 +28,7 @@ def get_notifications():
 				"comment": notification.comment,
 				"message": notification.message,
 				"hash": get_hash(notification),
-				"notification_text": notification.notification_text or notification.message,
+				"notification_text": notification.notification_text or notification.message or "",
 				"notification_type_doctype": notification.notification_type_doctype,
 				"notification_type_doc": notification.notification_type_doc,
 				"reference_doctype": ("deal" if notification.reference_doctype == "CRM Deal" else "lead"),
@@ -66,7 +66,7 @@ def get_hash(notification):
 
 	if notification.type == "Assignment" and notification.notification_type_doctype == "CRM Task":
 		_hash = "#tasks"
-		if "has been removed by" in notification.message:
+		if notification.message and "has been removed by" in notification.message:
 			_hash = ""
 
 	return _hash
