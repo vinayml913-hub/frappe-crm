@@ -82,6 +82,7 @@
             { label: __('Admin'), value: 'System Manager' },
             { label: __('Manager'), value: 'Sales Manager' },
             { label: __('Sales User'), value: 'Sales User' },
+            { label: __('Solution Manager'), value: 'Solution Manager' },
           ]"
         />
       </div>
@@ -190,6 +191,7 @@ const roleMap = {
   'System Manager': __('Admin'),
   'Sales Manager': __('Manager'),
   'Sales User': __('Sales User'),
+  'Solution Manager': __('Solution Manager'),
 }
 
 const usersList = computed(() => {
@@ -254,6 +256,16 @@ function getDropdownOptions(user) {
         }),
       onClick: () => updateRole(user, 'Sales User'),
     },
+    {
+  label: __('Solution Manager'),
+  icon: () =>
+    h(Badge, {
+      option: __('Solution Manager'),
+      icon: 'users',
+      selected: user.role === 'Solution Manager',
+    }),
+  onClick: () => updateRole(user, 'Solution Manager'),
+},
   ]
 
   return options.filter((option) => option.condition?.() || true)
