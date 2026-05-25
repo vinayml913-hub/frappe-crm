@@ -154,8 +154,10 @@ const description = computed(() => {
       'Can manage all aspects of the CRM, including user management, customizations and settings.',
     'Sales Manager':
       'Can manage and invite new users, and create public & private views (reports).',
-    'Sales User':
+    ''Sales User':
       'Can work with leads and deals and create private views (reports).',
+    'Solution Manager':
+      'Can work with leads only and create private views (reports).',
   }[role.value]
 })
 
@@ -163,6 +165,7 @@ const roleOptions = computed(() => {
   return [
     { value: 'Sales User', label: __('Sales User') },
     ...(isAdmin() ? [{ value: 'Sales Manager', label: __('Manager') }] : []),
+    ...(isAdmin() ? [{ value: 'Solution Manager', label: __('Solution Manager') }] : []),
     ...(isAdmin() ? [{ value: 'System Manager', label: __('Admin') }] : []),
   ]
 })
@@ -170,6 +173,7 @@ const roleOptions = computed(() => {
 const roleMap = {
   'Sales User': __('Sales User'),
   'Sales Manager': __('Manager'),
+  'Solution Manager': __('Solution Manager'),
   'System Manager': __('Admin'),
 }
 
