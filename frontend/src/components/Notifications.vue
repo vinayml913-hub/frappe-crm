@@ -34,14 +34,13 @@
       <div v-if="activeTab == 'all'" class="flex h-full">
         <div
           v-if="notifications.data?.length"
-          class="divide-y divide-outline-gray-modals overflow-auto text-base"
+          class="divide-y divide-outline-gray-modals overflow-auto text-base w-full"
         >
-          <RouterLink
+          <div
             v-for="n in notifications.data"
-            :key="n.comment"
-            :to="getRoute(n)"
+            :key="n.comment || n.notification_type_doc || n.creation"
             class="flex cursor-pointer items-start gap-2.5 px-4 py-2.5 hover:bg-surface-gray-2"
-            @click="markAsRead(n.comment || n.notification_type_doc)"
+            @click="handleNotificationClick(n)"
           >
             <div class="mt-1 flex items-center gap-2.5">
               <div
@@ -51,7 +50,7 @@
               <WhatsAppIcon v-if="n.type == 'WhatsApp'" class="size-7" />
               <UserAvatar v-else :user="n.from_user.name" size="lg" />
             </div>
-            <div>
+            <div class="flex-1 min-w-0">
               <div
                 v-if="n.notification_text"
                 v-html="sanitizeHTML(n.notification_text)"
@@ -60,7 +59,10 @@
                 <span class="font-medium text-ink-gray-9">
                   {{ n.from_user.full_name }}
                 </span>
-                <span>
+                <span v-if="n.type === 'Assignment'">
+                  {{ __('assigned a task to you') }}
+                </span>
+                <span v-else>
                   {{ __('mentioned you in {0}', [n.reference_doctype]) }}
                 </span>
                 <span class="font-medium text-ink-gray-9">
@@ -71,7 +73,7 @@
                 {{ __(timeAgo(n.creation)) }}
               </div>
             </div>
-          </RouterLink>
+          </div>
         </div>
         <EmptyState
           v-else
@@ -88,6 +90,7 @@
     </div>
   </div>
 </template>
+
 <script setup>
 import WhatsAppIcon from '@/components/Icons/WhatsAppIcon.vue'
 import MarkAsDoneIcon from '@/components/Icons/MarkAsDoneIcon.vue'
@@ -107,17 +110,18 @@ import { onClickOutside } from '@vueuse/core'
 import { useTelemetry } from 'frappe-ui/frappe'
 import { TabButtons } from 'frappe-ui'
 import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { useRouter } from 'vue-router'
 
 const { $socket } = globalStore()
 const { mark_as_read, toggle, mark_doc_as_read } = notificationsStore()
 const { handleEventNotification } = useEventNotificationAlert()
 const { capture } = useTelemetry()
+const router = useRouter()
 
 const activeTab = ref('all')
 const tabs = [
   { label: __('All'), value: 'all' },
   { label: __('Events'), value: 'events' },
-  // { label: __('Mentions'), value: 'mentions' },
 ]
 
 const target = ref(null)
@@ -141,6 +145,22 @@ function markAllAsRead() {
   mark_as_read.reload()
 }
 
+function handleNotificationClick(n) {
+  markAsRead(n.comment || n.notification_type_doc)
+  if (!n.route_name) return
+
+  let params = {}
+  if (n.route_name === 'Lead') params = { leadId: n.reference_name }
+  else if (n.route_name === 'Deal') params = { dealId: n.reference_name }
+
+  router.push({
+    name: n.route_name,
+    params,
+    hash: n.hash || '',
+  })
+  toggle()
+}
+
 onBeforeUnmount(() => {
   $socket.off('crm_notification')
   $socket.off('event_notification')
@@ -150,21 +170,4 @@ onMounted(() => {
   $socket.on('crm_notification', () => notifications.reload())
   $socket.on('event_notification', (data) => handleEventNotification(data))
 })
-
-function getRoute(notification) {
-  let params = {
-    leadId: notification.reference_name,
-  }
-  if (notification.route_name === 'Deal') {
-    params = {
-      dealId: notification.reference_name,
-    }
-  }
-
-  return {
-    name: notification.route_name,
-    params: params,
-    hash: notification.hash,
-  }
-}
 </script>
