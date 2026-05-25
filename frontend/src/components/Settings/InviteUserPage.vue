@@ -154,7 +154,7 @@ const description = computed(() => {
       'Can manage all aspects of the CRM, including user management, customizations and settings.',
     'Sales Manager':
       'Can manage and invite new users, and create public & private views (reports).',
-    ''Sales User':
+    'Sales User':
       'Can work with leads and deals and create private views (reports).',
     'Solution Manager':
       'Can work with leads only and create private views (reports).',
