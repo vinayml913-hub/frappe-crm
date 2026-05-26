@@ -380,8 +380,12 @@ function actions(name) {
       label: __('Delete'),
       icon: 'trash-2',
       onClick: async () => {
-  await deletetask(name)
-  await tasks.value.reload()
+        try {
+          await deletetask(name)
+          await tasks.value.reload()
+        } catch (err) {
+          console.error('Delete failed:', err)
+        }
       },
     },
   ]
