@@ -85,6 +85,17 @@ const routes = [
     component: () => import('@/pages/CallLogs.vue'),
   },
   {
+    path: '/sales-orders',
+    name: 'SalesOrders',
+    component: () => import('@/pages/SalesOrders.vue'),
+  },
+  {
+    path: '/sales-orders/:salesOrderId',
+    name: 'SalesOrder',
+    component: () => import('@/pages/SalesOrders.vue'),
+    props: true,
+  },
+  {
     path: '/calendar',
     name: 'Calendar',
     component: () => import('@/pages/Calendar.vue'),
