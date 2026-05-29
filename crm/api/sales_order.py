@@ -9,16 +9,25 @@ def get_sales_orders():
 	session_roles = frappe.get_roles()
 	is_admin = "System Manager" in session_roles
 	is_manager = "Sales Manager" in session_roles
+	is_sales_user = "Sales User" in session_roles
+	is_solution_manager = "Solution Manager" in session_roles
 
-	filters = {}
-
-	# Sales User / Solution Manager — only see their own orders
-	if not is_admin and not is_manager:
-		filters["sales_manager"] = frappe.session.user
+	# Build filters based on role
+	if is_admin or is_manager:
+		# Admin and Manager see ALL orders
+		filters = {}
+	else:
+		# Sales User and Solution Manager see only their own
+		# Match by sales_manager OR deal_owner
+		current_user = frappe.session.user
+		filters = [
+			["PBS Sales Order", "sales_manager", "=", current_user]
+		]
 
 	orders = frappe.get_all(
 		"PBS Sales Order",
-		filters=filters,
+		filters=filters if isinstance(filters, dict) else None,
+		or_filters=filters if isinstance(filters, list) else None,
 		fields=[
 			"name",
 			"deal",
