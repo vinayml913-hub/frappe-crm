@@ -6,11 +6,14 @@ from crm.api.session import get_session_role_flags
 def get_sales_orders():
 	get_session_role_flags()
 
-	filters = {}
 	session_roles = frappe.get_roles()
+	is_admin = "System Manager" in session_roles
+	is_manager = "Sales Manager" in session_roles
 
-	# Sales User / Solution Manager can only see their own orders
-	if "System Manager" not in session_roles and "Sales Manager" not in session_roles:
+	filters = {}
+
+	# Sales User / Solution Manager — only see their own orders
+	if not is_admin and not is_manager:
 		filters["sales_manager"] = frappe.session.user
 
 	orders = frappe.get_all(
@@ -34,6 +37,7 @@ def get_sales_orders():
 			"modified",
 		],
 		order_by="modified desc",
+		ignore_permissions=True,
 	)
 
 	# Attach delivery orders for each sales order
@@ -43,6 +47,7 @@ def get_sales_orders():
 			filters={"parent": order["name"], "parenttype": "PBS Sales Order"},
 			fields=["item", "description", "qty", "rate", "amount", "delivery_date", "status"],
 			order_by="idx asc",
+			ignore_permissions=True,
 		)
 
 	return orders
