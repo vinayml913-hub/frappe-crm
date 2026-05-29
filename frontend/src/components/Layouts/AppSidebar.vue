@@ -163,6 +163,7 @@ import UserDropdown from '@/components/UserDropdown.vue'
 import SquareAsterisk from '@/components/Icons/SquareAsterisk.vue'
 import LeadsIcon from '@/components/Icons/LeadsIcon.vue'
 import DealsIcon from '@/components/Icons/DealsIcon.vue'
+import SalesOrderIcon from '@/components/Icons/SalesOrderIcon.vue'
 import ContactsIcon from '@/components/Icons/ContactsIcon.vue'
 import OrganizationsIcon from '@/components/Icons/OrganizationsIcon.vue'
 import NoteIcon from '@/components/Icons/NoteIcon.vue'
@@ -231,7 +232,7 @@ const links = [
   },
   {
     label: 'Sales Orders',
-    icon: DealsIcon,
+    icon: SalesOrderIcon,
     to: 'SalesOrders',
   },
   {
