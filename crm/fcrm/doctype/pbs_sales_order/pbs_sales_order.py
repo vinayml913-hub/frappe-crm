@@ -20,18 +20,32 @@ class PBSSalesOrder(Document):
 
 def create_sales_order_from_deal(doc, method):
 	"""Auto create Sales Order when Deal is Won"""
-	if doc.status == "Won":
-		# Check if Sales Order already exists for this deal
-		existing = frappe.db.exists("PBS Sales Order", {"deal": doc.name})
-		if not existing:
-			sales_order = frappe.new_doc("PBS Sales Order")
-			sales_order.deal = doc.name
-			sales_order.organization = doc.organization
-			sales_order.amount = doc.deal_value
-			sales_order.sales_manager = doc.deal_owner
-			sales_order.status = "Open"
-			sales_order.insert(ignore_permissions=True)
-			frappe.msgprint(
-				f"Sales Order {sales_order.name} created successfully!",
-				alert=True
-			)
+	if doc.status != "Won":
+		return
+
+	existing = frappe.db.exists("PBS Sales Order", {"deal": doc.name})
+	if existing:
+		return
+
+	try:
+		deal_owner = doc.deal_owner or frappe.session.user
+
+		sales_order = frappe.new_doc("PBS Sales Order")
+		sales_order.deal = doc.name
+		sales_order.organization = doc.organization
+		sales_order.amount = doc.deal_value or doc.net_total or 0
+		sales_order.sales_manager = deal_owner
+		sales_order.account_manager = deal_owner
+		sales_order.contact_person = doc.contact
+		sales_order.status = "Open"
+		sales_order.insert(ignore_permissions=True)
+		frappe.db.commit()
+		frappe.msgprint(
+			f"Sales Order {sales_order.name} created successfully!",
+			alert=True
+		)
+	except Exception as e:
+		frappe.log_error(
+			title="Sales Order Creation Failed",
+			message=frappe.get_traceback()
+		)
