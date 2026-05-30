@@ -143,7 +143,9 @@
 
     "export": 1,
 
-    "share": 1
+    "share": 1,
+
+    "permlevel": 0
 
   },
 
@@ -169,7 +171,9 @@
 
     "export": 1,
 
-    "share": 0
+    "share": 0,
+
+    "permlevel": 0
 
   },
 
@@ -195,7 +199,9 @@
 
     "export": 0,
 
-    "share": 0
+    "share": 0,
+
+    "permlevel": 0
 
   },
 
@@ -221,11 +227,14 @@
 
     "export": 0,
 
-    "share": 0
+    "share": 0,
+
+    "permlevel": 0
 
   }
 
 ],
+ 
  "sort_field": "modified",
  "sort_order": "DESC",
  "track_changes": 1
