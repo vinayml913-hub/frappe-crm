@@ -23,16 +23,11 @@ def create_sales_order_from_deal(doc, method):
 	if doc.status != "Won":
 		return
 
-<<<<<<< HEAD
-=======
-	# Check if Sales Order already exists for this deal
->>>>>>> d5aae3ff8ec961d238955a974eef01c4b444a1bc
 	existing = frappe.db.exists("PBS Sales Order", {"deal": doc.name})
 	if existing:
 		return
 
 	try:
-<<<<<<< HEAD
 		deal_owner = doc.deal_owner or frappe.session.user
 
 		sales_order = frappe.new_doc("PBS Sales Order")
@@ -49,22 +44,21 @@ def create_sales_order_from_deal(doc, method):
 			f"Sales Order {sales_order.name} created successfully!",
 			alert=True
 		)
-=======
-		sales_order = frappe.new_doc("PBS Sales Order")
-		sales_order.deal = doc.name
-		sales_order.organization = doc.organization
-		sales_order.amount = doc.deal_value or 0
-		sales_order.sales_manager = doc.deal_owner
-		sales_order.status = "Open"
-		sales_order.insert(ignore_permissions=True)
-		frappe.db.commit()
->>>>>>> d5aae3ff8ec961d238955a974eef01c4b444a1bc
 	except Exception as e:
 		frappe.log_error(
 			title="Sales Order Creation Failed",
 			message=frappe.get_traceback()
-<<<<<<< HEAD
 		)
-=======
-		)
->>>>>>> d5aae3ff8ec961d238955a974eef01c4b444a1bc
+
+
+@frappe.whitelist()
+def get_sales_orders():
+	"""Get sales orders based on user role"""
+	roles = frappe.get_roles(frappe.session.user)
+
+	return frappe.get_all(
+		"PBS Sales Order",
+		fields=["name", "organization", "status", "amount",
+				"gross_profit", "gross_profit_percentage", "deal"],
+		order_by="modified desc"
+	)
