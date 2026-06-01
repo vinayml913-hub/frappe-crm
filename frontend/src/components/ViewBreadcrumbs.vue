@@ -9,7 +9,7 @@
           : 'text-ink-gray-7',
       ]"
     >
-      {{ __(routeName) }}
+      {{ label || __(routeName) }}
     </router-link>
     <span
       v-if="viewControls && viewControls.viewsDropdownOptions"
@@ -84,12 +84,14 @@
     </Dropdown>
   </div>
 </template>
+
 <script setup>
 import Icon from '@/components/Icon.vue'
 import { Dropdown } from 'frappe-ui'
 
 defineProps({
   routeName: { type: String, required: true },
+  label: { type: String, default: null },
 })
 
 const viewControls = defineModel({ type: Object, default: () => ({}) })
