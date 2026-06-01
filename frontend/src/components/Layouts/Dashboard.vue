@@ -216,7 +216,7 @@ const isDemoSite = ref(window.is_demo_site)
 
 const links = [
   {
-    label: 'Dashboard',
+    label: 'Report',
     icon: LucideLayoutDashboard,
     to: 'Dashboard',
   },
