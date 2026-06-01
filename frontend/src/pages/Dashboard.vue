@@ -2,7 +2,7 @@
   <div class="flex flex-col h-full overflow-hidden">
     <LayoutHeader>
       <template #left-header>
-        <ViewBreadcrumbs routeName="Dashboard" />
+       <ViewBreadcrumbs routeName="Dashboard" :label="__('Report')" />
       </template>
       <template #right-header>
         <Button
@@ -304,6 +304,6 @@ function resetToDefault() {
 }
 
 usePageMeta(() => {
-  return { title: __('CRM Dashboard') }
+  return { title: __('Report') }
 })
 </script>
