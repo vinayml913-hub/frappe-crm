@@ -116,6 +116,11 @@ const links = [
     to: 'Leads',
   },
   {
+  label: 'Report',
+  icon: DashboardIcon,
+  to: 'Dashboard',
+ },
+  {
     label: 'Deals',
     icon: DealsIcon,
     to: 'Deals',
