@@ -69,7 +69,7 @@
           (v) =>
             updateFilter('period', v, () => {
               showDatePicker = false
-              if (!v) {
+              if (!v && preset.value !== 'Ever') {
                 filters.period = getLastXDays()
                 preset = 'Last 30 Days'
               } else {
@@ -222,6 +222,30 @@ const options = computed(() => [
           dashboardItems.reload()
         },
       },
+      {
+        label: __('Last 180 Days'),
+        onClick: () => {
+          preset.value = 'Last 180 Days'
+          filters.period = getLastXDays(180)
+          dashboardItems.reload()
+        },
+      },
+      {
+        label: __('Last 360 Days'),
+        onClick: () => {
+          preset.value = 'Last 360 Days'
+          filters.period = getLastXDays(360)
+          dashboardItems.reload()
+        },
+      },
+      {
+        label: __('Ever'),
+        onClick: () => {
+          preset.value = 'Ever'
+          filters.period = null
+          dashboardItems.reload()
+        },
+      },
     ],
   },
   {
@@ -230,7 +254,7 @@ const options = computed(() => [
       showDatePicker.value = true
       setTimeout(() => datePickerRef.value?.open(), 0)
       preset.value = 'Custom Range'
-      filters.period = null // Reset period to allow custom date selection
+      filters.period = null
     },
   },
 ])
