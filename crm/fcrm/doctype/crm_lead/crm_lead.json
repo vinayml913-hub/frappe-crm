@@ -71,7 +71,9 @@
   "lost_details_tab",
   "lost_reason",
   "lost_notes",
-  "description"
+  "description",
+  "objective",
+  "assign_to"
  ],
  "fields": [
   {
@@ -425,7 +427,18 @@
    "label": "Description",
    "in_list_view": 0,
    "in_standard_filter": 0
-  }
+  },
+  {
+  "fieldname": "objective",
+  "fieldtype": "Text Editor",
+  "label": "Objective"
+},
+{
+  "fieldname": "assign_to",
+  "fieldtype": "Link",
+  "label": "Assign To",
+  "options": "User"
+}
  ],
  "grid_page_length": 50,
  "image_field": "image",
