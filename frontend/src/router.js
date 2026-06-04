@@ -150,6 +150,7 @@ let router = createRouter({
 
 router.beforeEach(async (to, from, next) => {
   router.previousRoute = from
+
   const { isLoggedIn } = sessionStore()
   const { users, isCrmUser } = usersStore()
 
@@ -166,8 +167,8 @@ router.beforeEach(async (to, from, next) => {
   } else if (to.name === 'Home' && isLoggedIn) {
     const { views, getDefaultView } = viewsStore()
     await views.promise
-    let defaultView = getDefaultView()
 
+    let defaultView = getDefaultView()
     if (!defaultView) {
       next({ name: 'Leads' })
       return
@@ -200,7 +201,6 @@ router.beforeEach(async (to, from, next) => {
       'Deals',
       'Contacts',
       'Organizations',
-      'Trainers',
       'Notes',
       'Tasks',
       'Call Logs',
@@ -209,6 +209,7 @@ router.beforeEach(async (to, from, next) => {
   ) {
     const { views, standardViews, getDefaultView } = viewsStore()
     await views.promise
+
     const viewType = to.params?.viewType ?? ''
     const standardViewTypes = ['list', 'kanban', 'group_by']
 
@@ -225,8 +226,8 @@ router.beforeEach(async (to, from, next) => {
 
       const doctype = doctypeMap[to.name]
       let defaultViewType = 'list'
-      let globalDefault = getDefaultView()
 
+      let globalDefault = getDefaultView()
       if (globalDefault && globalDefault.route_name === to.name) {
         defaultViewType = globalDefault.type || 'list'
         if (globalDefault.name && !globalDefault.is_standard) {
@@ -254,6 +255,7 @@ router.beforeEach(async (to, from, next) => {
       })
     } else if (!standardViewTypes.includes(viewType)) {
       const viewNameOrLabel = viewType
+
       let view = views.data?.find(
         (v) => v.name == viewNameOrLabel || v.label === viewNameOrLabel,
       )
