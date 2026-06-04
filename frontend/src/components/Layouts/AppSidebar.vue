@@ -6,6 +6,10 @@
     <div class="p-2">
       <UserDropdown :isCollapsed="isSidebarCollapsed" />
     </div>
+    <!-- Global Search -->
+    <div class="px-2 pb-1">
+      <GlobalSearch :isSidebarCollapsed="isSidebarCollapsed" />
+    </div>
     <div class="flex-1 overflow-y-auto">
       <div class="flex flex-col">
         <SidebarLink
@@ -164,6 +168,7 @@ import SquareAsterisk from '@/components/Icons/SquareAsterisk.vue'
 import LeadsIcon from '@/components/Icons/LeadsIcon.vue'
 import DealsIcon from '@/components/Icons/DealsIcon.vue'
 import SalesOrderIcon from '@/components/Icons/SalesOrderIcon.vue'
+import TrainersIcon from '@/components/Icons/TrainersIcon.vue'
 import ContactsIcon from '@/components/Icons/ContactsIcon.vue'
 import OrganizationsIcon from '@/components/Icons/OrganizationsIcon.vue'
 import NoteIcon from '@/components/Icons/NoteIcon.vue'
@@ -174,6 +179,7 @@ import CollapseSidebar from '@/components/Icons/CollapseSidebar.vue'
 import NotificationsIcon from '@/components/Icons/NotificationsIcon.vue'
 import HelpIcon from '@/components/Icons/HelpIcon.vue'
 import SidebarLink from '@/components/SidebarLink.vue'
+import GlobalSearch from '@/components/GlobalSearch.vue'
 import Notifications from '@/components/Notifications.vue'
 import Settings from '@/components/Settings/Settings.vue'
 import { viewsStore } from '@/stores/views'
@@ -216,7 +222,7 @@ const isDemoSite = ref(window.is_demo_site)
 
 const links = [
   {
-    label: 'Report',
+    label: 'Dashboard',
     icon: LucideLayoutDashboard,
     to: 'Dashboard',
   },
@@ -249,6 +255,11 @@ const links = [
   label: 'Client',
   icon: OrganizationsIcon,
   to: 'Organizations',
+  },
+  {
+    label: 'Trainers',
+    icon: TrainersIcon,
+    to: 'Trainers',
   },
   {
     label: 'Notes',
