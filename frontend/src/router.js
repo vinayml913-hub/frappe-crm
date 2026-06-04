@@ -70,7 +70,6 @@ const routes = [
     alias: '/organizations',
     path: '/organizations/view/:viewType?',
     name: 'Organizations',
-      'Trainers',
     component: () => import('@/pages/Organizations.vue'),
   },
   {
