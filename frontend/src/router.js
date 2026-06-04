@@ -70,6 +70,7 @@ const routes = [
     alias: '/organizations',
     path: '/organizations/view/:viewType?',
     name: 'Organizations',
+      'Trainers',
     component: () => import('@/pages/Organizations.vue'),
   },
   {
@@ -94,6 +95,11 @@ const routes = [
     name: 'SalesOrder',
     component: () => import('@/pages/SalesOrders.vue'),
     props: true,
+  },
+  {
+    path: '/trainers',
+    name: 'Trainers',
+    component: () => import('@/pages/Trainers.vue'),
   },
   {
     path: '/calendar',
@@ -196,6 +202,7 @@ router.beforeEach(async (to, from, next) => {
       'Deals',
       'Contacts',
       'Organizations',
+      'Trainers',
       'Notes',
       'Tasks',
       'Call Logs',
