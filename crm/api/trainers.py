@@ -1,15 +1,17 @@
+import json
+
 import frappe
 from crm.api.session import get_session_role_flags
 
 
 @frappe.whitelist()
 def get_trainers(
-	filters=None,
-	order_by="modified desc",
-	page_length=20,
-	page=1,
-	search=None,
-):
+	filters: str | None = None,
+	order_by: str = "modified desc",
+	page_length: int = 20,
+	page: int = 1,
+	search: str | None = None,
+) -> dict:
 	get_session_role_flags()
 
 	_filters = {}
@@ -17,7 +19,6 @@ def get_trainers(
 		_filters["trainer_name"] = ["like", f"%{search}%"]
 
 	if filters:
-		import json
 		if isinstance(filters, str):
 			filters = json.loads(filters)
 		_filters.update(filters)
@@ -62,8 +63,7 @@ def get_trainers(
 
 
 @frappe.whitelist()
-def create_trainer(trainer):
-	import json
+def create_trainer(trainer: str) -> dict:
 	if isinstance(trainer, str):
 		trainer = json.loads(trainer)
 
@@ -75,8 +75,7 @@ def create_trainer(trainer):
 
 
 @frappe.whitelist()
-def update_trainer(name, trainer):
-	import json
+def update_trainer(name: str, trainer: str) -> dict:
 	if isinstance(trainer, str):
 		trainer = json.loads(trainer)
 
@@ -88,7 +87,7 @@ def update_trainer(name, trainer):
 
 
 @frappe.whitelist()
-def delete_trainer(name):
+def delete_trainer(name: str) -> dict:
 	frappe.delete_doc("CRM Trainer", name, ignore_permissions=True)
 	frappe.db.commit()
 	return {"success": True}
