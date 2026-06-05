@@ -11,11 +11,11 @@ def get_sales_orders():
 	is_manager = "Sales Manager" in session_roles
 
 	if is_admin or is_manager:
-		filters = {}
+		filters = {"status": ["not in", ["Cancelled", "Archived"]]}
 		or_filters = None
 	else:
 		current_user = frappe.session.user
-		filters = {}
+		filters = {"status": ["not in", ["Cancelled", "Archived"]]}
 		or_filters = [
 			["sales_manager", "=", current_user],
 			["account_manager", "=", current_user],
@@ -26,10 +26,13 @@ def get_sales_orders():
 		filters=filters,
 		or_filters=or_filters,
 		fields=[
-			"name", "deal", "organization", "contact_person",
-			"status", "amount", "total_expense", "gross_profit",
-			"gross_profit_percentage", "sales_manager", "account_manager",
-			"delivery_date", "lab_required", "training_required", "modified",
+			"name", "deal", "organization", "contact_person", "company",
+			"email", "phone", "status", "amount", "total_expense",
+			"gross_profit", "gross_profit_percentage", "tax", "discount",
+			"final_amount", "payment_status", "sales_manager", "account_manager",
+			"delivery_manager", "technology", "trainer_assigned", "delivery_type",
+			"project_duration", "start_date", "end_date", "delivery_date",
+			"lab_required", "training_required", "modified",
 		],
 		order_by="modified desc",
 		ignore_permissions=True,
@@ -56,4 +59,17 @@ def get_sales_orders():
 def get_sales_order(name):
 	get_session_role_flags()
 	doc = frappe.get_doc("PBS Sales Order", name)
+	return doc.as_dict()
+
+
+@frappe.whitelist()
+def create_delivery_order(sales_order_name, delivery_order):
+	import json
+	if isinstance(delivery_order, str):
+		delivery_order = json.loads(delivery_order)
+
+	doc = frappe.get_doc("PBS Sales Order", sales_order_name)
+	doc.append("delivery_orders", delivery_order)
+	doc.save(ignore_permissions=True)
+	frappe.db.commit()
 	return doc.as_dict()
