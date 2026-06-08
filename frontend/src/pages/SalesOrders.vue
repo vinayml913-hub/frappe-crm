@@ -508,10 +508,11 @@ async function submitEdit() {
     const idx = salesOrders.value.findIndex(o => o.name === name)
     if (idx !== -1) Object.assign(salesOrders.value[idx], updated)
 
-    toast({ title: __('Sales Order updated'), icon: 'check', iconClasses: 'text-green-600' })
+    toast.success(__('Sales Order updated'))
     showEditModal.value = false
   } catch (err) {
     editError.value = _extractError(err, __('Failed to save Sales Order'))
+    toast.error(editError.value)
   } finally {
     saving.value = false
   }
@@ -570,10 +571,11 @@ async function submitDeliveryOrder() {
     const order = salesOrders.value.find(o => o.name === selectedOrder.value.name)
     if (order) order.delivery_orders = updatedDOs
 
-    toast({ title: __('Delivery Order created'), icon: 'check', iconClasses: 'text-green-600' })
+    toast.success(__('Delivery Order created'))
     showDeliveryModal.value = false
   } catch (err) {
     doFormError.value = _extractError(err, __('Something went wrong'))
+    toast.error(doFormError.value)
   } finally {
     savingDO.value = false
   }
@@ -607,8 +609,14 @@ async function loadUsers() {
 
 function _extractError(err, fallback) {
   if (!err) return fallback
-  try { if (err.messages?.length) return err.messages[0].message || fallback } catch (_) {}
-  return err.message || String(err) || fallback
+  try {
+    if (err.messages && err.messages.length && err.messages[0].message) {
+      return err.messages[0].message
+    }
+  } catch (e) { /* ignore */ }
+  if (err.message) return err.message
+  if (typeof err === 'string') return err
+  return fallback
 }
 
 // ── Info builders (use userLabel() for Link→User fields) ─────────────
