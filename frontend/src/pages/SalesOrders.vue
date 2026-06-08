@@ -4,7 +4,11 @@
       <Breadcrumbs :items="[{ label: __('Sales Orders') }]" />
     </template>
     <template #right-header>
-      <select v-model="statusFilter" class="rounded-md border border-outline-gray-2 bg-surface-gray-1 py-1.5 px-3 text-sm text-ink-gray-7 focus:outline-none" @change="loadOrders">
+      <select
+        v-model="statusFilter"
+        class="rounded-md border border-outline-gray-2 bg-surface-gray-1 py-1.5 px-3 text-sm text-ink-gray-7 focus:outline-none"
+        @change="loadOrders"
+      >
         <option value="">{{ __('All Orders') }}</option>
         <option>Open</option>
         <option>In Progress</option>
@@ -16,7 +20,7 @@
 
   <div class="flex-1 overflow-y-auto p-5">
     <div v-if="loading" class="flex items-center justify-center mt-20">
-      <div class="text-ink-gray-5 text-sm">{{ __('Loading...') }}</div>
+      <div class="text-ink-gray-5 text-sm">{{ __('Loading…') }}</div>
     </div>
 
     <div v-else-if="salesOrders.length === 0" class="flex flex-col items-center justify-center mt-20 gap-3">
@@ -26,8 +30,11 @@
     </div>
 
     <div v-else class="space-y-5 max-w-5xl mx-auto">
-      <div v-for="order in salesOrders" :key="order.name" class="rounded-xl border border-outline-gray-2 bg-surface-white shadow-sm overflow-hidden">
-
+      <div
+        v-for="order in salesOrders"
+        :key="order.name"
+        class="rounded-xl border border-outline-gray-2 bg-surface-white shadow-sm overflow-hidden"
+      >
         <!-- Header -->
         <div class="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-surface-gray-1 to-surface-white border-b border-outline-gray-1">
           <div class="flex items-center gap-3 cursor-pointer flex-1" @click="toggleOrder(order.name)">
@@ -46,16 +53,18 @@
           <div class="flex items-center gap-2">
             <span class="px-3 py-1 text-xs font-semibold rounded-full" :class="statusClass(order.status)">{{ order.status || 'Open' }}</span>
             <span v-if="order.payment_status" class="px-2 py-1 text-xs rounded-full" :class="paymentStatusClass(order.payment_status)">{{ order.payment_status }}</span>
-            <!-- Edit Button -->
             <Button size="sm" variant="outline" icon="edit-2" :label="__('Edit')" @click.stop="openEditModal(order)" />
-            <FeatherIcon :name="expandedOrders.has(order.name) ? 'chevron-up' : 'chevron-down'" class="h-4 w-4 text-ink-gray-4 cursor-pointer" @click="toggleOrder(order.name)" />
+            <FeatherIcon
+              :name="expandedOrders.has(order.name) ? 'chevron-up' : 'chevron-down'"
+              class="h-4 w-4 text-ink-gray-4 cursor-pointer"
+              @click="toggleOrder(order.name)"
+            />
           </div>
         </div>
 
-        <!-- Expanded -->
+        <!-- Expanded body -->
         <div v-if="expandedOrders.has(order.name)">
           <div class="grid grid-cols-2 divide-x divide-outline-gray-1">
-
             <!-- Basic Info -->
             <div class="p-5">
               <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Basic Information') }}</p>
@@ -66,7 +75,6 @@
                 </div>
               </div>
             </div>
-
             <!-- Financial -->
             <div class="p-5">
               <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Financial Information') }}</p>
@@ -80,7 +88,6 @@
           </div>
 
           <div class="grid grid-cols-2 divide-x divide-outline-gray-1 border-t border-outline-gray-1">
-
             <!-- Project -->
             <div class="p-5">
               <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Project Information') }}</p>
@@ -91,7 +98,6 @@
                 </div>
               </div>
             </div>
-
             <!-- Team -->
             <div class="p-5">
               <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Team Information') }}</p>
@@ -115,11 +121,15 @@
             </div>
 
             <div v-if="order.delivery_orders && order.delivery_orders.length" class="p-5 grid grid-cols-1 gap-3">
-              <div v-for="(di, idx) in order.delivery_orders" :key="idx" class="rounded-lg border border-outline-gray-2 p-4 hover:bg-surface-gray-1 transition-colors">
+              <div
+                v-for="(di, idx) in order.delivery_orders"
+                :key="di.name || idx"
+                class="rounded-lg border border-outline-gray-2 p-4 hover:bg-surface-gray-1 transition-colors"
+              >
                 <div class="flex items-center justify-between mb-2">
                   <div class="flex items-center gap-2">
                     <span class="font-medium text-ink-gray-9 text-sm">{{ di.delivery_order_number || di.item || 'Delivery ' + (idx + 1) }}</span>
-                    <span class="text-xs px-2 py-0.5 rounded-full" :class="doStatusClass(di.status)">{{ di.status || 'Pending' }}</span>
+                    <span class="text-xs px-2 py-0.5 rounded-full" :class="doStatusClass(di.status)">{{ di.status || 'Open' }}</span>
                   </div>
                   <span v-if="di.trainers" class="text-xs text-ink-gray-5">👤 {{ di.trainers }}</span>
                 </div>
@@ -143,7 +153,7 @@
     </div>
   </div>
 
-  <!-- Edit Sales Order Modal -->
+  <!-- ── Edit Sales Order Modal ──────────────────────────────────── -->
   <Dialog v-model="showEditModal" :options="{ size: '2xl' }">
     <template #body>
       <div class="bg-surface-modal px-6 pb-6 pt-5">
@@ -154,6 +164,7 @@
           </div>
           <Button variant="ghost" class="w-7" icon="x" @click="showEditModal = false" />
         </div>
+
         <div class="space-y-5">
           <!-- Basic -->
           <div>
@@ -162,13 +173,20 @@
               <div>
                 <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Status') }}</label>
                 <select v-model="editForm.status" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none">
-                  <option>Open</option><option>In Progress</option><option>Delivered</option><option>Closed</option>
+                  <option>Open</option>
+                  <option>In Progress</option>
+                  <option>Delivered</option>
+                  <option>Closed</option>
                 </select>
               </div>
               <div>
                 <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Payment Status') }}</label>
                 <select v-model="editForm.payment_status" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none">
-                  <option value="">—</option><option>Pending</option><option>Partial</option><option>Paid</option><option>Overdue</option>
+                  <option value="">—</option>
+                  <option>Pending</option>
+                  <option>Partial</option>
+                  <option>Paid</option>
+                  <option>Overdue</option>
                 </select>
               </div>
               <div>
@@ -181,24 +199,32 @@
               </div>
             </div>
           </div>
+
           <!-- Financial -->
           <div>
             <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Financial') }}</p>
             <div class="grid grid-cols-3 gap-4">
               <div>
                 <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Amount') }}</label>
-                <input v-model="editForm.amount" type="number" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none" />
+                <input v-model.number="editForm.amount" type="number" min="0" step="0.01" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none" />
               </div>
               <div>
                 <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Tax') }}</label>
-                <input v-model="editForm.tax" type="number" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none" />
+                <input v-model.number="editForm.tax" type="number" min="0" step="0.01" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none" />
               </div>
               <div>
                 <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Discount') }}</label>
-                <input v-model="editForm.discount" type="number" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none" />
+                <input v-model.number="editForm.discount" type="number" min="0" step="0.01" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none" />
+              </div>
+              <div class="col-span-3">
+                <p class="text-xs text-ink-gray-5">
+                  {{ __('Final Amount') }}:
+                  <strong>{{ formatCurrency((editForm.amount || 0) + (editForm.tax || 0) - (editForm.discount || 0)) }}</strong>
+                </p>
               </div>
             </div>
           </div>
+
           <!-- Project -->
           <div>
             <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Project') }}</p>
@@ -210,7 +236,10 @@
               <div>
                 <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Delivery Type') }}</label>
                 <select v-model="editForm.delivery_type" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none">
-                  <option value="">—</option><option>Onsite</option><option>Online</option><option>Hybrid</option>
+                  <option value="">—</option>
+                  <option>Onsite</option>
+                  <option>Online</option>
+                  <option>Hybrid</option>
                 </select>
               </div>
               <div>
@@ -223,6 +252,7 @@
               </div>
             </div>
           </div>
+
           <!-- Team -->
           <div>
             <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Team') }}</p>
@@ -241,7 +271,8 @@
               </div>
             </div>
           </div>
-          <p v-if="editError" class="text-sm text-ink-red-3">{{ editError }}</p>
+
+          <p v-if="editError" class="text-sm text-ink-red-3 bg-surface-red-1 rounded-md px-3 py-2">{{ editError }}</p>
         </div>
       </div>
       <div class="px-6 pb-5 pt-3 flex justify-end gap-2 border-t border-outline-gray-1">
@@ -251,7 +282,7 @@
     </template>
   </Dialog>
 
-  <!-- Delivery Order Modal -->
+  <!-- ── Delivery Order Modal ────────────────────────────────────── -->
   <Dialog v-model="showDeliveryModal" :options="{ size: '2xl' }">
     <template #body>
       <div class="bg-surface-modal px-6 pb-6 pt-5">
@@ -262,14 +293,22 @@
           </div>
           <Button variant="ghost" class="w-7" icon="x" @click="showDeliveryModal = false" />
         </div>
+
         <div class="space-y-5">
           <!-- Delivery Info -->
           <div>
             <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Delivery Information') }}</p>
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Item / Title') }} <span class="text-ink-red-3">*</span></label>
-                <input v-model="doForm.item" type="text" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none focus:border-outline-gray-4" />
+                <label class="text-xs font-medium text-ink-gray-6 mb-1 block">
+                  {{ __('Item / Title') }} <span class="text-ink-red-3">*</span>
+                </label>
+                <input
+                  v-model="doForm.item"
+                  type="text"
+                  :class="['w-full rounded-md border px-3 py-1.5 text-sm focus:outline-none', doFormItemError ? 'border-ink-red-3' : 'border-outline-gray-2 focus:border-outline-gray-4']"
+                />
+                <p v-if="doFormItemError" class="text-xs text-ink-red-3 mt-0.5">{{ doFormItemError }}</p>
               </div>
               <div>
                 <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('DO Number') }}</label>
@@ -283,7 +322,11 @@
                 <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Type') }}</label>
                 <select v-model="doForm.delivery_product_type" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none focus:border-outline-gray-4">
                   <option value="">{{ __('Select') }}</option>
-                  <option>Product</option><option>Service</option><option>License</option><option>Training</option><option>Support</option>
+                  <option>Product</option>
+                  <option>Service</option>
+                  <option>License</option>
+                  <option>Training</option>
+                  <option>Support</option>
                 </select>
               </div>
               <div>
@@ -296,6 +339,7 @@
               </div>
             </div>
           </div>
+
           <!-- Schedule -->
           <div>
             <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Schedule') }}</p>
@@ -310,30 +354,44 @@
               </div>
             </div>
           </div>
+
           <!-- Commercial -->
           <div>
             <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Commercial') }}</p>
             <div class="grid grid-cols-3 gap-4">
               <div>
                 <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Qty') }}</label>
-                <input v-model="doForm.qty" type="number" min="1" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none focus:border-outline-gray-4" />
+                <input v-model.number="doForm.qty" type="number" min="1" step="1" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none focus:border-outline-gray-4" />
               </div>
               <div>
                 <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Rate (₹)') }}</label>
-                <input v-model="doForm.rate" type="number" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none focus:border-outline-gray-4" />
+                <input v-model.number="doForm.rate" type="number" min="0" step="0.01" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none focus:border-outline-gray-4" />
               </div>
               <div>
                 <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Amount (₹)') }}</label>
-                <input :value="doForm.qty && doForm.rate ? formatCurrency(doForm.qty * doForm.rate) : '—'" readonly class="w-full rounded-md border border-outline-gray-1 bg-surface-gray-1 px-3 py-1.5 text-sm text-ink-gray-5" />
+                <input
+                  :value="doForm.qty && doForm.rate ? formatCurrency(doForm.qty * doForm.rate) : '—'"
+                  readonly
+                  class="w-full rounded-md border border-outline-gray-1 bg-surface-gray-1 px-3 py-1.5 text-sm text-ink-gray-5"
+                />
               </div>
             </div>
           </div>
+
           <!-- Status -->
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Status') }}</label>
+              <!--
+                Values MUST match PBS Delivery Order DocType options:
+                Open | In Progress | Delivered | Cancelled | On Hold
+              -->
               <select v-model="doForm.status" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none focus:border-outline-gray-4">
-                <option>Pending</option><option>In Transit</option><option>Delivered</option><option>Cancelled</option><option>On Hold</option>
+                <option>Open</option>
+                <option>In Progress</option>
+                <option>Delivered</option>
+                <option>Cancelled</option>
+                <option>On Hold</option>
               </select>
             </div>
             <div>
@@ -341,7 +399,8 @@
               <input v-model="doForm.sales_manager" type="text" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none focus:border-outline-gray-4" />
             </div>
           </div>
-          <p v-if="doFormError" class="text-sm text-ink-red-3">{{ doFormError }}</p>
+
+          <p v-if="doFormError" class="text-sm text-ink-red-3 bg-surface-red-1 rounded-md px-3 py-2">{{ doFormError }}</p>
         </div>
       </div>
       <div class="px-6 pb-5 pt-3 flex justify-end gap-2 border-t border-outline-gray-1">
@@ -359,33 +418,39 @@ import { Breadcrumbs, Button, Dialog, FeatherIcon, call, toast } from 'frappe-ui
 import { formatDate } from '@/utils'
 import { ref, reactive, onMounted } from 'vue'
 
-const salesOrders = ref([])
-const loading = ref(true)
+const salesOrders    = ref([])
+const loading        = ref(true)
 const expandedOrders = ref(new Set())
-const statusFilter = ref('')
+const statusFilter   = ref('')
 
-// Edit modal
+// ── Edit modal ──────────────────────────────────────────────────────
 const showEditModal = ref(false)
-const saving = ref(false)
-const editError = ref(null)
-const editForm = reactive({
+const saving        = ref(false)
+const editError     = ref(null)
+const editForm      = reactive({
   name: '', status: '', payment_status: '', email: '', phone: '',
   amount: 0, tax: 0, discount: 0, technology: '', delivery_type: '',
   start_date: '', end_date: '', sales_manager: '', account_manager: '',
   delivery_manager: '',
 })
 
-// Delivery order modal
+// ── Delivery order modal ────────────────────────────────────────────
 const showDeliveryModal = ref(false)
-const selectedOrder = ref(null)
-const savingDO = ref(false)
-const doFormError = ref(null)
+const selectedOrder     = ref(null)
+const savingDO          = ref(false)
+const doFormError       = ref(null)
+const doFormItemError   = ref(null)
+
+// Status values MUST match PBS Delivery Order DocType options exactly
 const doForm = reactive({
   item: '', delivery_order_number: '', trainers: '', delivery_product_type: '',
   account: '', description: '', start_date: '', end_date: '',
-  qty: 1, rate: 0, status: 'Pending', sales_manager: '',
+  qty: 1, rate: 0,
+  status: 'Open',   // default = first valid option
+  sales_manager: '',
 })
 
+// ── Helpers ─────────────────────────────────────────────────────────
 function toggleOrder(name) {
   if (expandedOrders.value.has(name)) expandedOrders.value.delete(name)
   else expandedOrders.value.add(name)
@@ -393,13 +458,20 @@ function toggleOrder(name) {
 
 function openEditModal(order) {
   Object.assign(editForm, {
-    name: order.name, status: order.status || 'Open',
-    payment_status: order.payment_status || '', email: order.email || '',
-    phone: order.phone || '', amount: order.amount || 0,
-    tax: order.tax || 0, discount: order.discount || 0,
-    technology: order.technology || '', delivery_type: order.delivery_type || '',
-    start_date: order.start_date || '', end_date: order.end_date || '',
-    sales_manager: order.sales_manager || '', account_manager: order.account_manager || '',
+    name:             order.name,
+    status:           order.status           || 'Open',
+    payment_status:   order.payment_status   || '',
+    email:            order.email            || '',
+    phone:            order.phone            || '',
+    amount:           order.amount           || 0,
+    tax:              order.tax              || 0,
+    discount:         order.discount         || 0,
+    technology:       order.technology       || '',
+    delivery_type:    order.delivery_type    || '',
+    start_date:       order.start_date       || '',
+    end_date:         order.end_date         || '',
+    sales_manager:    order.sales_manager    || '',
+    account_manager:  order.account_manager  || '',
     delivery_manager: order.delivery_manager || '',
   })
   editError.value = null
@@ -407,18 +479,28 @@ function openEditModal(order) {
 }
 
 async function submitEdit() {
+  editError.value = null
   saving.value = true
   try {
     const { name, ...data } = editForm
-    await call('crm.api.sales_order.update_sales_order', {
+    // Ensure numbers are proper numbers, not strings
+    data.amount   = parseFloat(data.amount)   || 0
+    data.tax      = parseFloat(data.tax)      || 0
+    data.discount = parseFloat(data.discount) || 0
+
+    const updated = await call('crm.api.sales_order.update_sales_order', {
       name,
       data: JSON.stringify(data),
     })
-    toast.success(__('Sales Order updated'))
+
+    // Patch the local list so the UI reflects changes immediately
+    const idx = salesOrders.value.findIndex(o => o.name === name)
+    if (idx !== -1) Object.assign(salesOrders.value[idx], updated)
+
+    toast({ title: __('Sales Order updated'), icon: 'check', iconClasses: 'text-green-600' })
     showEditModal.value = false
-    loadOrders()
   } catch (err) {
-    editError.value = err?.message || __('Failed to save')
+    editError.value = _extractError(err, __('Failed to save Sales Order'))
   } finally {
     saving.value = false
   }
@@ -429,38 +511,63 @@ function openDeliveryModal(order) {
   Object.assign(doForm, {
     item: '', delivery_order_number: '', trainers: '', delivery_product_type: '',
     account: '', description: '', start_date: '', end_date: '',
-    qty: 1, rate: 0, status: 'Pending', sales_manager: order.sales_manager || '',
+    qty: 1, rate: 0,
+    status: 'Open',
+    sales_manager: order.sales_manager || '',
   })
-  doFormError.value = null
+  doFormError.value     = null
+  doFormItemError.value = null
   showDeliveryModal.value = true
 }
 
 async function submitDeliveryOrder() {
-  if (!doForm.item) { doFormError.value = __('Item / Title is required'); return }
+  // Client-side validation
+  doFormItemError.value = null
+  doFormError.value     = null
+
+  if (!doForm.item || !doForm.item.trim()) {
+    doFormItemError.value = __('Item / Title is required')
+    return
+  }
+
   savingDO.value = true
   try {
+    const qty    = parseFloat(doForm.qty)  || 1
+    const rate   = parseFloat(doForm.rate) || 0
+    const amount = qty * rate
+
     const payload = {
-      item: doForm.item,
-      qty: parseFloat(doForm.qty) || 1,
-      rate: parseFloat(doForm.rate) || 0,
-      amount: (parseFloat(doForm.qty) || 1) * (parseFloat(doForm.rate) || 0),
-      status: doForm.status || 'Pending',
+      item:   doForm.item.trim(),
+      qty,
+      rate,
+      amount,
+      // status already matches DocType options (Open / In Progress / …)
+      status: doForm.status || 'Open',
     }
-    // Add optional fields only if filled
-    const optional = ['delivery_order_number', 'trainers', 'delivery_product_type', 'account', 'description', 'start_date', 'end_date', 'sales_manager']
-    optional.forEach(k => { if (doForm[k]) payload[k] = doForm[k] })
+
+    // Optional fields — include only when non-empty
+    const optionalStr = [
+      'delivery_order_number', 'trainers', 'delivery_product_type',
+      'account', 'description', 'sales_manager',
+    ]
+    optionalStr.forEach(k => { if (doForm[k]) payload[k] = doForm[k] })
+
+    const optionalDate = ['start_date', 'end_date']
+    optionalDate.forEach(k => { if (doForm[k]) payload[k] = doForm[k] })
 
     const updatedDOs = await call('crm.api.sales_order.create_delivery_order', {
       sales_order_name: selectedOrder.value.name,
-      delivery_order: JSON.stringify(payload),
+      delivery_order:   JSON.stringify(payload),
     })
-    // Update local delivery orders
+
+    // Patch local data — no full reload needed
     const order = salesOrders.value.find(o => o.name === selectedOrder.value.name)
     if (order) order.delivery_orders = updatedDOs
-    toast.success(__('Delivery Order created'))
+
+    toast({ title: __('Delivery Order created'), icon: 'check', iconClasses: 'text-green-600' })
     showDeliveryModal.value = false
   } catch (err) {
-    doFormError.value = err?.message || __('Something went wrong')
+    doFormError.value = _extractError(err, __('Something went wrong'))
   } finally {
     savingDO.value = false
   }
@@ -473,79 +580,93 @@ async function loadOrders() {
     if (statusFilter.value) orders = orders.filter(o => o.status === statusFilter.value)
     salesOrders.value = orders
   } catch (err) {
-    console.error(err)
+    console.error('loadOrders error:', err)
     salesOrders.value = []
   } finally {
     loading.value = false
   }
 }
 
-// Info helpers
+// Extract a user-friendly message from a frappe-ui call error
+function _extractError(err, fallback) {
+  if (!err) return fallback
+  // Frappe backend errors come as err.messages[0].message or err.message
+  try {
+    if (err.messages?.length) return err.messages[0].message || fallback
+  } catch (_) { /* ignore */ }
+  return err.message || String(err) || fallback
+}
+
+// ── Info builders ───────────────────────────────────────────────────
 function basicInfo(o) {
   return [
-    { label: __('Client'), value: o.organization },
+    { label: __('Client'),  value: o.organization },
     { label: __('Company'), value: o.company },
-    { label: __('Deal'), value: o.deal },
+    { label: __('Deal'),    value: o.deal },
     { label: __('Contact'), value: o.contact_person },
-    { label: __('Email'), value: o.email },
-    { label: __('Phone'), value: o.phone },
+    { label: __('Email'),   value: o.email },
+    { label: __('Phone'),   value: o.phone },
   ]
 }
 function financialInfo(o) {
   return [
-    { label: __('Amount'), value: formatCurrency(o.amount) },
-    { label: __('Tax'), value: formatCurrency(o.tax) },
-    { label: __('Discount'), value: formatCurrency(o.discount) },
+    { label: __('Amount'),       value: formatCurrency(o.amount) },
+    { label: __('Tax'),          value: formatCurrency(o.tax) },
+    { label: __('Discount'),     value: formatCurrency(o.discount) },
     { label: __('Final Amount'), value: formatCurrency(o.final_amount), bold: true },
     { label: __('Gross Profit'), value: formatCurrency(o.gross_profit) },
-    { label: __('GP %'), value: o.gross_profit_percentage ? o.gross_profit_percentage.toFixed(1) + '%' : null },
+    { label: __('GP %'),         value: o.gross_profit_percentage ? o.gross_profit_percentage.toFixed(1) + '%' : null },
   ]
 }
 function projectInfo(o) {
   return [
-    { label: __('Technology'), value: o.technology },
-    { label: __('Trainer'), value: o.trainer_assigned },
-    { label: __('Delivery Type'), value: o.delivery_type },
-    { label: __('Duration'), value: o.project_duration },
-    { label: __('Start Date'), value: o.start_date ? formatDate(o.start_date) : null },
-    { label: __('End Date'), value: o.end_date ? formatDate(o.end_date) : null },
+    { label: __('Technology'),   value: o.technology },
+    { label: __('Trainer'),      value: o.trainer_assigned },
+    { label: __('Delivery Type'),value: o.delivery_type },
+    { label: __('Duration'),     value: o.project_duration },
+    { label: __('Start Date'),   value: o.start_date ? formatDate(o.start_date) : null },
+    { label: __('End Date'),     value: o.end_date   ? formatDate(o.end_date)   : null },
   ]
 }
 function teamInfo(o) {
   return [
-    { label: __('Sales Manager'), value: o.sales_manager },
-    { label: __('Account Manager'), value: o.account_manager },
+    { label: __('Sales Manager'),    value: o.sales_manager },
+    { label: __('Account Manager'),  value: o.account_manager },
     { label: __('Delivery Manager'), value: o.delivery_manager },
   ]
 }
 
+// ── Formatters ──────────────────────────────────────────────────────
 function formatCurrency(v) {
-  if (!v && v !== 0) return '—'
-  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(v)
+  if (v == null || v === '') return '—'
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency', currency: 'INR', maximumFractionDigits: 0,
+  }).format(v)
 }
+
 function statusClass(s) {
   return {
-    'bg-surface-green-1 text-ink-green-3': s === 'Open',
-    'bg-surface-blue-1 text-ink-blue-3': s === 'In Progress',
+    'bg-surface-green-1 text-ink-green-3':   s === 'Open',
+    'bg-surface-blue-1 text-ink-blue-3':     s === 'In Progress',
     'bg-surface-purple-1 text-ink-purple-3': s === 'Delivered',
-    'bg-surface-gray-2 text-ink-gray-6': s === 'Closed' || !s,
-    'bg-surface-red-1 text-ink-red-3': s === 'Cancelled',
+    'bg-surface-gray-2 text-ink-gray-6':     s === 'Closed' || !s,
+    'bg-surface-red-1 text-ink-red-3':       s === 'Cancelled',
   }
 }
 function paymentStatusClass(s) {
   return {
-    'bg-surface-gray-2 text-ink-gray-6': s === 'Pending',
+    'bg-surface-gray-2 text-ink-gray-6':     s === 'Pending',
     'bg-surface-orange-1 text-ink-orange-3': s === 'Partial',
-    'bg-surface-green-1 text-ink-green-3': s === 'Paid',
-    'bg-surface-red-1 text-ink-red-3': s === 'Overdue',
+    'bg-surface-green-1 text-ink-green-3':   s === 'Paid',
+    'bg-surface-red-1 text-ink-red-3':       s === 'Overdue',
   }
 }
 function doStatusClass(s) {
   return {
-    'bg-surface-gray-2 text-ink-gray-6': s === 'Pending' || !s,
-    'bg-surface-blue-1 text-ink-blue-3': s === 'In Transit',
-    'bg-surface-green-1 text-ink-green-3': s === 'Delivered',
-    'bg-surface-red-1 text-ink-red-3': s === 'Cancelled',
+    'bg-surface-gray-2 text-ink-gray-6':     s === 'Open'        || !s,
+    'bg-surface-blue-1 text-ink-blue-3':     s === 'In Progress',
+    'bg-surface-green-1 text-ink-green-3':   s === 'Delivered',
+    'bg-surface-red-1 text-ink-red-3':       s === 'Cancelled',
     'bg-surface-orange-1 text-ink-orange-3': s === 'On Hold',
   }
 }
