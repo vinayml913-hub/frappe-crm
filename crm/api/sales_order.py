@@ -246,3 +246,35 @@ def create_delivery_order(sales_order_name, delivery_order):
         order_by="idx asc",
         ignore_permissions=True,
     )
+
+
+# ─────────────────────────────────────────────
+#  HELPERS FOR FRONTEND DROPDOWNS
+# ─────────────────────────────────────────────
+
+@frappe.whitelist()
+def get_crm_users():
+    """
+    Return all active users that have at least one CRM-related role.
+    Returns list of {value: email, label: "Full Name (email)"} for dropdowns.
+    """
+    users = frappe.get_all(
+        "User",
+        filters={
+            "enabled": 1,
+            "user_type": "System User",
+            "name": ["not in", ["Administrator", "Guest"]],
+        },
+        fields=["name", "full_name", "user_image"],
+        order_by="full_name asc",
+        ignore_permissions=True,
+    )
+
+    return [
+        {
+            "value": u["name"],          # email — the actual Link field value
+            "label": u["full_name"] or u["name"],
+            "image": u.get("user_image") or "",
+        }
+        for u in users
+    ]
