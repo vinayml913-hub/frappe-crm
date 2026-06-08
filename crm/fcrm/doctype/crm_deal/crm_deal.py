@@ -75,6 +75,31 @@ class CRMDeal(Document):
 		territory: DF.Link | None
 		total: DF.Currency
 		website: DF.Data | None
+		# PBS Custom Fields
+		deal_name: DF.Data | None
+		account: DF.Link | None
+		expected_close_date: DF.Date | None
+		stage: DF.Data | None
+		probability_pct: DF.Percent
+		amount: DF.Currency
+		expense: DF.Currency
+		gross_profit: DF.Currency
+		gross_profit_pct: DF.Percent
+		lead_source: DF.Link | None
+		lab_required: DF.Check
+		training_required: DF.Check
+		sales_manager: DF.Link | None
+		account_manager: DF.Link | None
+		training_engagement_manager: DF.Link | None
+		accounting_notes: DF.TextEditor | None
+		te_notes: DF.TextEditor | None
+		costing_type: DF.Data | None
+		per_day_cost: DF.Currency
+		per_hour_cost: DF.Currency
+		no_of_days: DF.Int
+		no_of_hours: DF.Float
+		total_costing: DF.Currency
+		costing_remarks: DF.TextEditor | None
 	# end: auto-generated types
 
 	def before_validate(self):
@@ -94,6 +119,8 @@ class CRMDeal(Document):
 		self.validate_forecasting_fields()
 		self.validate_lost_reason()
 		self.update_exchange_rate()
+		self.calculate_gross_profit()
+		self.calculate_total_costing()
 
 	def after_insert(self):
 		if self.deal_owner:
@@ -103,6 +130,32 @@ class CRMDeal(Document):
 
 	def before_save(self):
 		self.apply_sla()
+
+	def calculate_gross_profit(self):
+		"""Auto-calculate Gross Profit and Gross Profit % from Amount and Expense."""
+		amount = float(self.amount or 0)
+		expense = float(self.expense or 0)
+		gross_profit = amount - expense
+		self.gross_profit = gross_profit
+		if amount > 0:
+			self.gross_profit_pct = (gross_profit / amount) * 100
+		else:
+			self.gross_profit_pct = 0
+
+	def calculate_total_costing(self):
+		"""Auto-calculate Total Costing based on costing type."""
+		costing_type = self.costing_type
+		if costing_type == "Per Day":
+			per_day = float(self.per_day_cost or 0)
+			days = int(self.no_of_days or 0)
+			self.total_costing = per_day * days
+		elif costing_type == "Per Hour":
+			per_hour = float(self.per_hour_cost or 0)
+			hours = float(self.no_of_hours or 0)
+			self.total_costing = per_hour * hours
+		else:
+			# Fixed — user sets total_costing manually, no auto-calc
+			pass
 
 	def validate_status(self):
 		if self.is_new() and not self.status:
@@ -156,7 +209,6 @@ class CRMDeal(Document):
 		if assignees:
 			for assignee in assignees:
 				if agent == assignee:
-					# the agent is already set as an assignee
 					return
 
 		assign({"assign_to": [agent], "doctype": "CRM Deal", "name": self.name}, ignore_permissions=True)
@@ -194,9 +246,6 @@ class CRMDeal(Document):
 				)
 
 	def set_sla(self):
-		"""
-		Find an SLA to apply to the deal.
-		"""
 		if self.sla:
 			return
 
@@ -208,9 +257,6 @@ class CRMDeal(Document):
 		self.sla = sla.name
 
 	def apply_sla(self):
-		"""
-		Apply SLA if set.
-		"""
 		if not self.sla:
 			return
 		sla = frappe.get_last_doc("CRM Service Level Agreement", {"name": self.sla})
@@ -218,23 +264,14 @@ class CRMDeal(Document):
 			sla.apply(self)
 
 	def update_closed_date(self):
-		"""
-		Update the closed date based on the "Won" status.
-		"""
 		if self.status == "Won" and not self.closed_date:
 			self.closed_date = frappe.utils.nowdate()
 
 	def update_default_probability(self):
-		"""
-		Update the default probability based on the status.
-		"""
 		if not self.probability or self.probability == 0:
 			self.probability = frappe.db.get_value("CRM Deal Status", self.status, "probability") or 0
 
 	def update_expected_deal_value(self):
-		"""
-		Update the expected deal value based on the net total or total.
-		"""
 		if (
 			frappe.db.get_single_value("FCRM Settings", "auto_update_expected_deal_value")
 			and (self.net_total or self.total)
@@ -253,9 +290,6 @@ class CRMDeal(Document):
 				frappe.throw(_("Expected closure date is required."), frappe.MandatoryError)
 
 	def validate_lost_reason(self):
-		"""
-		Validate the lost reason if the status is set to "Lost".
-		"""
 		if self.status and frappe.get_cached_value("CRM Deal Status", self.status, "type") == "Lost":
 			if not self.lost_reason:
 				frappe.throw(_("Please specify a reason for losing the deal."), frappe.ValidationError)
@@ -442,7 +476,7 @@ def create_contact(doc):
 		contact.append("phone_nos", {"phone": doc.get("mobile_no"), "is_primary_mobile_no": 1})
 
 	contact.insert(ignore_permissions=True)
-	contact.reload()  # load changes by hooks on contact
+	contact.reload()
 
 	return contact.name
 
