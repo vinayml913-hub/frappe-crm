@@ -4,39 +4,34 @@
       <Breadcrumbs :items="[{ label: __('Sales Orders') }]" />
     </template>
     <template #right-header>
-      <div class="flex items-center gap-2">
-        <select v-model="statusFilter" class="rounded-md border border-outline-gray-2 bg-surface-gray-1 py-1.5 px-3 text-sm text-ink-gray-7 focus:outline-none" @change="loadOrders">
-          <option value="">{{ __('All Orders') }}</option>
-          <option value="Open">Open</option>
-          <option value="In Progress">In Progress</option>
-          <option value="Delivered">Delivered</option>
-          <option value="Closed">Closed</option>
-        </select>
-      </div>
+      <select v-model="statusFilter" class="rounded-md border border-outline-gray-2 bg-surface-gray-1 py-1.5 px-3 text-sm text-ink-gray-7 focus:outline-none" @change="loadOrders">
+        <option value="">{{ __('All Orders') }}</option>
+        <option>Open</option>
+        <option>In Progress</option>
+        <option>Delivered</option>
+        <option>Closed</option>
+      </select>
     </template>
   </LayoutHeader>
 
   <div class="flex-1 overflow-y-auto p-5">
-    <!-- Loading -->
     <div v-if="loading" class="flex items-center justify-center mt-20">
       <div class="text-ink-gray-5 text-sm">{{ __('Loading...') }}</div>
     </div>
 
-    <!-- Empty -->
     <div v-else-if="salesOrders.length === 0" class="flex flex-col items-center justify-center mt-20 gap-3">
       <SalesOrderIcon class="h-12 w-12 text-ink-gray-3" />
       <p class="text-ink-gray-5 text-base font-medium">{{ __('No Sales Orders yet') }}</p>
       <p class="text-ink-gray-4 text-sm">{{ __('Sales Orders are created automatically when a Deal is marked as Won') }}</p>
     </div>
 
-    <!-- Orders -->
     <div v-else class="space-y-5 max-w-5xl mx-auto">
       <div v-for="order in salesOrders" :key="order.name" class="rounded-xl border border-outline-gray-2 bg-surface-white shadow-sm overflow-hidden">
 
-        <!-- Card Header -->
-        <div class="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-surface-gray-1 to-surface-white border-b border-outline-gray-1 cursor-pointer" @click="toggleOrder(order.name)">
-          <div class="flex items-center gap-3">
-            <div class="h-10 w-10 rounded-lg bg-surface-blue-1 flex items-center justify-center">
+        <!-- Header -->
+        <div class="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-surface-gray-1 to-surface-white border-b border-outline-gray-1">
+          <div class="flex items-center gap-3 cursor-pointer flex-1" @click="toggleOrder(order.name)">
+            <div class="h-10 w-10 rounded-lg bg-surface-blue-1 flex items-center justify-center flex-shrink-0">
               <SalesOrderIcon class="h-5 w-5 text-ink-blue-3" />
             </div>
             <div>
@@ -45,77 +40,71 @@
                 <span v-if="order.lab_required" class="text-xs px-2 py-0.5 rounded-full bg-surface-orange-1 text-ink-orange-3">Lab</span>
                 <span v-if="order.training_required" class="text-xs px-2 py-0.5 rounded-full bg-surface-blue-1 text-ink-blue-3">Training</span>
               </div>
-              <p class="text-sm text-ink-gray-5">{{ order.organization || '—' }} {{ order.company ? '· ' + order.company : '' }}</p>
+              <p class="text-sm text-ink-gray-5">{{ order.organization || '—' }}{{ order.company ? ' · ' + order.company : '' }}</p>
             </div>
           </div>
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2">
             <span class="px-3 py-1 text-xs font-semibold rounded-full" :class="statusClass(order.status)">{{ order.status || 'Open' }}</span>
             <span v-if="order.payment_status" class="px-2 py-1 text-xs rounded-full" :class="paymentStatusClass(order.payment_status)">{{ order.payment_status }}</span>
-            <FeatherIcon :name="expandedOrders.has(order.name) ? 'chevron-up' : 'chevron-down'" class="h-4 w-4 text-ink-gray-4" />
+            <!-- Edit Button -->
+            <Button size="sm" variant="outline" icon="edit-2" :label="__('Edit')" @click.stop="openEditModal(order)" />
+            <FeatherIcon :name="expandedOrders.has(order.name) ? 'chevron-up' : 'chevron-down'" class="h-4 w-4 text-ink-gray-4 cursor-pointer" @click="toggleOrder(order.name)" />
           </div>
         </div>
 
-        <!-- Expanded Content -->
+        <!-- Expanded -->
         <div v-if="expandedOrders.has(order.name)">
+          <div class="grid grid-cols-2 divide-x divide-outline-gray-1">
 
-          <!-- Section 1: Basic Info + Financial in grid -->
-          <div class="grid grid-cols-2 gap-0 divide-x divide-outline-gray-1">
-
-            <!-- Basic Information -->
+            <!-- Basic Info -->
             <div class="p-5">
               <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Basic Information') }}</p>
               <div class="space-y-2.5">
-                <InfoRow :label="__('Client')" :value="order.organization" />
-                <InfoRow :label="__('Company')" :value="order.company" />
-                <InfoRow :label="__('Deal')" :value="order.deal" />
-                <InfoRow :label="__('Contact')" :value="order.contact_person" />
-                <InfoRow :label="__('Email')" :value="order.email" />
-                <InfoRow :label="__('Phone')" :value="order.phone" />
+                <div v-for="row in basicInfo(order)" :key="row.label" class="flex items-start gap-2">
+                  <span class="text-xs text-ink-gray-4 w-28 flex-shrink-0 pt-0.5">{{ row.label }}</span>
+                  <span class="text-sm text-ink-gray-7">{{ row.value || '—' }}</span>
+                </div>
               </div>
             </div>
 
-            <!-- Financial Information -->
+            <!-- Financial -->
             <div class="p-5">
               <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Financial Information') }}</p>
               <div class="space-y-2.5">
-                <InfoRow :label="__('Amount')" :value="formatCurrency(order.amount)" />
-                <InfoRow :label="__('Tax')" :value="formatCurrency(order.tax)" />
-                <InfoRow :label="__('Discount')" :value="formatCurrency(order.discount)" />
-                <InfoRow :label="__('Final Amount')" :value="formatCurrency(order.final_amount)" bold />
-                <InfoRow :label="__('Gross Profit')" :value="formatCurrency(order.gross_profit)" />
-                <InfoRow :label="__('GP %')" :value="order.gross_profit_percentage ? order.gross_profit_percentage.toFixed(1) + '%' : '—'" />
+                <div v-for="row in financialInfo(order)" :key="row.label" class="flex items-start gap-2">
+                  <span class="text-xs text-ink-gray-4 w-28 flex-shrink-0 pt-0.5">{{ row.label }}</span>
+                  <span class="text-sm" :class="row.bold ? 'font-semibold text-ink-gray-9' : 'text-ink-gray-7'">{{ row.value || '—' }}</span>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Section 2: Project + Team -->
-          <div class="grid grid-cols-2 gap-0 divide-x divide-outline-gray-1 border-t border-outline-gray-1">
+          <div class="grid grid-cols-2 divide-x divide-outline-gray-1 border-t border-outline-gray-1">
 
-            <!-- Project Information -->
+            <!-- Project -->
             <div class="p-5">
               <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Project Information') }}</p>
               <div class="space-y-2.5">
-                <InfoRow :label="__('Technology')" :value="order.technology" />
-                <InfoRow :label="__('Trainer Assigned')" :value="order.trainer_assigned" />
-                <InfoRow :label="__('Delivery Type')" :value="order.delivery_type" />
-                <InfoRow :label="__('Duration')" :value="order.project_duration" />
-                <InfoRow :label="__('Start Date')" :value="order.start_date ? formatDate(order.start_date) : null" />
-                <InfoRow :label="__('End Date')" :value="order.end_date ? formatDate(order.end_date) : null" />
+                <div v-for="row in projectInfo(order)" :key="row.label" class="flex items-start gap-2">
+                  <span class="text-xs text-ink-gray-4 w-28 flex-shrink-0 pt-0.5">{{ row.label }}</span>
+                  <span class="text-sm text-ink-gray-7">{{ row.value || '—' }}</span>
+                </div>
               </div>
             </div>
 
-            <!-- Team Information -->
+            <!-- Team -->
             <div class="p-5">
               <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Team Information') }}</p>
               <div class="space-y-2.5">
-                <InfoRow :label="__('Sales Manager')" :value="order.sales_manager" />
-                <InfoRow :label="__('Account Manager')" :value="order.account_manager" />
-                <InfoRow :label="__('Delivery Manager')" :value="order.delivery_manager" />
+                <div v-for="row in teamInfo(order)" :key="row.label" class="flex items-start gap-2">
+                  <span class="text-xs text-ink-gray-4 w-28 flex-shrink-0 pt-0.5">{{ row.label }}</span>
+                  <span class="text-sm text-ink-gray-7">{{ row.value || '—' }}</span>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Section 3: Delivery Orders -->
+          <!-- Delivery Orders -->
           <div class="border-t border-outline-gray-1">
             <div class="flex items-center justify-between px-5 py-3 bg-surface-gray-1">
               <div class="flex items-center gap-2">
@@ -125,46 +114,142 @@
               <Button size="sm" variant="outline" icon-left="plus" :label="__('Add Delivery Order')" @click.stop="openDeliveryModal(order)" />
             </div>
 
-            <!-- Delivery Order Cards -->
             <div v-if="order.delivery_orders && order.delivery_orders.length" class="p-5 grid grid-cols-1 gap-3">
-              <div v-for="(do_item, idx) in order.delivery_orders" :key="idx" class="rounded-lg border border-outline-gray-2 p-4 hover:bg-surface-gray-1 transition-colors">
-                <!-- Row 1: Name + Status + Trainer -->
+              <div v-for="(di, idx) in order.delivery_orders" :key="idx" class="rounded-lg border border-outline-gray-2 p-4 hover:bg-surface-gray-1 transition-colors">
                 <div class="flex items-center justify-between mb-2">
                   <div class="flex items-center gap-2">
-                    <span class="font-medium text-ink-gray-9 text-sm">{{ do_item.delivery_order_number || do_item.item || 'Delivery ' + (idx + 1) }}</span>
-                    <span class="text-xs px-2 py-0.5 rounded-full" :class="doStatusClass(do_item.status)">{{ do_item.status || 'Pending' }}</span>
+                    <span class="font-medium text-ink-gray-9 text-sm">{{ di.delivery_order_number || di.item || 'Delivery ' + (idx + 1) }}</span>
+                    <span class="text-xs px-2 py-0.5 rounded-full" :class="doStatusClass(di.status)">{{ di.status || 'Pending' }}</span>
                   </div>
-                  <span v-if="do_item.trainers" class="text-xs text-ink-gray-5 flex items-center gap-1">
-                    <svg class="h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                    {{ do_item.trainers }}
-                  </span>
+                  <span v-if="di.trainers" class="text-xs text-ink-gray-5">👤 {{ di.trainers }}</span>
                 </div>
-                <!-- Row 2: Technology + Dates -->
                 <div class="flex items-center gap-4 text-xs text-ink-gray-5 mb-2">
-                  <span v-if="do_item.description">{{ do_item.description }}</span>
-                  <span v-if="do_item.start_date" class="flex items-center gap-1">
-                    <svg class="h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                    {{ formatDate(do_item.start_date) }}
-                  </span>
-                  <span v-if="do_item.end_date">→ {{ formatDate(do_item.end_date) }}</span>
+                  <span v-if="di.description">{{ di.description }}</span>
+                  <span v-if="di.start_date">📅 {{ formatDate(di.start_date) }}</span>
+                  <span v-if="di.end_date">→ {{ formatDate(di.end_date) }}</span>
                 </div>
-                <!-- Row 3: Commercial + Account -->
                 <div class="flex items-center justify-between text-xs">
-                  <span v-if="do_item.amount" class="font-semibold text-ink-gray-8">{{ formatCurrency(do_item.amount) }}</span>
-                  <span v-if="do_item.account" class="text-ink-gray-5">{{ do_item.account }}</span>
+                  <span v-if="di.amount" class="font-semibold text-ink-gray-8">{{ formatCurrency(di.amount) }}</span>
+                  <span v-if="di.account" class="text-ink-gray-5">{{ di.account }}</span>
                 </div>
               </div>
             </div>
-
             <div v-else class="px-5 py-6 text-center text-sm text-ink-gray-4">
               {{ __('No delivery orders yet. Click "Add Delivery Order" to create one.') }}
             </div>
           </div>
-
         </div>
       </div>
     </div>
   </div>
+
+  <!-- Edit Sales Order Modal -->
+  <Dialog v-model="showEditModal" :options="{ size: '2xl' }">
+    <template #body>
+      <div class="bg-surface-modal px-6 pb-6 pt-5">
+        <div class="mb-5 flex items-center justify-between">
+          <div>
+            <h3 class="text-xl font-semibold text-ink-gray-9">{{ __('Edit Sales Order') }}</h3>
+            <p class="text-sm text-ink-gray-5 mt-0.5">{{ editForm.name }}</p>
+          </div>
+          <Button variant="ghost" class="w-7" icon="x" @click="showEditModal = false" />
+        </div>
+        <div class="space-y-5">
+          <!-- Basic -->
+          <div>
+            <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Basic') }}</p>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Status') }}</label>
+                <select v-model="editForm.status" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none">
+                  <option>Open</option><option>In Progress</option><option>Delivered</option><option>Closed</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Payment Status') }}</label>
+                <select v-model="editForm.payment_status" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none">
+                  <option value="">—</option><option>Pending</option><option>Partial</option><option>Paid</option><option>Overdue</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Email') }}</label>
+                <input v-model="editForm.email" type="email" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none" />
+              </div>
+              <div>
+                <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Phone') }}</label>
+                <input v-model="editForm.phone" type="text" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none" />
+              </div>
+            </div>
+          </div>
+          <!-- Financial -->
+          <div>
+            <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Financial') }}</p>
+            <div class="grid grid-cols-3 gap-4">
+              <div>
+                <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Amount') }}</label>
+                <input v-model="editForm.amount" type="number" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none" />
+              </div>
+              <div>
+                <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Tax') }}</label>
+                <input v-model="editForm.tax" type="number" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none" />
+              </div>
+              <div>
+                <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Discount') }}</label>
+                <input v-model="editForm.discount" type="number" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none" />
+              </div>
+            </div>
+          </div>
+          <!-- Project -->
+          <div>
+            <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Project') }}</p>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Technology') }}</label>
+                <input v-model="editForm.technology" type="text" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none" />
+              </div>
+              <div>
+                <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Delivery Type') }}</label>
+                <select v-model="editForm.delivery_type" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none">
+                  <option value="">—</option><option>Onsite</option><option>Online</option><option>Hybrid</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Start Date') }}</label>
+                <input v-model="editForm.start_date" type="date" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none" />
+              </div>
+              <div>
+                <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('End Date') }}</label>
+                <input v-model="editForm.end_date" type="date" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none" />
+              </div>
+            </div>
+          </div>
+          <!-- Team -->
+          <div>
+            <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Team') }}</p>
+            <div class="grid grid-cols-3 gap-4">
+              <div>
+                <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Sales Manager') }}</label>
+                <input v-model="editForm.sales_manager" type="text" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none" />
+              </div>
+              <div>
+                <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Account Manager') }}</label>
+                <input v-model="editForm.account_manager" type="text" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none" />
+              </div>
+              <div>
+                <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Delivery Manager') }}</label>
+                <input v-model="editForm.delivery_manager" type="text" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none" />
+              </div>
+            </div>
+          </div>
+          <p v-if="editError" class="text-sm text-ink-red-3">{{ editError }}</p>
+        </div>
+      </div>
+      <div class="px-6 pb-5 pt-3 flex justify-end gap-2 border-t border-outline-gray-1">
+        <Button variant="outline" :label="__('Cancel')" @click="showEditModal = false" />
+        <Button variant="solid" :label="__('Save Changes')" :loading="saving" @click="submitEdit" />
+      </div>
+    </template>
+  </Dialog>
 
   <!-- Delivery Order Modal -->
   <Dialog v-model="showDeliveryModal" :options="{ size: '2xl' }">
@@ -177,14 +262,13 @@
           </div>
           <Button variant="ghost" class="w-7" icon="x" @click="showDeliveryModal = false" />
         </div>
-
         <div class="space-y-5">
-          <!-- Delivery Information -->
+          <!-- Delivery Info -->
           <div>
             <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Delivery Information') }}</p>
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Item / Delivery Title') }} <span class="text-ink-red-3">*</span></label>
+                <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Item / Title') }} <span class="text-ink-red-3">*</span></label>
                 <input v-model="doForm.item" type="text" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none focus:border-outline-gray-4" />
               </div>
               <div>
@@ -193,10 +277,10 @@
               </div>
               <div>
                 <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Trainers') }}</label>
-                <input v-model="doForm.trainers" type="text" :placeholder="__('Trainer name(s)')" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none focus:border-outline-gray-4" />
+                <input v-model="doForm.trainers" type="text" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none focus:border-outline-gray-4" />
               </div>
               <div>
-                <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Delivery Product Type') }}</label>
+                <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Type') }}</label>
                 <select v-model="doForm.delivery_product_type" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none focus:border-outline-gray-4">
                   <option value="">{{ __('Select') }}</option>
                   <option>Product</option><option>Service</option><option>License</option><option>Training</option><option>Support</option>
@@ -212,11 +296,10 @@
               </div>
             </div>
           </div>
-
-          <!-- Schedule Information -->
+          <!-- Schedule -->
           <div>
-            <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Schedule Information') }}</p>
-            <div class="grid grid-cols-3 gap-4">
+            <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Schedule') }}</p>
+            <div class="grid grid-cols-2 gap-4">
               <div>
                 <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Start Date') }}</label>
                 <input v-model="doForm.start_date" type="date" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none focus:border-outline-gray-4" />
@@ -225,16 +308,11 @@
                 <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('End Date') }}</label>
                 <input v-model="doForm.end_date" type="date" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none focus:border-outline-gray-4" />
               </div>
-              <div>
-                <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Delivery Date') }}</label>
-                <input v-model="doForm.delivery_date" type="date" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none focus:border-outline-gray-4" />
-              </div>
             </div>
           </div>
-
-          <!-- Commercial Information -->
+          <!-- Commercial -->
           <div>
-            <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Commercial Information') }}</p>
+            <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Commercial') }}</p>
             <div class="grid grid-cols-3 gap-4">
               <div>
                 <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Qty') }}</label>
@@ -246,30 +324,24 @@
               </div>
               <div>
                 <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Amount (₹)') }}</label>
-                <input :value="doForm.qty && doForm.rate ? (doForm.qty * doForm.rate).toLocaleString('en-IN') : ''" type="text" readonly class="w-full rounded-md border border-outline-gray-1 bg-surface-gray-1 px-3 py-1.5 text-sm text-ink-gray-5" />
+                <input :value="doForm.qty && doForm.rate ? formatCurrency(doForm.qty * doForm.rate) : '—'" readonly class="w-full rounded-md border border-outline-gray-1 bg-surface-gray-1 px-3 py-1.5 text-sm text-ink-gray-5" />
               </div>
             </div>
           </div>
-
-          <!-- Delivery Status -->
-          <div>
-            <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Status') }}</p>
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Delivery Status') }}</label>
-                <select v-model="doForm.status" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none focus:border-outline-gray-4">
-                  <option>Pending</option><option>In Transit</option><option>Delivered</option><option>Cancelled</option><option>On Hold</option>
-                </select>
-              </div>
-              <div>
-                <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Sales Manager') }}</label>
-                <input v-model="doForm.sales_manager" type="text" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none focus:border-outline-gray-4" />
-              </div>
+          <!-- Status -->
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Status') }}</label>
+              <select v-model="doForm.status" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none focus:border-outline-gray-4">
+                <option>Pending</option><option>In Transit</option><option>Delivered</option><option>Cancelled</option><option>On Hold</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Sales Manager') }}</label>
+              <input v-model="doForm.sales_manager" type="text" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none focus:border-outline-gray-4" />
             </div>
           </div>
-
-          <!-- Remarks -->
-          <div v-if="doFormError" class="text-sm text-ink-red-3 mt-1">{{ doFormError }}</div>
+          <p v-if="doFormError" class="text-sm text-ink-red-3">{{ doFormError }}</p>
         </div>
       </div>
       <div class="px-6 pb-5 pt-3 flex justify-end gap-2 border-t border-outline-gray-1">
@@ -285,63 +357,108 @@ import LayoutHeader from '@/components/LayoutHeader.vue'
 import SalesOrderIcon from '@/components/Icons/SalesOrderIcon.vue'
 import { Breadcrumbs, Button, Dialog, FeatherIcon, call, toast } from 'frappe-ui'
 import { formatDate } from '@/utils'
-import { ref, reactive, onMounted, defineComponent, h } from 'vue'
-
-// InfoRow helper component
-const InfoRow = defineComponent({
-  props: { label: String, value: [String, Number], bold: Boolean },
-  setup(props) {
-    return () => h('div', { class: 'flex items-start gap-2' }, [
-      h('span', { class: 'text-xs text-ink-gray-4 w-28 flex-shrink-0 pt-0.5' }, props.label),
-      h('span', { class: `text-sm ${props.bold ? 'font-semibold text-ink-gray-9' : 'text-ink-gray-7'}` }, props.value || '—'),
-    ])
-  }
-})
+import { ref, reactive, onMounted } from 'vue'
 
 const salesOrders = ref([])
 const loading = ref(true)
 const expandedOrders = ref(new Set())
 const statusFilter = ref('')
+
+// Edit modal
+const showEditModal = ref(false)
+const saving = ref(false)
+const editError = ref(null)
+const editForm = reactive({
+  name: '', status: '', payment_status: '', email: '', phone: '',
+  amount: 0, tax: 0, discount: 0, technology: '', delivery_type: '',
+  start_date: '', end_date: '', sales_manager: '', account_manager: '',
+  delivery_manager: '',
+})
+
+// Delivery order modal
 const showDeliveryModal = ref(false)
 const selectedOrder = ref(null)
 const savingDO = ref(false)
 const doFormError = ref(null)
-
-const emptyDOForm = () => ({
+const doForm = reactive({
   item: '', delivery_order_number: '', trainers: '', delivery_product_type: '',
-  account: '', description: '', start_date: '', end_date: '', delivery_date: '',
+  account: '', description: '', start_date: '', end_date: '',
   qty: 1, rate: 0, status: 'Pending', sales_manager: '',
 })
-
-const doForm = reactive(emptyDOForm())
 
 function toggleOrder(name) {
   if (expandedOrders.value.has(name)) expandedOrders.value.delete(name)
   else expandedOrders.value.add(name)
 }
 
+function openEditModal(order) {
+  Object.assign(editForm, {
+    name: order.name, status: order.status || 'Open',
+    payment_status: order.payment_status || '', email: order.email || '',
+    phone: order.phone || '', amount: order.amount || 0,
+    tax: order.tax || 0, discount: order.discount || 0,
+    technology: order.technology || '', delivery_type: order.delivery_type || '',
+    start_date: order.start_date || '', end_date: order.end_date || '',
+    sales_manager: order.sales_manager || '', account_manager: order.account_manager || '',
+    delivery_manager: order.delivery_manager || '',
+  })
+  editError.value = null
+  showEditModal.value = true
+}
+
+async function submitEdit() {
+  saving.value = true
+  try {
+    const { name, ...data } = editForm
+    await call('crm.api.sales_order.update_sales_order', {
+      name,
+      data: JSON.stringify(data),
+    })
+    toast.success(__('Sales Order updated'))
+    showEditModal.value = false
+    loadOrders()
+  } catch (err) {
+    editError.value = err?.message || __('Failed to save')
+  } finally {
+    saving.value = false
+  }
+}
+
 function openDeliveryModal(order) {
   selectedOrder.value = order
-  Object.assign(doForm, emptyDOForm())
+  Object.assign(doForm, {
+    item: '', delivery_order_number: '', trainers: '', delivery_product_type: '',
+    account: '', description: '', start_date: '', end_date: '',
+    qty: 1, rate: 0, status: 'Pending', sales_manager: order.sales_manager || '',
+  })
   doFormError.value = null
   showDeliveryModal.value = true
 }
 
 async function submitDeliveryOrder() {
-  if (!doForm.item) { doFormError.value = __('Item / Delivery Title is required'); return }
+  if (!doForm.item) { doFormError.value = __('Item / Title is required'); return }
   savingDO.value = true
   try {
     const payload = {
-      ...doForm,
-      amount: (doForm.qty || 1) * (doForm.rate || 0),
+      item: doForm.item,
+      qty: parseFloat(doForm.qty) || 1,
+      rate: parseFloat(doForm.rate) || 0,
+      amount: (parseFloat(doForm.qty) || 1) * (parseFloat(doForm.rate) || 0),
+      status: doForm.status || 'Pending',
     }
-    await call('crm.api.sales_order.create_delivery_order', {
+    // Add optional fields only if filled
+    const optional = ['delivery_order_number', 'trainers', 'delivery_product_type', 'account', 'description', 'start_date', 'end_date', 'sales_manager']
+    optional.forEach(k => { if (doForm[k]) payload[k] = doForm[k] })
+
+    const updatedDOs = await call('crm.api.sales_order.create_delivery_order', {
       sales_order_name: selectedOrder.value.name,
       delivery_order: JSON.stringify(payload),
     })
-    toast.success(__('Delivery Order created successfully'))
+    // Update local delivery orders
+    const order = salesOrders.value.find(o => o.name === selectedOrder.value.name)
+    if (order) order.delivery_orders = updatedDOs
+    toast.success(__('Delivery Order created'))
     showDeliveryModal.value = false
-    loadOrders()
   } catch (err) {
     doFormError.value = err?.message || __('Something went wrong')
   } finally {
@@ -352,52 +469,84 @@ async function submitDeliveryOrder() {
 async function loadOrders() {
   loading.value = true
   try {
-    const result = await call('crm.api.sales_order.get_sales_orders')
-    let orders = result || []
-    if (statusFilter.value) {
-      orders = orders.filter(o => o.status === statusFilter.value)
-    }
+    let orders = await call('crm.api.sales_order.get_sales_orders') || []
+    if (statusFilter.value) orders = orders.filter(o => o.status === statusFilter.value)
     salesOrders.value = orders
   } catch (err) {
-    console.error('Failed to load sales orders:', err)
+    console.error(err)
     salesOrders.value = []
   } finally {
     loading.value = false
   }
 }
 
-function formatCurrency(value) {
-  if (!value && value !== 0) return '—'
-  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value)
+// Info helpers
+function basicInfo(o) {
+  return [
+    { label: __('Client'), value: o.organization },
+    { label: __('Company'), value: o.company },
+    { label: __('Deal'), value: o.deal },
+    { label: __('Contact'), value: o.contact_person },
+    { label: __('Email'), value: o.email },
+    { label: __('Phone'), value: o.phone },
+  ]
+}
+function financialInfo(o) {
+  return [
+    { label: __('Amount'), value: formatCurrency(o.amount) },
+    { label: __('Tax'), value: formatCurrency(o.tax) },
+    { label: __('Discount'), value: formatCurrency(o.discount) },
+    { label: __('Final Amount'), value: formatCurrency(o.final_amount), bold: true },
+    { label: __('Gross Profit'), value: formatCurrency(o.gross_profit) },
+    { label: __('GP %'), value: o.gross_profit_percentage ? o.gross_profit_percentage.toFixed(1) + '%' : null },
+  ]
+}
+function projectInfo(o) {
+  return [
+    { label: __('Technology'), value: o.technology },
+    { label: __('Trainer'), value: o.trainer_assigned },
+    { label: __('Delivery Type'), value: o.delivery_type },
+    { label: __('Duration'), value: o.project_duration },
+    { label: __('Start Date'), value: o.start_date ? formatDate(o.start_date) : null },
+    { label: __('End Date'), value: o.end_date ? formatDate(o.end_date) : null },
+  ]
+}
+function teamInfo(o) {
+  return [
+    { label: __('Sales Manager'), value: o.sales_manager },
+    { label: __('Account Manager'), value: o.account_manager },
+    { label: __('Delivery Manager'), value: o.delivery_manager },
+  ]
 }
 
-function statusClass(status) {
+function formatCurrency(v) {
+  if (!v && v !== 0) return '—'
+  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(v)
+}
+function statusClass(s) {
   return {
-    'bg-surface-green-1 text-ink-green-3': status === 'Open',
-    'bg-surface-blue-1 text-ink-blue-3': status === 'In Progress',
-    'bg-surface-purple-1 text-ink-purple-3': status === 'Delivered',
-    'bg-surface-gray-2 text-ink-gray-6': status === 'Closed' || !status,
-    'bg-surface-red-1 text-ink-red-3': status === 'Cancelled',
-    'bg-surface-yellow-1 text-ink-yellow-3': status === 'Archived',
+    'bg-surface-green-1 text-ink-green-3': s === 'Open',
+    'bg-surface-blue-1 text-ink-blue-3': s === 'In Progress',
+    'bg-surface-purple-1 text-ink-purple-3': s === 'Delivered',
+    'bg-surface-gray-2 text-ink-gray-6': s === 'Closed' || !s,
+    'bg-surface-red-1 text-ink-red-3': s === 'Cancelled',
   }
 }
-
-function paymentStatusClass(status) {
+function paymentStatusClass(s) {
   return {
-    'bg-surface-gray-2 text-ink-gray-6': status === 'Pending',
-    'bg-surface-orange-1 text-ink-orange-3': status === 'Partial',
-    'bg-surface-green-1 text-ink-green-3': status === 'Paid',
-    'bg-surface-red-1 text-ink-red-3': status === 'Overdue',
+    'bg-surface-gray-2 text-ink-gray-6': s === 'Pending',
+    'bg-surface-orange-1 text-ink-orange-3': s === 'Partial',
+    'bg-surface-green-1 text-ink-green-3': s === 'Paid',
+    'bg-surface-red-1 text-ink-red-3': s === 'Overdue',
   }
 }
-
-function doStatusClass(status) {
+function doStatusClass(s) {
   return {
-    'bg-surface-gray-2 text-ink-gray-6': status === 'Pending' || !status,
-    'bg-surface-blue-1 text-ink-blue-3': status === 'In Transit',
-    'bg-surface-green-1 text-ink-green-3': status === 'Delivered',
-    'bg-surface-red-1 text-ink-red-3': status === 'Cancelled',
-    'bg-surface-orange-1 text-ink-orange-3': status === 'On Hold',
+    'bg-surface-gray-2 text-ink-gray-6': s === 'Pending' || !s,
+    'bg-surface-blue-1 text-ink-blue-3': s === 'In Transit',
+    'bg-surface-green-1 text-ink-green-3': s === 'Delivered',
+    'bg-surface-red-1 text-ink-red-3': s === 'Cancelled',
+    'bg-surface-orange-1 text-ink-orange-3': s === 'On Hold',
   }
 }
 
