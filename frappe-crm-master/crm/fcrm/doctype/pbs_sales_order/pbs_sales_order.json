@@ -21,7 +21,21 @@
   "training_required",
   "notes",
   "delivery_orders_section",
-  "delivery_orders"
+  "delivery_orders",
+  "email",
+  "phone",
+  "company",
+  "technology",
+  "trainer_assigned",
+  "delivery_type",
+  "project_duration",
+  "start_date",
+  "end_date",
+  "delivery_manager",
+  "tax",
+  "discount",
+  "final_amount",
+  "payment_status"
  ],
  "fields": [
   {
@@ -46,7 +60,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Open\nIn Progress\nDelivered\nClosed"
+   "options": "Open\nIn Progress\nDelivered\nClosed\nCancelled\nArchived"
   },
   {
    "fieldname": "amount",
@@ -110,6 +124,83 @@
    "fieldtype": "Table",
    "label": "Delivery Orders",
    "options": "PBS Delivery Order"
+  },
+  {
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "label": "Email",
+   "options": "Email"
+  },
+  {
+   "fieldname": "phone",
+   "fieldtype": "Data",
+   "label": "Phone Number",
+   "options": "Phone"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Data",
+   "label": "Company"
+  },
+  {
+   "fieldname": "technology",
+   "fieldtype": "Data",
+   "label": "Technology"
+  },
+  {
+   "fieldname": "trainer_assigned",
+   "fieldtype": "Link",
+   "label": "Trainer Assigned",
+   "options": "CRM Trainer"
+  },
+  {
+   "fieldname": "delivery_type",
+   "fieldtype": "Select",
+   "label": "Delivery Type",
+   "options": "\nOnsite\nOnline\nHybrid"
+  },
+  {
+   "fieldname": "project_duration",
+   "fieldtype": "Data",
+   "label": "Project Duration"
+  },
+  {
+   "fieldname": "start_date",
+   "fieldtype": "Date",
+   "label": "Start Date"
+  },
+  {
+   "fieldname": "end_date",
+   "fieldtype": "Date",
+   "label": "End Date"
+  },
+  {
+   "fieldname": "delivery_manager",
+   "fieldtype": "Link",
+   "label": "Delivery Manager",
+   "options": "User"
+  },
+  {
+   "fieldname": "tax",
+   "fieldtype": "Currency",
+   "label": "Tax"
+  },
+  {
+   "fieldname": "discount",
+   "fieldtype": "Currency",
+   "label": "Discount"
+  },
+  {
+   "fieldname": "final_amount",
+   "fieldtype": "Currency",
+   "label": "Final Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "payment_status",
+   "fieldtype": "Select",
+   "label": "Payment Status",
+   "options": "\nPending\nPartial\nPaid\nOverdue"
   }
  ],
  "links": [],
@@ -120,121 +211,35 @@
  "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
-
   {
-
-    "role": "System Manager",
-
-    "read": 1,
-
-    "write": 1,
-
-    "create": 1,
-
-    "delete": 1,
-
-    "select": 1,
-
-    "print": 1,
-
-    "email": 1,
-
-    "report": 1,
-
-    "export": 1,
-
-    "share": 1,
-
-    "permlevel": 0
-
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1
   },
-
   {
-
-    "role": "Sales Manager",
-
-    "read": 1,
-
-    "write": 1,
-
-    "create": 1,
-
-    "delete": 0,
-
-    "select": 1,
-
-    "print": 1,
-
-    "email": 1,
-
-    "report": 1,
-
-    "export": 1,
-
-    "share": 0,
-
-    "permlevel": 0
-
+   "role": "Sales Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 0
   },
-
   {
-
-    "role": "Sales User",
-
-    "read": 1,
-
-    "write": 1,
-
-    "create": 1,
-
-    "delete": 0,
-
-    "select": 1,
-
-    "print": 1,
-
-    "email": 0,
-
-    "report": 0,
-
-    "export": 0,
-
-    "share": 0,
-
-    "permlevel": 0
-
+   "role": "Sales User",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 0
   },
-
   {
-
-    "role": "Solution Manager",
-
-    "read": 1,
-
-    "write": 0,
-
-    "create": 0,
-
-    "delete": 0,
-
-    "select": 1,
-
-    "print": 1,
-
-    "email": 0,
-
-    "report": 0,
-
-    "export": 0,
-
-    "share": 0,
-
-    "permlevel": 0
-
+   "role": "Solution Manager",
+   "read": 0,
+   "write": 0,
+   "create": 0,
+   "delete": 0
   }
-
-],
- 
+ ],
  "sort_field": "modified",
  "sort_order": "DESC",
  "track_changes": 1
