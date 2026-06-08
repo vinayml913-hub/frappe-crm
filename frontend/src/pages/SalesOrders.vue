@@ -65,7 +65,6 @@
         <!-- Expanded body -->
         <div v-if="expandedOrders.has(order.name)">
           <div class="grid grid-cols-2 divide-x divide-outline-gray-1">
-            <!-- Basic Info -->
             <div class="p-5">
               <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Basic Information') }}</p>
               <div class="space-y-2.5">
@@ -75,7 +74,6 @@
                 </div>
               </div>
             </div>
-            <!-- Financial -->
             <div class="p-5">
               <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Financial Information') }}</p>
               <div class="space-y-2.5">
@@ -88,7 +86,6 @@
           </div>
 
           <div class="grid grid-cols-2 divide-x divide-outline-gray-1 border-t border-outline-gray-1">
-            <!-- Project -->
             <div class="p-5">
               <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Project Information') }}</p>
               <div class="space-y-2.5">
@@ -98,7 +95,6 @@
                 </div>
               </div>
             </div>
-            <!-- Team -->
             <div class="p-5">
               <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Team Information') }}</p>
               <div class="space-y-2.5">
@@ -216,11 +212,9 @@
                 <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Discount') }}</label>
                 <input v-model.number="editForm.discount" type="number" min="0" step="0.01" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none" />
               </div>
-              <div class="col-span-3">
-                <p class="text-xs text-ink-gray-5">
-                  {{ __('Final Amount') }}:
-                  <strong>{{ formatCurrency((editForm.amount || 0) + (editForm.tax || 0) - (editForm.discount || 0)) }}</strong>
-                </p>
+              <div class="col-span-3 bg-surface-gray-1 rounded-md px-3 py-2">
+                <span class="text-xs text-ink-gray-5">{{ __('Final Amount') }}: </span>
+                <strong class="text-sm text-ink-gray-9">{{ formatCurrency((editForm.amount || 0) + (editForm.tax || 0) - (editForm.discount || 0)) }}</strong>
               </div>
             </div>
           </div>
@@ -253,21 +247,32 @@
             </div>
           </div>
 
-          <!-- Team -->
+          <!-- Team — user dropdowns, not free-text inputs -->
           <div>
             <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Team') }}</p>
-            <div class="grid grid-cols-3 gap-4">
+            <div v-if="usersLoading" class="text-xs text-ink-gray-4 py-2">{{ __('Loading users…') }}</div>
+            <div v-else class="grid grid-cols-3 gap-4">
               <div>
                 <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Sales Manager') }}</label>
-                <input v-model="editForm.sales_manager" type="text" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none" />
+                <!-- value = user email (the Frappe User Link value) -->
+                <select v-model="editForm.sales_manager" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none">
+                  <option value="">— {{ __('None') }} —</option>
+                  <option v-for="u in crmUsers" :key="u.value" :value="u.value">{{ u.label }}</option>
+                </select>
               </div>
               <div>
                 <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Account Manager') }}</label>
-                <input v-model="editForm.account_manager" type="text" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none" />
+                <select v-model="editForm.account_manager" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none">
+                  <option value="">— {{ __('None') }} —</option>
+                  <option v-for="u in crmUsers" :key="u.value" :value="u.value">{{ u.label }}</option>
+                </select>
               </div>
               <div>
                 <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Delivery Manager') }}</label>
-                <input v-model="editForm.delivery_manager" type="text" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none" />
+                <select v-model="editForm.delivery_manager" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none">
+                  <option value="">— {{ __('None') }} —</option>
+                  <option v-for="u in crmUsers" :key="u.value" :value="u.value">{{ u.label }}</option>
+                </select>
               </div>
             </div>
           </div>
@@ -295,7 +300,6 @@
         </div>
 
         <div class="space-y-5">
-          <!-- Delivery Info -->
           <div>
             <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Delivery Information') }}</p>
             <div class="grid grid-cols-2 gap-4">
@@ -340,7 +344,6 @@
             </div>
           </div>
 
-          <!-- Schedule -->
           <div>
             <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Schedule') }}</p>
             <div class="grid grid-cols-2 gap-4">
@@ -355,7 +358,6 @@
             </div>
           </div>
 
-          <!-- Commercial -->
           <div>
             <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Commercial') }}</p>
             <div class="grid grid-cols-3 gap-4">
@@ -378,14 +380,9 @@
             </div>
           </div>
 
-          <!-- Status -->
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Status') }}</label>
-              <!--
-                Values MUST match PBS Delivery Order DocType options:
-                Open | In Progress | Delivered | Cancelled | On Hold
-              -->
               <select v-model="doForm.status" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none focus:border-outline-gray-4">
                 <option>Open</option>
                 <option>In Progress</option>
@@ -396,7 +393,10 @@
             </div>
             <div>
               <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Sales Manager') }}</label>
-              <input v-model="doForm.sales_manager" type="text" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none focus:border-outline-gray-4" />
+              <select v-model="doForm.sales_manager" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none focus:border-outline-gray-4">
+                <option value="">— {{ __('None') }} —</option>
+                <option v-for="u in crmUsers" :key="u.value" :value="u.value">{{ u.label }}</option>
+              </select>
             </div>
           </div>
 
@@ -418,42 +418,53 @@ import { Breadcrumbs, Button, Dialog, FeatherIcon, call, toast } from 'frappe-ui
 import { formatDate } from '@/utils'
 import { ref, reactive, onMounted } from 'vue'
 
+// ── State ────────────────────────────────────────────────────────────
 const salesOrders    = ref([])
 const loading        = ref(true)
 const expandedOrders = ref(new Set())
 const statusFilter   = ref('')
 
-// ── Edit modal ──────────────────────────────────────────────────────
+// Users list for dropdowns — loaded once on mount
+const crmUsers    = ref([])   // [{ value: "email@x.com", label: "Full Name" }]
+const usersLoading = ref(true)
+
+// Edit modal
 const showEditModal = ref(false)
 const saving        = ref(false)
 const editError     = ref(null)
 const editForm      = reactive({
   name: '', status: '', payment_status: '', email: '', phone: '',
   amount: 0, tax: 0, discount: 0, technology: '', delivery_type: '',
-  start_date: '', end_date: '', sales_manager: '', account_manager: '',
-  delivery_manager: '',
+  start_date: '', end_date: '',
+  // User Link fields — store the email (Frappe User name), not the display name
+  sales_manager: '', account_manager: '', delivery_manager: '',
 })
 
-// ── Delivery order modal ────────────────────────────────────────────
+// Delivery order modal
 const showDeliveryModal = ref(false)
 const selectedOrder     = ref(null)
 const savingDO          = ref(false)
 const doFormError       = ref(null)
 const doFormItemError   = ref(null)
-
-// Status values MUST match PBS Delivery Order DocType options exactly
 const doForm = reactive({
   item: '', delivery_order_number: '', trainers: '', delivery_product_type: '',
   account: '', description: '', start_date: '', end_date: '',
   qty: 1, rate: 0,
-  status: 'Open',   // default = first valid option
+  status: 'Open',          // must match DocType options exactly
   sales_manager: '',
 })
 
-// ── Helpers ─────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────
 function toggleOrder(name) {
   if (expandedOrders.value.has(name)) expandedOrders.value.delete(name)
   else expandedOrders.value.add(name)
+}
+
+/** Look up a user's display label by email value, for the info panels */
+function userLabel(email) {
+  if (!email) return null
+  const u = crmUsers.value.find(x => x.value === email)
+  return u ? u.label : email   // fall back to raw email if not in list
 }
 
 function openEditModal(order) {
@@ -470,6 +481,7 @@ function openEditModal(order) {
     delivery_type:    order.delivery_type    || '',
     start_date:       order.start_date       || '',
     end_date:         order.end_date         || '',
+    // These are already stored as user emails in the DB
     sales_manager:    order.sales_manager    || '',
     account_manager:  order.account_manager  || '',
     delivery_manager: order.delivery_manager || '',
@@ -483,7 +495,6 @@ async function submitEdit() {
   saving.value = true
   try {
     const { name, ...data } = editForm
-    // Ensure numbers are proper numbers, not strings
     data.amount   = parseFloat(data.amount)   || 0
     data.tax      = parseFloat(data.tax)      || 0
     data.discount = parseFloat(data.discount) || 0
@@ -493,7 +504,7 @@ async function submitEdit() {
       data: JSON.stringify(data),
     })
 
-    // Patch the local list so the UI reflects changes immediately
+    // Patch local list immediately — no full reload needed
     const idx = salesOrders.value.findIndex(o => o.name === name)
     if (idx !== -1) Object.assign(salesOrders.value[idx], updated)
 
@@ -521,7 +532,6 @@ function openDeliveryModal(order) {
 }
 
 async function submitDeliveryOrder() {
-  // Client-side validation
   doFormItemError.value = null
   doFormError.value     = null
 
@@ -534,33 +544,29 @@ async function submitDeliveryOrder() {
   try {
     const qty    = parseFloat(doForm.qty)  || 1
     const rate   = parseFloat(doForm.rate) || 0
-    const amount = qty * rate
 
     const payload = {
       item:   doForm.item.trim(),
       qty,
       rate,
-      amount,
-      // status already matches DocType options (Open / In Progress / …)
+      amount: qty * rate,
       status: doForm.status || 'Open',
     }
 
-    // Optional fields — include only when non-empty
-    const optionalStr = [
-      'delivery_order_number', 'trainers', 'delivery_product_type',
-      'account', 'description', 'sales_manager',
-    ]
+    const optionalStr = ['delivery_order_number', 'trainers', 'delivery_product_type', 'account', 'description']
     optionalStr.forEach(k => { if (doForm[k]) payload[k] = doForm[k] })
 
     const optionalDate = ['start_date', 'end_date']
     optionalDate.forEach(k => { if (doForm[k]) payload[k] = doForm[k] })
+
+    // sales_manager is now a user email from the dropdown — safe to pass as Link value
+    if (doForm.sales_manager) payload.sales_manager = doForm.sales_manager
 
     const updatedDOs = await call('crm.api.sales_order.create_delivery_order', {
       sales_order_name: selectedOrder.value.name,
       delivery_order:   JSON.stringify(payload),
     })
 
-    // Patch local data — no full reload needed
     const order = salesOrders.value.find(o => o.name === selectedOrder.value.name)
     if (order) order.delivery_orders = updatedDOs
 
@@ -587,17 +593,25 @@ async function loadOrders() {
   }
 }
 
-// Extract a user-friendly message from a frappe-ui call error
+async function loadUsers() {
+  usersLoading.value = true
+  try {
+    crmUsers.value = await call('crm.api.sales_order.get_crm_users') || []
+  } catch (err) {
+    console.error('loadUsers error:', err)
+    crmUsers.value = []
+  } finally {
+    usersLoading.value = false
+  }
+}
+
 function _extractError(err, fallback) {
   if (!err) return fallback
-  // Frappe backend errors come as err.messages[0].message or err.message
-  try {
-    if (err.messages?.length) return err.messages[0].message || fallback
-  } catch (_) { /* ignore */ }
+  try { if (err.messages?.length) return err.messages[0].message || fallback } catch (_) {}
   return err.message || String(err) || fallback
 }
 
-// ── Info builders ───────────────────────────────────────────────────
+// ── Info builders (use userLabel() for Link→User fields) ─────────────
 function basicInfo(o) {
   return [
     { label: __('Client'),  value: o.organization },
@@ -620,30 +634,27 @@ function financialInfo(o) {
 }
 function projectInfo(o) {
   return [
-    { label: __('Technology'),   value: o.technology },
-    { label: __('Trainer'),      value: o.trainer_assigned },
-    { label: __('Delivery Type'),value: o.delivery_type },
-    { label: __('Duration'),     value: o.project_duration },
-    { label: __('Start Date'),   value: o.start_date ? formatDate(o.start_date) : null },
-    { label: __('End Date'),     value: o.end_date   ? formatDate(o.end_date)   : null },
+    { label: __('Technology'),    value: o.technology },
+    { label: __('Trainer'),       value: o.trainer_assigned },
+    { label: __('Delivery Type'), value: o.delivery_type },
+    { label: __('Duration'),      value: o.project_duration },
+    { label: __('Start Date'),    value: o.start_date ? formatDate(o.start_date) : null },
+    { label: __('End Date'),      value: o.end_date   ? formatDate(o.end_date)   : null },
   ]
 }
 function teamInfo(o) {
   return [
-    { label: __('Sales Manager'),    value: o.sales_manager },
-    { label: __('Account Manager'),  value: o.account_manager },
-    { label: __('Delivery Manager'), value: o.delivery_manager },
+    { label: __('Sales Manager'),    value: userLabel(o.sales_manager) },
+    { label: __('Account Manager'),  value: userLabel(o.account_manager) },
+    { label: __('Delivery Manager'), value: userLabel(o.delivery_manager) },
   ]
 }
 
-// ── Formatters ──────────────────────────────────────────────────────
+// ── Formatters ───────────────────────────────────────────────────────
 function formatCurrency(v) {
   if (v == null || v === '') return '—'
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency', currency: 'INR', maximumFractionDigits: 0,
-  }).format(v)
+  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(v)
 }
-
 function statusClass(s) {
   return {
     'bg-surface-green-1 text-ink-green-3':   s === 'Open',
@@ -663,7 +674,7 @@ function paymentStatusClass(s) {
 }
 function doStatusClass(s) {
   return {
-    'bg-surface-gray-2 text-ink-gray-6':     s === 'Open'        || !s,
+    'bg-surface-gray-2 text-ink-gray-6':     s === 'Open'         || !s,
     'bg-surface-blue-1 text-ink-blue-3':     s === 'In Progress',
     'bg-surface-green-1 text-ink-green-3':   s === 'Delivered',
     'bg-surface-red-1 text-ink-red-3':       s === 'Cancelled',
@@ -671,5 +682,8 @@ function doStatusClass(s) {
   }
 }
 
-onMounted(() => loadOrders())
+onMounted(() => {
+  loadUsers()    // load user list first (needed for dropdowns)
+  loadOrders()
+})
 </script>
