@@ -1,162 +1,83 @@
 import frappe
-from frappe import _
 from frappe.model.document import Document
 
 
 class PBSSalesOrder(Document):
-    def before_insert(self):
-        self.set_gross_profit()
-        self.set_final_amount()
+	def before_insert(self):
+		self.set_gross_profit()
 
-    def on_update(self):
-        self.set_gross_profit()
-        self.set_final_amount()
+	def on_update(self):
+		self.set_gross_profit()
 
-    def set_gross_profit(self):
-        amount        = float(self.amount        or 0)
-        total_expense = float(self.total_expense or 0)
+	def set_gross_profit(self):
+		if self.amount and self.total_expense:
+			self.gross_profit = self.amount - self.total_expense
+			if self.amount > 0:
+				self.gross_profit_percentage = (self.gross_profit / self.amount) * 100
+			else:
+				self.gross_profit_percentage = 0
+		elif self.amount and not self.total_expense:
+			self.gross_profit = self.amount
+			self.gross_profit_percentage = 100
 
-        if amount > 0:
-            self.gross_profit            = amount - total_expense
-            self.gross_profit_percentage = (self.gross_profit / amount) * 100
-        elif amount == 0 and total_expense == 0:
-            self.gross_profit            = 0
-            self.gross_profit_percentage = 0
-        else:
-            # amount is 0 but there are expenses
-            self.gross_profit            = -total_expense
-            self.gross_profit_percentage = 0
-
-    def set_final_amount(self):
-        amount   = float(self.amount   or 0)
-        tax      = float(self.tax      or 0)
-        discount = float(self.discount or 0)
-        self.final_amount = amount + tax - discount
-
-
-# ─────────────────────────────────────────────
-#  Deal hook — called from hooks.py on_update
-# ─────────────────────────────────────────────
 
 def create_sales_order_from_deal(doc, method):
-    """
-    Sync PBS Sales Order with CRM Deal status changes.
+	"""Auto create PBS Sales Order when Deal status = Won"""
+	if doc.status != "Won":
+		return
 
-    Rules:
-    - Won  → create Sales Order (if none exists) or reactivate a cancelled/archived one
-    - Any other status → cancel / archive the linked Sales Order & its Delivery Orders
-    """
-    try:
-        existing = frappe.db.get_value("PBS Sales Order", {"deal": doc.name}, "name")
+	existing = frappe.db.exists("PBS Sales Order", {"deal": doc.name})
+	if existing:
+		return
 
-        if doc.status == "Won":
-            if not existing:
-                _create_sales_order(doc)
-            else:
-                # Reactivate if previously suppressed
-                current_status = frappe.db.get_value("PBS Sales Order", existing, "status")
-                if current_status in ("Cancelled", "Archived"):
-                    frappe.db.set_value("PBS Sales Order", existing, "status", "Open")
-                    _sync_delivery_orders_status(existing, "Open")
-                    frappe.db.commit()
-        else:
-            if existing:
-                if doc.status == "Closed":
-                    new_so_status = "Archived"
-                    new_do_status = "Cancelled"
-                elif doc.status in ("Lost", "Cancelled"):
-                    new_so_status = "Cancelled"
-                    new_do_status = "Cancelled"
-                else:
-                    # In Process, Negotiation, Proposal, etc.
-                    new_so_status = "Cancelled"
-                    new_do_status = "Cancelled"
+	try:
+		sales_order = frappe.new_doc("PBS Sales Order")
+		sales_order.deal = doc.name
+		sales_order.organization = doc.organization
+		sales_order.contact_person = doc.contact
 
-                frappe.db.set_value("PBS Sales Order", existing, "status", new_so_status)
-                _sync_delivery_orders_status(existing, new_do_status)
-                frappe.db.commit()
+		# Pull financial fields from new Deal Details tab
+		sales_order.amount = doc.get("amount") or doc.deal_value or doc.net_total or 0
+		sales_order.total_expense = doc.get("expense") or 0
 
-    except Exception:
-        frappe.log_error(
-            title="create_sales_order_from_deal Error",
-            message=frappe.get_traceback(),
-        )
+		# Pull team fields from Deal
+		sales_order.sales_manager = doc.get("sales_manager") or doc.deal_owner or frappe.session.user
+		sales_order.account_manager = doc.get("account_manager") or doc.deal_owner or frappe.session.user
 
+		# Pull delivery/lab fields
+		sales_order.lab_required = doc.get("lab_required") or 0
+		sales_order.training_required = doc.get("training_required") or 0
+		sales_order.delivery_date = doc.get("expected_close_date") or doc.expected_closure_date
 
-# ─────────────────────────────────────────────
-#  Internal helpers
-# ─────────────────────────────────────────────
+		# Pull notes
+		sales_order.notes = doc.get("accounting_notes") or ""
 
-def _create_sales_order(doc):
-    """Create a new PBS Sales Order from a Won CRM Deal."""
-    try:
-        deal_owner = doc.deal_owner or frappe.session.user
+		sales_order.status = "Open"
+		sales_order.insert(ignore_permissions=True)
+		frappe.db.commit()
 
-        so = frappe.new_doc("PBS Sales Order")
-        so.deal            = doc.name
-        so.organization    = doc.organization
-        so.amount          = float(doc.annual_revenue or doc.deal_value or 0)
-        so.sales_manager   = deal_owner
-        so.account_manager = deal_owner
-        so.status          = "Open"
+		frappe.msgprint(
+			f"Sales Order {sales_order.name} created successfully!",
+			alert=True
+		)
 
-        # Copy deal products into delivery order rows (if the Deal has a products table)
-        products = doc.get("products") or []
-        for product in products:
-            item_name = (
-                getattr(product, "product_name", "") or
-                getattr(product, "item_name", "") or ""
-            ).strip()
-            if not item_name:
-                continue
-
-            try:
-                qty  = float(getattr(product, "qty",  1) or 1)
-                rate = float(getattr(product, "rate", 0) or 0)
-            except (TypeError, ValueError):
-                qty, rate = 1, 0
-
-            so.append("delivery_orders", {
-                "item":        item_name,
-                "description": item_name,
-                "qty":         qty,
-                "rate":        rate,
-                "amount":      qty * rate,
-                "status":      "Open",   # valid DocType option
-            })
-
-        so.insert(ignore_permissions=True)
-        frappe.db.commit()
-
-    except Exception:
-        frappe.log_error(
-            title="Sales Order Creation Failed",
-            message=frappe.get_traceback(),
-        )
+	except Exception as e:
+		frappe.log_error(
+			title="Sales Order Creation Failed",
+			message=frappe.get_traceback()
+		)
 
 
-def _sync_delivery_orders_status(sales_order_name, new_status):
-    """
-    Update the status of all child Delivery Order rows for a given Sales Order.
-    Only updates rows that are still active (not already Delivered).
-    """
-    # Fetch child row names
-    rows = frappe.get_all(
-        "PBS Delivery Order",
-        filters={
-            "parent":     sales_order_name,
-            "parenttype": "PBS Sales Order",
-            "status":     ["not in", ["Delivered"]],
-        },
-        fields=["name"],
-        ignore_permissions=True,
-    )
+@frappe.whitelist()
+def get_sales_orders():
+	"""Get sales orders based on user role"""
+	roles = frappe.get_roles(frappe.session.user)
 
-    for row in rows:
-        frappe.db.set_value(
-            "PBS Delivery Order",
-            row["name"],
-            "status",
-            new_status,
-            update_modified=False,
-        )
+	return frappe.get_all(
+		"PBS Sales Order",
+		fields=[
+			"name", "organization", "status", "amount",
+			"gross_profit", "gross_profit_percentage", "deal"
+		],
+		order_by="modified desc"
+	)
