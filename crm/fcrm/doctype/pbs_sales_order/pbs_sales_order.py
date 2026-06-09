@@ -5,20 +5,27 @@ from frappe.model.document import Document
 class PBSSalesOrder(Document):
 	def before_insert(self):
 		self.set_gross_profit()
+		self.set_final_amount()
 
 	def on_update(self):
 		self.set_gross_profit()
+		self.set_final_amount()
 
 	def set_gross_profit(self):
-		if self.amount and self.total_expense:
-			self.gross_profit = self.amount - self.total_expense
-			if self.amount > 0:
-				self.gross_profit_percentage = (self.gross_profit / self.amount) * 100
-			else:
-				self.gross_profit_percentage = 0
-		elif self.amount and not self.total_expense:
-			self.gross_profit = self.amount
-			self.gross_profit_percentage = 100
+		amount = float(self.amount or 0)
+		expense = float(self.total_expense or 0)
+		if amount > 0:
+			self.gross_profit = amount - expense
+			self.gross_profit_percentage = (self.gross_profit / amount) * 100
+		else:
+			self.gross_profit = 0
+			self.gross_profit_percentage = 0
+
+	def set_final_amount(self):
+		amount = float(self.amount or 0)
+		tax = float(self.tax or 0)
+		discount = float(self.discount or 0)
+		self.final_amount = amount + tax - discount
 
 
 def create_sales_order_from_deal(doc, method):
@@ -31,33 +38,50 @@ def create_sales_order_from_deal(doc, method):
 		return
 
 	try:
-		sales_order = frappe.new_doc("PBS Sales Order")
-		sales_order.deal = doc.name
-		sales_order.organization = doc.organization
-		sales_order.contact_person = doc.contact
+		so = frappe.new_doc("PBS Sales Order")
 
-		# Pull financial fields from new Deal Details tab
-		sales_order.amount = doc.get("amount") or doc.deal_value or doc.net_total or 0
-		sales_order.total_expense = doc.get("expense") or 0
+		# Basic Info
+		so.deal = doc.name
+		so.organization = doc.organization
+		so.contact_person = doc.contact
+		so.email = doc.email or ""
+		so.phone = doc.mobile_no or doc.phone or ""
+		so.company = doc.organization_name or ""
 
-		# Pull team fields from Deal
-		sales_order.sales_manager = doc.get("sales_manager") or doc.deal_owner or frappe.session.user
-		sales_order.account_manager = doc.get("account_manager") or doc.deal_owner or frappe.session.user
+		# Financial Info
+		so.amount = doc.get("amount") or doc.deal_value or 0
+		so.total_expense = doc.get("expense") or 0
+		so.tax = 0
+		so.discount = 0
 
-		# Pull delivery/lab fields
-		sales_order.lab_required = doc.get("lab_required") or 0
-		sales_order.training_required = doc.get("training_required") or 0
-		sales_order.delivery_date = doc.get("expected_close_date") or doc.expected_closure_date
+		# Project Info — fetched from Deal
+		so.technology = doc.get("technology") or ""
+		so.delivery_type = doc.get("delivery_type") or ""
+		so.project_duration = doc.get("duration") or ""
+		so.start_date = doc.get("start_date") or None
+		so.end_date = doc.get("end_date") or None
+		so.delivery_date = doc.get("delivery_date") or doc.get("expected_close_date") or doc.expected_closure_date or None
 
-		# Pull notes
-		sales_order.notes = doc.get("accounting_notes") or ""
+		# Trainer Info — fetched from Deal
+		so.trainer_assigned = doc.get("trainer") or None
 
-		sales_order.status = "Open"
-		sales_order.insert(ignore_permissions=True)
+		# Team Info
+		so.sales_manager = doc.get("sales_manager") or doc.deal_owner or frappe.session.user
+		so.account_manager = doc.get("account_manager") or doc.deal_owner or frappe.session.user
+		so.delivery_manager = doc.get("training_engagement_manager") or None
+
+		# Other
+		so.lab_required = doc.get("lab_required") or 0
+		so.training_required = doc.get("training_required") or 0
+		so.notes = doc.get("accounting_notes") or ""
+		so.status = "Open"
+		so.payment_status = "Pending"
+
+		so.insert(ignore_permissions=True)
 		frappe.db.commit()
 
 		frappe.msgprint(
-			f"Sales Order {sales_order.name} created successfully!",
+			f"Sales Order {so.name} created successfully!",
 			alert=True
 		)
 
@@ -70,14 +94,15 @@ def create_sales_order_from_deal(doc, method):
 
 @frappe.whitelist()
 def get_sales_orders():
-	"""Get sales orders based on user role"""
-	roles = frappe.get_roles(frappe.session.user)
-
+	"""Get all sales orders"""
 	return frappe.get_all(
 		"PBS Sales Order",
 		fields=[
 			"name", "organization", "status", "amount",
-			"gross_profit", "gross_profit_percentage", "deal"
+			"gross_profit", "gross_profit_percentage", "deal",
+			"sales_manager", "account_manager", "technology",
+			"trainer_assigned", "start_date", "end_date",
+			"payment_status", "delivery_type"
 		],
 		order_by="modified desc"
 	)
