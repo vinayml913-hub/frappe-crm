@@ -69,7 +69,7 @@ class CRMDeal(Document):
 		territory: DF.Link | None
 		total: DF.Currency
 		website: DF.Data | None
-		# PBS Custom Fields
+		# PBS Deal Details
 		deal_name: DF.Data | None
 		account: DF.Link | None
 		expected_close_date: DF.Date | None
@@ -88,12 +88,19 @@ class CRMDeal(Document):
 		training_engagement_manager: DF.Link | None
 		accounting_notes: DF.TextEditor | None
 		te_notes: DF.TextEditor | None
+		# PBS Project Info
 		technology: DF.Data | None
-		trainer: DF.Link | None
 		delivery_type: DF.Data | None
 		duration: DF.Data | None
 		start_date: DF.Date | None
 		end_date: DF.Date | None
+		delivery_date: DF.Date | None
+		# PBS Trainer Details
+		trainer: DF.Link | None
+		trainer_status: DF.Data | None
+		trainer_commercial: DF.Currency
+		trainer_notes: DF.TextEditor | None
+		# PBS Costing
 		costing_type: DF.Data | None
 		per_day_cost: DF.Currency
 		per_hour_cost: DF.Currency
@@ -134,28 +141,20 @@ class CRMDeal(Document):
 
 	def calculate_gross_profit(self):
 		"""
-		Calculate Gross Profit using Margin % if provided,
-		otherwise calculate from Amount - Expense.
+		Calculate Gross Profit:
+		- If Margin % entered → GP = Amount x Margin% / 100
+		- Else → GP = Amount - Expense
 		"""
 		amount = float(self.amount or 0)
-
 		if self.margin_pct and float(self.margin_pct) > 0:
-			# Margin % method: GP = Amount * Margin% / 100
-			margin = float(self.margin_pct)
-			if margin > 100:
-				margin = 100
+			margin = min(float(self.margin_pct), 100)
 			self.gross_profit = amount * margin / 100
 			self.gross_profit_pct = margin
-			# Back-calculate expense from GP
 			self.expense = amount - self.gross_profit
 		elif amount > 0:
-			# Expense method: GP = Amount - Expense
 			expense = float(self.expense or 0)
 			self.gross_profit = amount - expense
-			if amount > 0:
-				self.gross_profit_pct = (self.gross_profit / amount) * 100
-			else:
-				self.gross_profit_pct = 0
+			self.gross_profit_pct = (self.gross_profit / amount) * 100 if amount > 0 else 0
 		else:
 			self.gross_profit = 0
 			self.gross_profit_pct = 0
@@ -192,7 +191,7 @@ class CRMDeal(Document):
 			self.mobile_no = ""
 			self.phone = ""
 			return
-		if len([contact for contact in self.contacts if contact.is_primary]) > 1:
+		if len([c for c in self.contacts if c.is_primary]) > 1:
 			frappe.throw(_("Only one {0} can be set as primary.").format(frappe.bold("Contact")))
 		primary_contact_exists = False
 		for d in self.contacts:
