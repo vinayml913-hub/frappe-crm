@@ -4,16 +4,17 @@ from frappe.model.document import Document
 
 class PBSSalesOrder(Document):
 	def before_insert(self):
-		self.set_gross_profit()
-		self.set_final_amount()
+		self.set_financials()
 
 	def on_update(self):
-		self.set_gross_profit()
-		self.set_final_amount()
+		self.set_financials()
 
-	def set_gross_profit(self):
+	def set_financials(self):
 		amount = float(self.amount or 0)
 		expense = float(self.total_expense or 0)
+		tax = float(self.tax or 0)
+		discount = float(self.discount or 0)
+
 		if amount > 0:
 			self.gross_profit = amount - expense
 			self.gross_profit_percentage = (self.gross_profit / amount) * 100
@@ -21,10 +22,6 @@ class PBSSalesOrder(Document):
 			self.gross_profit = 0
 			self.gross_profit_percentage = 0
 
-	def set_final_amount(self):
-		amount = float(self.amount or 0)
-		tax = float(self.tax or 0)
-		discount = float(self.discount or 0)
 		self.final_amount = amount + tax - discount
 
 
@@ -48,21 +45,21 @@ def create_sales_order_from_deal(doc, method):
 		so.phone = doc.mobile_no or doc.phone or ""
 		so.company = doc.organization_name or ""
 
-		# Financial Info
-		so.amount = doc.get("amount") or doc.deal_value or 0
-		so.total_expense = doc.get("expense") or 0
+		# Financial Info — from Deal final calculation
+		so.amount = doc.get("final_amount") or doc.get("base_amount") or 0
+		so.total_expense = doc.get("total_expense") or 0
 		so.tax = 0
 		so.discount = 0
 
-		# Project Info — fetched from Deal
+		# Project Info
 		so.technology = doc.get("technology") or ""
 		so.delivery_type = doc.get("delivery_type") or ""
 		so.project_duration = doc.get("duration") or ""
 		so.start_date = doc.get("start_date") or None
 		so.end_date = doc.get("end_date") or None
-		so.delivery_date = doc.get("delivery_date") or doc.get("expected_close_date") or doc.expected_closure_date or None
+		so.delivery_date = doc.get("delivery_date") or doc.get("expected_close_date") or None
 
-		# Trainer Info — fetched from Deal
+		# Trainer Info
 		so.trainer_assigned = doc.get("trainer") or None
 
 		# Team Info
@@ -94,7 +91,6 @@ def create_sales_order_from_deal(doc, method):
 
 @frappe.whitelist()
 def get_sales_orders():
-	"""Get all sales orders"""
 	return frappe.get_all(
 		"PBS Sales Order",
 		fields=[
