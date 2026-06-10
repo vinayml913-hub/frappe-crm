@@ -75,11 +75,23 @@ class CRMDeal(Document):
 		expected_close_date: DF.Date | None
 		stage: DF.Data | None
 		probability_pct: DF.Percent
-		amount: DF.Currency
-		expense: DF.Currency
+		# PBS Costing & Trainer
+		trainer_commercial: DF.Currency
+		costing_type: DF.Data | None
+		no_of_days: DF.Int
+		no_of_hours: DF.Float
+		trainer_cost: DF.Currency
+		lab_expense: DF.Currency
+		total_expense: DF.Currency
+		# PBS Financial Summary
 		margin_pct: DF.Int
+		gst_percentage: DF.Int
 		gross_profit: DF.Currency
+		gst_amount: DF.Currency
+		base_amount: DF.Currency
+		final_amount: DF.Currency
 		gross_profit_pct: DF.Percent
+		# PBS Other
 		lead_source: DF.Link | None
 		lab_required: DF.Check
 		training_required: DF.Check
@@ -98,15 +110,7 @@ class CRMDeal(Document):
 		# PBS Trainer Details
 		trainer: DF.Link | None
 		trainer_status: DF.Data | None
-		trainer_commercial: DF.Currency
 		trainer_notes: DF.TextEditor | None
-		# PBS Costing
-		costing_type: DF.Data | None
-		per_day_cost: DF.Currency
-		per_hour_cost: DF.Currency
-		no_of_days: DF.Int
-		no_of_hours: DF.Float
-		total_costing: DF.Currency
 		costing_remarks: DF.TextEditor | None
 	# end: auto-generated types
 
@@ -127,8 +131,7 @@ class CRMDeal(Document):
 		self.validate_forecasting_fields()
 		self.validate_lost_reason()
 		self.update_exchange_rate()
-		self.calculate_gross_profit()
-		self.calculate_total_costing()
+		self.calculate_financials()
 
 	def after_insert(self):
 		if self.deal_owner:
@@ -139,32 +142,62 @@ class CRMDeal(Document):
 	def before_save(self):
 		self.apply_sla()
 
-	def calculate_gross_profit(self):
+	def calculate_financials(self):
 		"""
-		Calculate Gross Profit:
-		- If Margin % entered → GP = Amount x Margin% / 100
-		- Else → GP = Amount - Expense
+		Complete PBS Financial Calculation:
+
+		1. Trainer Cost = Trainer Commercial × Days/Hours
+		2. Total Expense = Trainer Cost + Lab Expense
+		3. GP = Total Expense × Margin% / 100
+		4. Base Amount = Total Expense + GP
+		5. GST Amount = Base Amount × GST% / 100
+		6. Final Amount = Base Amount + GST Amount
+		7. GP% = GP / Base Amount × 100
 		"""
-		amount = float(self.amount or 0)
-		if self.margin_pct and float(self.margin_pct) > 0:
-			margin = min(float(self.margin_pct), 100)
-			self.gross_profit = amount * margin / 100
-			self.gross_profit_pct = margin
-			self.expense = amount - self.gross_profit
-		elif amount > 0:
-			expense = float(self.expense or 0)
-			self.gross_profit = amount - expense
-			self.gross_profit_pct = (self.gross_profit / amount) * 100 if amount > 0 else 0
+		trainer_commercial = float(self.trainer_commercial or 0)
+		costing_type = self.costing_type or ""
+		no_of_days = int(self.no_of_days or 0)
+		no_of_hours = float(self.no_of_hours or 0)
+		lab_expense = float(self.lab_expense or 0)
+		margin_pct = float(self.margin_pct or 0)
+		gst_pct = float(self.gst_percentage or 18)
+
+		# Step 1: Trainer Cost
+		if costing_type == "Per Day":
+			self.trainer_cost = trainer_commercial * no_of_days
+		elif costing_type == "Per Hour":
+			self.trainer_cost = trainer_commercial * no_of_hours
+		else:
+			self.trainer_cost = trainer_commercial
+
+		trainer_cost = float(self.trainer_cost or 0)
+
+		# Step 2: Total Expense
+		self.total_expense = trainer_cost + lab_expense
+
+		total_expense = float(self.total_expense or 0)
+
+		if total_expense > 0 and margin_pct > 0:
+			# Step 3: Gross Profit
+			self.gross_profit = total_expense * margin_pct / 100
+
+			# Step 4: Base Amount
+			self.base_amount = total_expense + self.gross_profit
+
+			# Step 5: GST Amount
+			self.gst_amount = self.base_amount * gst_pct / 100
+
+			# Step 6: Final Amount
+			self.final_amount = self.base_amount + self.gst_amount
+
+			# Step 7: GP%
+			self.gross_profit_pct = (self.gross_profit / self.base_amount) * 100
 		else:
 			self.gross_profit = 0
+			self.base_amount = total_expense
+			self.gst_amount = total_expense * gst_pct / 100
+			self.final_amount = total_expense + self.gst_amount
 			self.gross_profit_pct = 0
-
-	def calculate_total_costing(self):
-		"""Auto-calculate Total Costing based on costing type."""
-		if self.costing_type == "Per Day":
-			self.total_costing = float(self.per_day_cost or 0) * int(self.no_of_days or 0)
-		elif self.costing_type == "Per Hour":
-			self.total_costing = float(self.per_hour_cost or 0) * float(self.no_of_hours or 0)
 
 	def validate_status(self):
 		if self.is_new() and not self.status:
