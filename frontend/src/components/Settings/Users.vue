@@ -176,6 +176,7 @@ import {
   call,
   FeatherIcon,
   Tooltip,
+  FormControl,
 } from 'frappe-ui'
 import { ref, computed, onMounted } from 'vue'
 import { ConfirmDelete } from '../../utils'
@@ -257,15 +258,16 @@ function getDropdownOptions(user) {
       onClick: () => updateRole(user, 'Sales User'),
     },
     {
-  label: __('Solution Manager'),
-  icon: () =>
-    h(Badge, {
-      option: __('Solution Manager'),
-      icon: 'users',
-      selected: user.role === 'Solution Manager',
-    }),
-  onClick: () => updateRole(user, 'Solution Manager'),
-},
+      label: __('Solution Manager'),
+      component: () =>
+        DropdownOption({
+          option: __('Solution Manager'),
+          icon: 'users',
+          selected: user.role === 'Solution Manager',
+        }),
+      onClick: () => updateRole(user, 'Solution Manager'),
+      condition: () => isAdmin(),
+    },
   ]
 
   return options.filter((option) => option.condition?.() || true)
