@@ -6,12 +6,8 @@ from frappe.utils.password import check_password, update_password
 
 
 @frappe.whitelist()
-@rate_limit(limit=5, seconds=300)  # 5 attempts per 5 minutes per user/IP
+@rate_limit(limit=5, seconds=300)
 def change_password(old_password: str, new_password: str):
-	"""
-	Change password for the current logged-in user.
-	Uses Frappe's LoginAttemptTracker for attempt counting/lockout, and rate_limit for API abuse protection.
-	"""
 	user = frappe.session.user
 	if user == "Guest":
 		frappe.throw(_("You must be logged in to change your password"), frappe.AuthenticationError)
@@ -33,7 +29,6 @@ def change_password(old_password: str, new_password: str):
 	else:
 		tracker.add_success_attempt()
 
-	# Validate new password strength (server-side enforcement)
 	from frappe.core.doctype.user.user import test_password_strength
 
 	result = test_password_strength(new_password)
@@ -48,10 +43,6 @@ def change_password(old_password: str, new_password: str):
 
 @frappe.whitelist()
 def add_existing_users(users: str | list, role: str = "Sales User"):
-	"""
-	Add existing users to the CRM by assigning them a role (Sales User or Sales Manager).
-	:param users: List of user names to be added
-	"""
 	frappe.only_for(["System Manager", "Sales Manager"], True)
 	is_system_manager = "System Manager" in frappe.get_roles()
 
@@ -69,16 +60,11 @@ def add_existing_users(users: str | list, role: str = "Sales User"):
 
 @frappe.whitelist()
 def update_user_role(user: str, new_role: str):
-	"""
-	Update the role of the user to Sales Manager, Sales User, or System Manager.
-	:param user: The name of the user
-	:param new_role: The new role to assign (Sales Manager or Sales User)
-	"""
-
 	frappe.only_for(["System Manager", "Sales Manager"], True)
 	is_system_manager = "System Manager" in frappe.get_roles()
 
-	if new_role not in ["System Manager", "Sales Manager", "Sales User"]:
+	# ✅ Added Solution Manager to allowed roles
+	if new_role not in ["System Manager", "Sales Manager", "Sales User", "Solution Manager"]:
 		frappe.throw(_("Cannot assign this role"))
 
 	user_doc = frappe.get_doc("User", user)
@@ -97,12 +83,17 @@ def update_user_role(user: str, new_role: str):
 	if new_role == "System Manager":
 		user_doc.append_roles("System Manager", "Sales Manager", "Sales User")
 		user_doc.set("block_modules", [])
-	if new_role == "Sales Manager":
+	elif new_role == "Sales Manager":
 		user_doc.append_roles("Sales Manager", "Sales User")
-		remove_roles(user_doc, "System Manager")
-	if new_role == "Sales User":
+		remove_roles(user_doc, "System Manager", "Solution Manager")
+	elif new_role == "Sales User":
 		user_doc.append_roles("Sales User")
-		remove_roles(user_doc, "Sales Manager", "System Manager")
+		remove_roles(user_doc, "Sales Manager", "System Manager", "Solution Manager")
+		update_module_in_user(user_doc, "FCRM")
+	elif new_role == "Solution Manager":
+		# ✅ Solution Manager: only gets Solution Manager role
+		user_doc.append_roles("Solution Manager")
+		remove_roles(user_doc, "Sales Manager", "System Manager", "Sales User")
 		update_module_in_user(user_doc, "FCRM")
 
 	user_doc.save(ignore_permissions=True)
@@ -110,10 +101,6 @@ def update_user_role(user: str, new_role: str):
 
 @frappe.whitelist()
 def remove_crm_roles_from_user(user: str):
-	"""
-	Remove a user means removing Sales User & Sales Manager roles from the user.
-	:param user: The name of the user to be removed
-	"""
 	frappe.only_for(["System Manager", "Sales Manager"], True)
 
 	if user == frappe.session.user:
@@ -136,6 +123,8 @@ def remove_crm_roles_from_user(user: str):
 		remove_roles(user_doc, "Sales User")
 	if "Sales Manager" in roles:
 		remove_roles(user_doc, "Sales Manager")
+	if "Solution Manager" in roles:
+		remove_roles(user_doc, "Solution Manager")
 
 	user_doc.save(ignore_permissions=True)
 	frappe.msgprint(_("User {0} has been removed from CRM roles.").format(user))
