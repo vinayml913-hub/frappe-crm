@@ -155,6 +155,7 @@
 <script setup>
 import BrushCleaningIcon from '~icons/lucide/brush-cleaning'
 import LucideLayoutDashboard from '~icons/lucide/layout-dashboard'
+import LucideTrendingUp from '~icons/lucide/trending-up'
 import CRMLogo from '@/components/Icons/CRMLogo.vue'
 import InviteIcon from '@/components/Icons/InviteIcon.vue'
 import ConvertIcon from '@/components/Icons/ConvertIcon.vue'
@@ -240,6 +241,11 @@ const links = [
     label: 'Sales Orders',
     icon: SalesOrderIcon,
     to: 'SalesOrders',
+  },
+  {
+    label: 'Reports',
+    icon: LucideTrendingUp,
+    to: 'Reports',
   },
   {
     label: 'Contacts',
