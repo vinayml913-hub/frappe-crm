@@ -8,8 +8,6 @@ from frappe.model.document import Document
 
 class CRMInvitation(Document):
 	# begin: auto-generated types
-	# This code is auto-generated. Do not modify anything in this block.
-
 	from typing import TYPE_CHECKING
 
 	if TYPE_CHECKING:
@@ -20,7 +18,7 @@ class CRMInvitation(Document):
 		email_sent_at: DF.Datetime | None
 		invited_by: DF.Link | None
 		key: DF.Data | None
-		role: DF.Literal["", "Sales User", "Sales Manager", "System Manager"]
+		role: DF.Literal["", "Sales User", "Sales Manager", "System Manager", "Solution Manager"]
 		status: DF.Literal["", "Pending", "Accepted", "Expired"]
 	# end: auto-generated types
 
@@ -62,12 +60,14 @@ class CRMInvitation(Document):
 
 		user = self.create_user_if_not_exists()
 		user.append_roles(self.role)
+
 		if self.role == "System Manager":
 			user.append_roles("Sales Manager", "Sales User")
 		elif self.role == "Sales Manager":
 			user.append_roles("Sales User")
-		if self.role == "Sales User":
+		elif self.role in ("Sales User", "Solution Manager"):
 			self.update_module_in_user(user, "FCRM")
+
 		user.save(ignore_permissions=True)
 
 		self.status = "Accepted"
