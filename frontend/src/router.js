@@ -96,6 +96,11 @@ const routes = [
     props: true,
   },
   {
+    path: '/reports',
+    name: 'Reports',
+    component: () => import('@/pages/Reports.vue'),
+  },
+  {
     path: '/trainers',
     name: 'Trainers',
     component: () => import('@/pages/Trainers.vue'),
