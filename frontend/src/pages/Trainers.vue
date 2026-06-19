@@ -4,6 +4,9 @@
       <Breadcrumbs :items="[{ label: __('Trainers') }]" />
     </template>
     <template #right-header>
+      <Button variant="outline" icon-left="clock" :label="__('Import History')" @click="importExportRef.openHistoryModal()" />
+      <Button variant="outline" icon-left="upload" :label="__('Export Trainers')" @click="importExportRef.openExportModal()" />
+      <Button variant="outline" icon-left="download" :label="__('Import Trainers')" @click="importExportRef.openImportModal()" />
       <Button variant="solid" :label="__('Create')" icon-left="plus" @click="openCreateModal" />
     </template>
   </LayoutHeader>
@@ -249,11 +252,19 @@
       </div>
     </template>
   </Dialog>
+
+  <!-- Import/Export/History dialogs - all logic lives in this one component -->
+  <TrainerImportExport
+    ref="importExportRef"
+    :currentFilters="activeFilters"
+    @imported="loadTrainers"
+  />
 </template>
 
 <script setup>
 import LayoutHeader from '@/components/LayoutHeader.vue'
 import TrainersIcon from '@/components/Icons/TrainersIcon.vue'
+import TrainerImportExport from '@/components/Trainers/TrainerImportExport.vue'
 import { Breadcrumbs, Button, Dialog, call, toast } from 'frappe-ui'
 import { ref, computed, reactive, onMounted } from 'vue'
 
@@ -278,6 +289,16 @@ const showDeleteDialog = ref(false)
 const deletingTrainer = ref(null)
 const deleting = ref(false)
 const showColumnManager = ref(false)
+const importExportRef = ref(null)
+
+// Mirrors exactly what loadTrainers() sends as filters, so "Export
+// Current Filtered View" matches what's on screen right now.
+const activeFilters = computed(() => {
+  const f = {}
+  if (statusFilter.value) f.status = statusFilter.value
+  if (availabilityFilter.value) f.availability = availabilityFilter.value
+  return f
+})
 
 const emptyForm = () => ({
   trainer_name: '', phone: '', email: '', linkedin_profile: '',
