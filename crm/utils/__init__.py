@@ -251,7 +251,13 @@ def is_sales_user(user: str | None = None) -> bool:
 	:return: Whether `user` is an agent
 	"""
 	user = user or frappe.session.user
-	return is_admin() or "Sales Manager" in frappe.get_roles(user) or "Sales User" in frappe.get_roles(user)
+	roles = frappe.get_roles(user)
+	return (
+	    is_admin()
+	    or "Sales Manager" in roles
+	    or "Sales User" in roles
+	    or "Solution Manager" in roles
+	)
 
 
 def sales_user_only(fn):
