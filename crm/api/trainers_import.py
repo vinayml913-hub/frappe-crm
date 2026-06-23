@@ -369,6 +369,12 @@ def _normalize_phone(phone):
 
 
 def _validate_row(mapped, row_number):
+	"""
+	Trainer Name is the ONLY mandatory field. Every other field is
+	validated only when a value was actually provided - an empty/blank
+	cell for any optional field never produces an error, regardless of
+	what that field's format rules would otherwise require.
+	"""
 	errors = []
 
 	trainer_name = (mapped.get("trainer_name") or "").strip()
@@ -383,7 +389,8 @@ def _validate_row(mapped, row_number):
 	if phone and not PHONE_RE.match(phone):
 		errors.append(_("Row {0}: Phone number '{1}' is not valid").format(row_number, phone))
 
-	commercial = mapped.get("commercial")
+	commercial = (mapped.get("commercial") or "")
+	commercial = commercial.strip() if isinstance(commercial, str) else commercial
 	if commercial not in (None, ""):
 		try:
 			flt(commercial)
@@ -492,12 +499,12 @@ def _run_import(rows, mode, file_name, user):
 					continue
 				elif mode == "update":
 					doc = frappe.get_doc("CRM Trainer", duplicate_of)
-					doc.update(_clean_for_doc(data))
+					doc.update(_clean_for_doc(data, is_update=True))
 					doc.save(ignore_permissions=True)
 					updated_count += 1
 			else:
 				doc = frappe.new_doc("CRM Trainer")
-				doc.update(_clean_for_doc(data))
+				doc.update(_clean_for_doc(data, is_update=False))
 				doc.insert(ignore_permissions=True)
 				success_count += 1
 
@@ -539,21 +546,60 @@ def _run_import(rows, mode, file_name, user):
 	}
 
 
-def _clean_for_doc(data):
-	"""Drop None/empty-string values for Select/Currency fields so we don't
-	overwrite existing data with blanks on update, and so empty Select
-	values don't fail Frappe's option validation."""
+def _clean_for_doc(data, is_update=False):
+	"""
+	Build the dict passed to doc.update() before insert/save.
+
+	Trainer Name is the only field that must have a real value (already
+	enforced in _validate_row - this function assumes the row already
+	passed validation).
+
+	Two different behaviors depending on is_update:
+
+	- is_update=False (new trainer, doc.insert()):
+	  every optional field is included explicitly, blank cells become
+	  None. Frappe stores None as a proper NULL/empty value - this is
+	  what makes "empty cells are stored as null/empty in the database"
+	  true for newly imported trainers, rather than silently falling
+	  back to a field's schema default (e.g. Status defaulting to
+	  "Active" when the cell was actually left blank on purpose).
+
+	- is_update=True (existing trainer, doc.save() after re-matching by
+	  email/phone): blank cells are OMITTED instead of sent as None, so
+	  re-importing a file that only has a few columns filled in for an
+	  existing trainer does not wipe out fields that trainer already
+	  had data in. Only cells that actually have a value in the Excel
+	  row will overwrite the existing record.
+
+	commercial (Currency) is the one numeric field: blank becomes None
+	(insert) or is skipped (update); a value that still can't be parsed
+	at this point (should never happen, since _validate_row already
+	rejected it) is also treated as blank rather than crashing the insert.
+	"""
 	cleaned = {}
 	for field, value in data.items():
-		if value in (None, ""):
+		if field == "trainer_name":
+			cleaned[field] = (value or "").strip()
 			continue
+
+		is_blank = value is None or (isinstance(value, str) and value.strip() == "")
+
+		if is_blank:
+			if is_update:
+				continue  # leave the existing value untouched
+			cleaned[field] = None
+			continue
+
 		if field == "commercial":
 			try:
 				cleaned[field] = flt(value)
 			except (TypeError, ValueError):
+				if not is_update:
+					cleaned[field] = None
 				continue
 		else:
-			cleaned[field] = value
+			cleaned[field] = value.strip() if isinstance(value, str) else value
+
 	return cleaned
 
 
