@@ -20,8 +20,9 @@ def get_sales_orders():
     if not (is_admin or is_manager):
         current_user = frappe.session.user
         or_filters = [
-            ["sales_manager",   "=", current_user],
-            ["account_manager", "=", current_user],
+            ["sales_manager",    "=", current_user],
+            ["account_manager",  "=", current_user],
+            ["delivery_manager", "=", current_user],
         ]
 
     orders = frappe.get_all(
