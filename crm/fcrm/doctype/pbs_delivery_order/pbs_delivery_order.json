@@ -134,7 +134,7 @@
    "fieldname": "account_manager",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Account Manager",
+   "label": "Solution Manager",
    "options": "User"
   },
   {
