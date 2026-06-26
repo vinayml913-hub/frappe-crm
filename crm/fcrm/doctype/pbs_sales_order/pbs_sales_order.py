@@ -8,6 +8,10 @@ class PBSSalesOrder(Document):
 
 	def on_update(self):
 		self.set_financials()
+		self.share_with_assigned_users()
+
+	def after_insert(self):
+		self.share_with_assigned_users()
 
 	def set_financials(self):
 		amount = float(self.amount or 0)
@@ -23,6 +27,45 @@ class PBSSalesOrder(Document):
 			self.gross_profit_percentage = 0
 
 		self.final_amount = amount + tax - discount
+
+	def share_with_assigned_users(self):
+		"""
+		Auto-share this Sales Order (and its Delivery Orders, which are
+		a child table on the same doc) with the specific users assigned
+		as Sales Manager, Solution Manager (account_manager), and
+		Training Engagement Co-ordinator (delivery_manager) -
+		regardless of their role.
+		"""
+		users_to_share = set(
+			filter(None, [self.sales_manager, self.account_manager, self.delivery_manager])
+		)
+
+		if not users_to_share:
+			return
+
+		existing_shares = frappe.get_all(
+			"DocShare",
+			filters={"share_doctype": self.doctype, "share_name": self.name},
+			pluck="user",
+		)
+
+		for user in users_to_share:
+			if user in existing_shares:
+				continue
+			try:
+				frappe.share.add_docshare(
+					self.doctype,
+					self.name,
+					user,
+					read=1,
+					write=1,
+					flags={"ignore_share_permission": True},
+				)
+			except Exception:
+				frappe.log_error(
+					title="PBS Sales Order Auto-Share Failed",
+					message=frappe.get_traceback(),
+				)
 
 
 def create_sales_order_from_deal(doc, method):
@@ -63,6 +106,8 @@ def create_sales_order_from_deal(doc, method):
 		so.trainer_assigned = doc.get("trainer") or None
 
 		# Team Info
+		# account_manager = "Solution Manager" on Deal
+		# delivery_manager = "Training Engagement Co-ordinator" on Deal
 		so.sales_manager = doc.get("sales_manager") or doc.deal_owner or frappe.session.user
 		so.account_manager = doc.get("account_manager") or doc.deal_owner or frappe.session.user
 		so.delivery_manager = doc.get("training_engagement_manager") or None
@@ -99,6 +144,11 @@ def create_sales_order_from_deal(doc, method):
 		so.insert(ignore_permissions=True)
 		frappe.db.commit()
 
+		# Explicitly share right after insert too, in case after_insert
+		# ran before all team fields were committed
+		so.share_with_assigned_users()
+		frappe.db.commit()
+
 		frappe.msgprint(
 			f"Sales Order {so.name} created successfully with Delivery Order!",
 			alert=True
@@ -120,7 +170,7 @@ def get_sales_orders():
 			"gross_profit", "gross_profit_percentage", "deal",
 			"sales_manager", "account_manager", "technology",
 			"trainer_assigned", "start_date", "end_date",
-			"payment_status", "delivery_type"
+			"payment_status", "delivery_type", "delivery_manager"
 		],
 		order_by="modified desc"
 	)
