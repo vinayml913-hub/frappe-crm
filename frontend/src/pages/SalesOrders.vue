@@ -127,7 +127,17 @@
                     <span class="font-medium text-ink-gray-9 text-sm">{{ di.delivery_order_number || di.item || 'Delivery ' + (idx + 1) }}</span>
                     <span class="text-xs px-2 py-0.5 rounded-full" :class="doStatusClass(di.status)">{{ di.status || 'Open' }}</span>
                   </div>
-                  <span v-if="di.trainers" class="text-xs text-ink-gray-5">👤 {{ di.trainers }}</span>
+                  <div class="flex items-center gap-2">
+                    <span v-if="di.trainers" class="text-xs text-ink-gray-5">👤 {{ di.trainers }}</span>
+                    <Button
+                      v-if="isDeliveryOrderEditable(di)"
+                      size="sm"
+                      variant="ghost"
+                      icon="edit-2"
+                      @click.stop="openEditDeliveryModal(order, di)"
+                    />
+                    <span v-else class="text-xs text-ink-gray-4" :title="__('Locked - Delivered/Cancelled Delivery Orders cannot be edited')">🔒</span>
+                  </div>
                 </div>
                 <div class="flex items-center gap-4 text-xs text-ink-gray-5 mb-2">
                   <span v-if="di.description">{{ di.description }}</span>
@@ -261,7 +271,7 @@
                 </select>
               </div>
               <div>
-                <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Account Manager') }}</label>
+                <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Solution Manager') }}</label>
                 <select v-model="editForm.account_manager" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none">
                   <option value="">— {{ __('None') }} —</option>
                   <option v-for="u in crmUsers" :key="u.value" :value="u.value">{{ u.label }}</option>
@@ -293,7 +303,7 @@
       <div class="bg-surface-modal px-6 pb-6 pt-5">
         <div class="mb-5 flex items-center justify-between">
           <div>
-            <h3 class="text-xl font-semibold text-ink-gray-9">{{ __('Create Delivery Order') }}</h3>
+            <h3 class="text-xl font-semibold text-ink-gray-9">{{ editingDeliveryOrderName ? __('Edit Delivery Order') : __('Create Delivery Order') }}</h3>
             <p class="text-sm text-ink-gray-5 mt-0.5">{{ selectedOrder?.name }}</p>
           </div>
           <Button variant="ghost" class="w-7" icon="x" @click="showDeliveryModal = false" />
@@ -405,7 +415,7 @@
       </div>
       <div class="px-6 pb-5 pt-3 flex justify-end gap-2 border-t border-outline-gray-1">
         <Button variant="outline" :label="__('Cancel')" @click="showDeliveryModal = false" />
-        <Button variant="solid" :label="__('Create Delivery Order')" :loading="savingDO" @click="submitDeliveryOrder" />
+        <Button variant="solid" :label="editingDeliveryOrderName ? __('Save Changes') : __('Create Delivery Order')" :loading="savingDO" @click="submitDeliveryOrder" />
       </div>
     </template>
   </Dialog>
@@ -446,6 +456,8 @@ const selectedOrder     = ref(null)
 const savingDO          = ref(false)
 const doFormError       = ref(null)
 const doFormItemError   = ref(null)
+// null => Create mode. Set to the existing row's `name` => Edit mode.
+const editingDeliveryOrderName = ref(null)
 const doForm = reactive({
   item: '', delivery_order_number: '', trainers: '', delivery_product_type: '',
   account: '', description: '', start_date: '', end_date: '',
@@ -453,6 +465,14 @@ const doForm = reactive({
   status: 'Open',          // must match DocType options exactly
   sales_manager: '',
 })
+
+// Statuses where editing is allowed - mirrors _EDITABLE_DO_STATUSES /
+// _LOCKED_DO_STATUSES in crm/api/sales_order.py exactly, so the UI and
+// backend never disagree about what's editable.
+const LOCKED_DO_STATUSES = ['Delivered', 'Cancelled']
+function isDeliveryOrderEditable(deliveryOrder) {
+  return !LOCKED_DO_STATUSES.includes(deliveryOrder.status || 'Open')
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────
 function toggleOrder(name) {
@@ -520,12 +540,39 @@ async function submitEdit() {
 
 function openDeliveryModal(order) {
   selectedOrder.value = order
+  editingDeliveryOrderName.value = null   // Create mode
   Object.assign(doForm, {
     item: '', delivery_order_number: '', trainers: '', delivery_product_type: '',
     account: '', description: '', start_date: '', end_date: '',
     qty: 1, rate: 0,
     status: 'Open',
     sales_manager: order.sales_manager || '',
+  })
+  doFormError.value     = null
+  doFormItemError.value = null
+  showDeliveryModal.value = true
+}
+
+function openEditDeliveryModal(order, deliveryOrder) {
+  if (!isDeliveryOrderEditable(deliveryOrder)) {
+    toast.error(__('This Delivery Order is {0} and can no longer be edited', [deliveryOrder.status]))
+    return
+  }
+  selectedOrder.value = order
+  editingDeliveryOrderName.value = deliveryOrder.name   // Edit mode
+  Object.assign(doForm, {
+    item: deliveryOrder.item || '',
+    delivery_order_number: deliveryOrder.delivery_order_number || '',
+    trainers: deliveryOrder.trainers || '',
+    delivery_product_type: deliveryOrder.delivery_product_type || '',
+    account: deliveryOrder.account || '',
+    description: deliveryOrder.description || '',
+    start_date: deliveryOrder.start_date || '',
+    end_date: deliveryOrder.end_date || '',
+    qty: deliveryOrder.qty || 1,
+    rate: deliveryOrder.rate || 0,
+    status: deliveryOrder.status || 'Open',
+    sales_manager: deliveryOrder.sales_manager || '',
   })
   doFormError.value     = null
   doFormItemError.value = null
@@ -563,15 +610,24 @@ async function submitDeliveryOrder() {
     // sales_manager is now a user email from the dropdown — safe to pass as Link value
     if (doForm.sales_manager) payload.sales_manager = doForm.sales_manager
 
-    const updatedDOs = await call('crm.api.sales_order.create_delivery_order', {
-      sales_order_name: selectedOrder.value.name,
-      delivery_order:   JSON.stringify(payload),
-    })
+    let updatedDOs
+    if (editingDeliveryOrderName.value) {
+      updatedDOs = await call('crm.api.sales_order.update_delivery_order', {
+        sales_order_name:    selectedOrder.value.name,
+        delivery_order_name: editingDeliveryOrderName.value,
+        delivery_order:      JSON.stringify(payload),
+      })
+    } else {
+      updatedDOs = await call('crm.api.sales_order.create_delivery_order', {
+        sales_order_name: selectedOrder.value.name,
+        delivery_order:   JSON.stringify(payload),
+      })
+    }
 
     const order = salesOrders.value.find(o => o.name === selectedOrder.value.name)
     if (order) order.delivery_orders = updatedDOs
 
-    toast.success(__('Delivery Order created'))
+    toast.success(editingDeliveryOrderName.value ? __('Delivery Order updated') : __('Delivery Order created'))
     showDeliveryModal.value = false
   } catch (err) {
     doFormError.value = _extractError(err, __('Something went wrong'))
@@ -653,7 +709,7 @@ function projectInfo(o) {
 function teamInfo(o) {
   return [
     { label: __('Sales Manager'),    value: userLabel(o.sales_manager) },
-    { label: __('Account Manager'),  value: userLabel(o.account_manager) },
+    { label: __('Solution Manager'),  value: userLabel(o.account_manager) },
     { label: __('Delivery Manager'), value: userLabel(o.delivery_manager) },
   ]
 }
