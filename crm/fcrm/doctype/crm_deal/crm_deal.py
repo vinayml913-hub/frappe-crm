@@ -159,8 +159,12 @@ class CRMDeal(Document):
 		no_of_days = int(self.no_of_days or 0)
 		no_of_hours = float(self.no_of_hours or 0)
 		lab_expense = float(self.lab_expense or 0)
-		margin_pct = float(self.margin_pct or 0)
 		gst_pct = float(self.gst_percentage or 18)
+
+		# Default Margin % to 20 if left blank, so GP is never silently zero
+		if not self.margin_pct:
+			self.margin_pct = 20
+		margin_pct = float(self.margin_pct or 0)
 
 		# Step 1: Trainer Cost
 		if costing_type == "Per Day":
