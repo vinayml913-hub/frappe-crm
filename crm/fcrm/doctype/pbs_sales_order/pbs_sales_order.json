@@ -7,7 +7,7 @@
  "field_order": [
   "so_number",
   "deal",
-  "organization",
+  "organization",   
   "contact_person",
   "status",
   "amount",
@@ -91,7 +91,7 @@
   {
    "fieldname": "account_manager",
    "fieldtype": "Link",
-   "label": "Account Manager",
+   "label": "Solution Manager",
    "options": "User"
   },
   {
@@ -177,7 +177,7 @@
   {
    "fieldname": "delivery_manager",
    "fieldtype": "Link",
-   "label": "Delivery Manager",
+   "label": "Training Engagement Co-ordinator",
    "options": "User"
   },
   {
