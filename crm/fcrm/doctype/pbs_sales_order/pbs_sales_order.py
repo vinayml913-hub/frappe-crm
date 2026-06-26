@@ -74,11 +74,33 @@ def create_sales_order_from_deal(doc, method):
 		so.status = "Open"
 		so.payment_status = "Pending"
 
+		# ---- Auto-create one Delivery Order row from Deal's Project Info ----
+		trainer_name = ""
+		if doc.get("trainer"):
+			trainer_name = frappe.db.get_value("CRM Trainer", doc.get("trainer"), "trainer_name") or doc.get("trainer")
+
+		delivery_row = {
+			"item": doc.get("technology") or "Training Delivery",
+			"description": f"Duration: {doc.get('duration') or ''}".strip(),
+			"delivery_product_type": "Training",
+			"qty": 1,
+			"rate": so.amount or 0,
+			"status": "Open",
+			"start_date": doc.get("start_date") or None,
+			"end_date": doc.get("end_date") or None,
+			"account": doc.organization_name or "",
+			"sales_manager": so.sales_manager,
+			"account_manager": so.account_manager,
+			"delivery_person": so.delivery_manager,
+			"trainers": trainer_name,
+		}
+		so.append("delivery_orders", delivery_row)
+
 		so.insert(ignore_permissions=True)
 		frappe.db.commit()
 
 		frappe.msgprint(
-			f"Sales Order {so.name} created successfully!",
+			f"Sales Order {so.name} created successfully with Delivery Order!",
 			alert=True
 		)
 
