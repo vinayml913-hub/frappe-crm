@@ -20,9 +20,8 @@ def get_sales_orders():
     if not (is_admin or is_manager):
         current_user = frappe.session.user
         or_filters = [
-            ["sales_manager",    "=", current_user],
-            ["account_manager",  "=", current_user],
-            ["delivery_manager", "=", current_user],
+            ["sales_manager",   "=", current_user],
+            ["account_manager", "=", current_user],
         ]
 
     orders = frappe.get_all(
@@ -235,6 +234,156 @@ def create_delivery_order(sales_order_name, delivery_order):
         frappe.throw(_("Could not create Delivery Order: {0}").format(str(e)))
 
     # Return updated delivery order list
+    return frappe.get_all(
+        "PBS Delivery Order",
+        filters={"parent": sales_order_name, "parenttype": "PBS Sales Order"},
+        fields=[
+            "name", "product_code", "item", "description",
+            "delivery_product_type", "qty", "rate", "amount", "status",
+            "start_date", "end_date", "delivery_order_number", "account",
+            "sales_manager", "account_manager", "delivery_person", "trainers",
+        ],
+        order_by="idx asc",
+        ignore_permissions=True,
+    )
+
+
+# Statuses where editing is allowed: still in progress / not yet finalized.
+# Delivered and Cancelled are terminal states - locking edits there matches
+# the existing business rule already encoded in create_sales_order_from_deal's
+# Won/Lost/Closed handling (a finalized record shouldn't be silently changed
+# after the fact), applied here at the Delivery Order row level instead.
+_EDITABLE_DO_STATUSES = {"Open", "In Progress", "On Hold"}
+_LOCKED_DO_STATUSES = {"Delivered", "Cancelled"}
+
+
+@frappe.whitelist()
+def update_delivery_order(sales_order_name, delivery_order_name, delivery_order):
+    """
+    Update an existing PBS Delivery Order child row in place.
+
+    Root cause this fixes: PBS Delivery Order is a child table doctype
+    (istable=1, permissions=[]) with no workflow, no is_submittable flag,
+    and no status-based locking defined anywhere in its DocType JSON or
+    controller. The "can't edit after creation" behaviour reported by
+    users was therefore NOT a workflow/permission/backend restriction -
+    no such restriction existed in the backend at all. It was a missing
+    feature: the frontend never had an edit form for existing rows, and
+    no update_delivery_order API existed for it to call. This function
+    is that missing piece, with the lock-when-finalized rule implemented
+    here (server-side) rather than only in the UI, so the rule can't be
+    bypassed by calling the API directly.
+
+    Editable while status is Open / In Progress / On Hold.
+    Locked once status is Delivered or Cancelled (terminal states).
+    """
+    if isinstance(delivery_order, str):
+        try:
+            delivery_order = json.loads(delivery_order)
+        except (json.JSONDecodeError, ValueError) as e:
+            frappe.throw(_("Invalid JSON in delivery_order parameter: {0}").format(str(e)))
+
+    if not isinstance(delivery_order, dict):
+        frappe.throw(_("delivery_order must be a JSON object / dict"))
+
+    doc = frappe.get_doc("PBS Sales Order", sales_order_name)
+
+    row = None
+    for r in doc.delivery_orders:
+        if r.name == delivery_order_name:
+            row = r
+            break
+
+    if row is None:
+        frappe.throw(_("Delivery Order {0} not found on Sales Order {1}").format(
+            delivery_order_name, sales_order_name
+        ))
+
+    current_status = row.status or "Open"
+    if current_status in _LOCKED_DO_STATUSES:
+        frappe.throw(_(
+            "This Delivery Order is {0} and can no longer be edited. "
+            "Only Delivery Orders in Open, In Progress, or On Hold status can be modified."
+        ).format(current_status))
+
+    # ── Required field validation (same rule as create) ─────────────────
+    if "item" in delivery_order:
+        item = (delivery_order.get("item") or "").strip()
+        if not item:
+            frappe.throw(_("Item / Delivery Title is required"))
+        row.item = item
+
+    # ── Numeric coercion ──────────────────────────────────────────────────
+    qty = row.qty
+    if "qty" in delivery_order:
+        try:
+            qty = float(delivery_order.get("qty") or 1)
+            if qty <= 0:
+                qty = 1
+        except (TypeError, ValueError):
+            qty = row.qty
+        row.qty = qty
+
+    rate = row.rate
+    if "rate" in delivery_order:
+        try:
+            rate = float(delivery_order.get("rate") or 0)
+        except (TypeError, ValueError):
+            rate = row.rate
+        row.rate = rate
+
+    if "qty" in delivery_order or "rate" in delivery_order:
+        row.amount = (row.qty or 0) * (row.rate or 0)
+
+    # ── Status normalisation - moving INTO a locked status is allowed
+    #    (that's how a Delivery Order gets finalized in the first place);
+    #    moving OUT of a locked status is what's blocked above, before
+    #    any of these fields are touched. ─────────────────────────────────
+    if "status" in delivery_order:
+        raw_status = delivery_order.get("status") or current_status
+        new_status = _DO_STATUS_MAP.get(raw_status, raw_status)
+        if new_status not in _VALID_DO_STATUSES:
+            new_status = current_status
+        row.status = new_status
+
+    # ── Optional text/data fields - only overwrite when the key was sent ──
+    optional_str = [
+        "product_code", "description", "delivery_product_type",
+        "delivery_order_number", "account", "trainers",
+    ]
+    for k in optional_str:
+        if k in delivery_order:
+            v = delivery_order.get(k)
+            setattr(row, k, str(v).strip() if v is not None and str(v).strip() else None)
+
+    # ── Optional date fields ──────────────────────────────────────────────
+    for k in ("start_date", "end_date"):
+        if k in delivery_order:
+            v = delivery_order.get(k)
+            setattr(row, k, v if v and str(v).strip() else None)
+
+    # ── Optional Link fields (users / trainer) ────────────────────────────
+    for k in ("sales_manager", "account_manager", "delivery_person"):
+        if k in delivery_order:
+            v = delivery_order.get(k)
+            setattr(row, k, v if v and str(v).strip() else None)
+
+    try:
+        doc.save(ignore_permissions=True)
+        frappe.db.commit()
+    except frappe.exceptions.ValidationError as e:
+        frappe.log_error(
+            title="update_delivery_order ValidationError",
+            message=frappe.get_traceback(),
+        )
+        frappe.throw(_("Validation failed while updating Delivery Order: {0}").format(str(e)))
+    except Exception as e:
+        frappe.log_error(
+            title="update_delivery_order Error",
+            message=frappe.get_traceback(),
+        )
+        frappe.throw(_("Could not update Delivery Order: {0}").format(str(e)))
+
     return frappe.get_all(
         "PBS Delivery Order",
         filters={"parent": sales_order_name, "parenttype": "PBS Sales Order"},
