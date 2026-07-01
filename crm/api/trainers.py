@@ -44,13 +44,26 @@ def get_trainers(
 			"company",
 			"remarks",
 			"modified",
+			"modified_by",
 			"creation",
+			"owner",
 		],
 		order_by=order_by,
 		limit=page_length,
 		start=offset,
 		ignore_permissions=True,
 	)
+
+	# Enrich modified_by with full name for display
+	for t in trainers:
+		if t.get("modified_by"):
+			t["modified_by_name"] = frappe.db.get_value(
+				"User", t["modified_by"], "full_name"
+			) or t["modified_by"]
+		if t.get("owner"):
+			t["owner_name"] = frappe.db.get_value(
+				"User", t["owner"], "full_name"
+			) or t["owner"]
 
 	total = frappe.db.count("CRM Trainer", filters=_filters)
 
