@@ -204,7 +204,7 @@ def _target_and_achievement(from_date, to_date, user):
     # or a target in range.
     Deal = DocType("CRM Deal")
     Status = DocType("CRM Deal Status")
-    query, _, _ = _deal_base_query(from_date, to_date, None, date_field="closed_date")
+    query, _deal, _status = _deal_base_query(from_date, to_date, None, date_field="closed_date")
     query = query.where(Status.type == "Won").where(Deal.closed_date.isnotnull())
     owners = query.select(Deal.deal_owner).distinct().run(as_dict=True)
     owner_names = {o["deal_owner"] for o in owners if o["deal_owner"]}
@@ -372,7 +372,7 @@ def get_target_achievement(fromDate=None, toDate=None, userId=None, quickRange=N
     else:
         Deal = DocType("CRM Deal")
         Status = DocType("CRM Deal Status")
-        query, _, _ = _deal_base_query(from_date, to_date, None, date_field="closed_date")
+        query, _deal, _status = _deal_base_query(from_date, to_date, None, date_field="closed_date")
         query = query.where(Status.type == "Won").where(Deal.closed_date.isnotnull())
         owners = query.select(Deal.deal_owner).distinct().run(as_dict=True)
         users_to_show = sorted({o["deal_owner"] for o in owners if o["deal_owner"]})
