@@ -144,6 +144,7 @@
           <h3 class="text-xl font-semibold text-ink-gray-9">{{ editingTrainer ? __('Edit Trainer') : __('Add Trainer') }}</h3>
           <Button variant="ghost" class="w-7" icon="x" @click="showModal = false" />
         </div>
+        <div class="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-gray-5">{{ __('Trainer Details') }}</div>
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Trainer Name') }} <span class="text-ink-red-3">*</span></label>
@@ -206,6 +207,30 @@
             <textarea v-model="form.remarks" rows="3" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none focus:border-outline-gray-4 resize-none" />
           </div>
         </div>
+
+        <!-- Audit Information -->
+        <div v-if="editingTrainer" class="mt-5 rounded-md border border-outline-gray-2 bg-surface-gray-1 p-4">
+          <div class="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-gray-5">{{ __('Audit Information') }}</div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Created On') }}</label>
+              <div class="text-sm text-ink-gray-8">{{ formatAuditDate(editingTrainer.creation) }}</div>
+            </div>
+            <div>
+              <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Created By') }}</label>
+              <div class="text-sm text-ink-gray-8">{{ formatAuditUser(editingTrainer.owner_name, editingTrainer.owner_email) }}</div>
+            </div>
+            <div>
+              <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Last Updated On') }}</label>
+              <div class="text-sm text-ink-gray-8">{{ formatAuditDate(editingTrainer.modified) }}</div>
+            </div>
+            <div>
+              <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Last Updated By') }}</label>
+              <div class="text-sm text-ink-gray-8">{{ formatAuditUser(editingTrainer.modified_by_name, editingTrainer.modified_by_email) }}</div>
+            </div>
+          </div>
+        </div>
+
         <p v-if="formError" class="mt-3 text-sm text-ink-red-3">{{ formError }}</p>
       </div>
       <div class="px-6 pb-5 pt-3 flex justify-end gap-2">
@@ -267,6 +292,7 @@ import TrainersIcon from '@/components/Icons/TrainersIcon.vue'
 import TrainerImportExport from '@/components/Trainers/TrainerImportExport.vue'
 import { Breadcrumbs, Button, Dialog, call, toast } from 'frappe-ui'
 import { ref, computed, reactive, onMounted } from 'vue'
+import { formatDate } from '@/utils'
 
 const trainers = ref([])
 const loading = ref(true)
@@ -442,6 +468,14 @@ function stripHtml(html) {
   if (!html) return ''
   const s = html.replace(/<[^>]*>/g, '')
   return s.length > 60 ? s.substring(0, 60) + '...' : s
+}
+function formatAuditDate(date) {
+  if (!date) return __('N/A')
+  return formatDate(date, 'DD MMM YYYY, hh:mm A')
+}
+function formatAuditUser(name, email) {
+  if (!name) return __('N/A')
+  return email && email !== name ? `${name} (${email})` : name
 }
 
 onMounted(() => loadTrainers())
