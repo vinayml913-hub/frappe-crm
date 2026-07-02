@@ -175,6 +175,11 @@
           </template>
           <template #default="{ section }">
             <div
+              v-if="section.name == 'assigned_team_section'"
+            >
+              <AssignedTeamSection :dealName="dealId" />
+            </div>
+            <div
               v-if="section.name == 'contacts_section'"
               class="contacts-area"
             >
@@ -366,6 +371,7 @@ import Link from '@/components/Controls/Link.vue'
 import CollapsibleSection from '@/components/CollapsibleSection.vue'
 import SidePanelLayout from '@/components/SidePanelLayout.vue'
 import SLASection from '@/components/SLASection.vue'
+import AssignedTeamSection from '@/components/AssignedTeamSection.vue'
 import CustomActions from '@/components/CustomActions.vue'
 import {
   openWebsite,
