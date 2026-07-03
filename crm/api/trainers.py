@@ -82,10 +82,12 @@ def get_trainers(
 
 	offset = (page - 1) * page_length
 
+	list_kwargs = dict(filters=_filters, ignore_permissions=True)
+	if _or_filters:
+		list_kwargs["or_filters"] = _or_filters
+
 	trainers = frappe.get_all(
 		"CRM Trainer",
-		filters=_filters,
-		or_filters=_or_filters,
 		fields=[
 			"name",
 			"trainer_name",
@@ -111,7 +113,7 @@ def get_trainers(
 		order_by=order_by,
 		limit=page_length,
 		start=offset,
-		ignore_permissions=True,
+		**list_kwargs,
 	)
 
 	# Enrich creator/updater with display name + email for the Audit
@@ -121,13 +123,20 @@ def get_trainers(
 	for t in trainers:
 		_attach_audit_info(t, user_cache)
 
-	total = frappe.get_all(
-		"CRM Trainer",
-		filters=_filters,
-		or_filters=_or_filters,
-		fields=["count(name) as total"],
-		ignore_permissions=True,
-	)[0].total
+	# NOTE: intentionally not using an aggregate `count(name)` query here -
+	# combined with Frappe's default `order by modified desc`, that can
+	# fail under MySQL's ONLY_FULL_GROUP_BY strict mode (ORDER BY on a
+	# non-aggregated/non-grouped column). Fetching just `name` with no
+	# ordering avoids that entirely and is plenty fast at this table size.
+	total = len(
+		frappe.get_all(
+			"CRM Trainer",
+			fields=["name"],
+			order_by=None,
+			limit_page_length=0,
+			**list_kwargs,
+		)
+	)
 
 	return {
 		"data": trainers,
