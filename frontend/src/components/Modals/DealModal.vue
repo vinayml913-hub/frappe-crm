@@ -55,6 +55,57 @@
             :data="deal.doc"
             doctype="CRM Deal"
           />
+
+          <div class="mt-4 pt-4 border-t border-outline-gray-modals">
+            <div class="text-sm font-medium text-ink-gray-6 mb-2">
+              {{ __('Assign To') }}
+              <span class="text-ink-gray-4 font-normal">
+                ({{ __('optional, up to {0} people', [maxTeamSize]) }})
+              </span>
+            </div>
+            <div
+              class="w-full min-h-11 flex flex-wrap items-center gap-1.5 p-1.5 rounded-lg bg-surface-gray-2"
+            >
+              <div
+                v-for="member in assignToOnCreate"
+                :key="member.name"
+                class="flex items-center text-sm p-0.5 pl-1 text-ink-gray-6 border border-outline-gray-1 bg-surface-modal rounded-full"
+              >
+                <UserAvatar :user="member.name" size="sm" />
+                <div class="ml-1">{{ member.full_name }}</div>
+                <Button
+                  variant="ghost"
+                  class="rounded-full !size-4 m-1"
+                  @click="removeAssignToOnCreate(member.name)"
+                >
+                  <template #icon>
+                    <FeatherIcon name="x" class="h-3 w-3 text-ink-gray-6" />
+                  </template>
+                </Button>
+              </div>
+              <Link
+                v-if="assignToOnCreate.length < maxTeamSize"
+                class="form-control flex-1 min-w-[140px]"
+                value=""
+                doctype="User"
+                :placeholder="__('Add people to notify')"
+                :filters="{
+                  name: ['in', crmUserNames],
+                  ignore_user_type: 1,
+                }"
+                :hideMe="false"
+                @change="(option) => option && addAssignToOnCreate(option)"
+              >
+                <template #item-prefix="{ option }">
+                  <UserAvatar class="mr-2" :user="option.value" size="sm" />
+                </template>
+                <template #item-label="{ option }">
+                  <span class="text-ink-gray-9">{{ getUser(option.value).full_name }}</span>
+                </template>
+              </Link>
+            </div>
+          </div>
+
           <ErrorMessage v-if="error" class="mt-4" :message="__(error)" />
         </div>
       </div>
@@ -75,13 +126,15 @@
 <script setup>
 import EditIcon from '@/components/Icons/EditIcon.vue'
 import FieldLayout from '@/components/FieldLayout/FieldLayout.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
+import Link from '@/components/Controls/Link.vue'
 import { usersStore } from '@/stores/users'
 import { statusesStore } from '@/stores/statuses'
 import { isMobileView } from '@/composables/settings'
 import { showQuickEntryModal, quickEntryProps } from '@/composables/modals'
 import { useDocument } from '@/data/document'
 import { useTelemetry } from 'frappe-ui/frappe'
-import { Switch, createResource } from 'frappe-ui'
+import { Switch, createResource, call, toast, FeatherIcon } from 'frappe-ui'
 import { computed, ref, onMounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -89,8 +142,32 @@ const props = defineProps({
   defaults: { type: Object, default: () => ({}) },
 })
 
-const { getUser, isManager } = usersStore()
+const { getUser, isManager, users } = usersStore()
 const { getDealStatus, statusOptions } = statusesStore()
+
+const crmUserNames = computed(() => users.data?.crmUsers?.map((u) => u.name) || [])
+
+// "Assign To" at creation time - deliberately NOT bound to deal.doc /
+// FieldLayout. The Assigned Team lives in Frappe's ToDo-based assignment
+// system (same one crm.api.deal_team.py and the Deal page's "Assigned
+// Team" sidebar section both use), not a stored field on CRM Deal, so
+// there's a single source of truth whether the team was set here at
+// creation or edited later on the Deal page.
+const maxTeamSize = 10
+const assignToOnCreate = ref([])
+
+function addAssignToOnCreate(userEmail) {
+  if (assignToOnCreate.value.find((m) => m.name === userEmail)) return
+  if (assignToOnCreate.value.length >= maxTeamSize) return
+  assignToOnCreate.value.push({
+    name: userEmail,
+    full_name: getUser(userEmail).full_name,
+  })
+}
+
+function removeAssignToOnCreate(userEmail) {
+  assignToOnCreate.value = assignToOnCreate.value.filter((m) => m.name !== userEmail)
+}
 
 const show = defineModel({ type: Boolean })
 const router = useRouter()
@@ -215,6 +292,23 @@ async function createDeal() {
       capture('deal_created')
       isDealCreating.value = false
       show.value = false
+
+      if (assignToOnCreate.value.length) {
+        call('crm.api.deal_team.assign_team_on_create', {
+          deal_name: name,
+          users: JSON.stringify(assignToOnCreate.value.map((m) => m.name)),
+        })
+          .then(() => {
+            toast.success(__('Deal created and team notified'))
+          })
+          .catch((err) => {
+            // Deal itself was created successfully - only the team
+            // assignment failed, so this is a toast, not a blocking error.
+            const msg = err?.messages?.[0]?.message || err?.message || __('Could not assign team')
+            toast.error(msg)
+          })
+      }
+
       router.push({ name: 'Deal', params: { dealId: name } })
     },
     onError(err) {
@@ -233,6 +327,10 @@ function openQuickEntryModal() {
   quickEntryProps.value = { doctype: 'CRM Deal' }
   nextTick(() => (show.value = false))
 }
+
+watch(show, (isOpen) => {
+  if (isOpen) assignToOnCreate.value = []
+})
 
 onMounted(() => {
   deal.doc.no_of_employees = '1-10'
