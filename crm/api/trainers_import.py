@@ -53,6 +53,7 @@ from crm.api.session import get_session_role_flags
 COLUMNS = [
 	{"header": "Trainer Name *", "field": "trainer_name", "required": True, "type": "text"},
 	{"header": "Phone Number", "field": "phone", "required": False, "type": "phone"},
+	{"header": "Alternative Phone Number", "field": "alternate_phone", "required": False, "type": "phone"},
 	{"header": "Email", "field": "email", "required": False, "type": "email"},
 	{"header": "LinkedIn Profile", "field": "linkedin_profile", "required": False, "type": "text"},
 	{"header": "Location", "field": "location", "required": False, "type": "text"},
@@ -65,6 +66,8 @@ COLUMNS = [
 	{"header": "Status", "field": "status", "required": False, "type": "select",
 	 "options": ["Active", "Inactive", "Blacklisted"]},
 	{"header": "Commercial (₹/day)", "field": "commercial", "required": False, "type": "number"},
+	{"header": "Commercial Type", "field": "commercial_type", "required": False, "type": "select",
+	 "options": ["Per Day", "Per Hour"]},
 	{"header": "Company", "field": "company", "required": False, "type": "text"},
 	{"header": "Remarks", "field": "remarks", "required": False, "type": "text"},
 ]
@@ -75,6 +78,8 @@ FIELD_BY_HEADER = {c["header"]: c["field"] for c in COLUMNS}
 LOOSE_HEADER_MAP = {
 	"trainer name": "trainer_name",
 	"phone number": "phone",
+	"alternative phone number": "alternate_phone",
+	"alternate phone number": "alternate_phone",
 	"email": "email",
 	"linkedin profile": "linkedin_profile",
 	"location": "location",
@@ -84,6 +89,7 @@ LOOSE_HEADER_MAP = {
 	"availability": "availability",
 	"status": "status",
 	"commercial": "commercial",
+	"commercial type": "commercial_type",
 	"company": "company",
 	"remarks": "remarks",
 }
