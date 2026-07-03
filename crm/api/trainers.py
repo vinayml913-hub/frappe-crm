@@ -60,8 +60,20 @@ def get_trainers(
 	get_session_role_flags()
 
 	_filters = {}
+	_or_filters = {}
 	if search:
-		_filters["trainer_name"] = ["like", f"%{search}%"]
+		like = ["like", f"%{search}%"]
+		# Universal search: matches any of these fields, so a query like
+		# "5 years" or "aws" or a phone/email fragment all work from the
+		# single search box.
+		_or_filters = {
+			"trainer_name": like,
+			"phone": like,
+			"alternate_phone": like,
+			"email": like,
+			"technology_expert_in": like,
+			"experience": like,
+		}
 
 	if filters:
 		if isinstance(filters, str):
@@ -73,6 +85,7 @@ def get_trainers(
 	trainers = frappe.get_all(
 		"CRM Trainer",
 		filters=_filters,
+		or_filters=_or_filters,
 		fields=[
 			"name",
 			"trainer_name",
@@ -108,7 +121,13 @@ def get_trainers(
 	for t in trainers:
 		_attach_audit_info(t, user_cache)
 
-	total = frappe.db.count("CRM Trainer", filters=_filters)
+	total = frappe.get_all(
+		"CRM Trainer",
+		filters=_filters,
+		or_filters=_or_filters,
+		fields=["count(name) as total"],
+		ignore_permissions=True,
+	)[0].total
 
 	return {
 		"data": trainers,
