@@ -17,8 +17,8 @@
       <input
         v-model="searchQuery"
         type="text"
-        :placeholder="__('Search trainers...')"
-        class="w-64 rounded-md border border-outline-gray-2 bg-surface-gray-1 py-1.5 pl-8 pr-3 text-sm text-ink-gray-8 placeholder-ink-gray-4 focus:border-outline-gray-4 focus:bg-surface-white focus:outline-none"
+        :placeholder="__('Search by name, phone, email, technology, experience...')"
+        class="w-80 rounded-md border border-outline-gray-2 bg-surface-gray-1 py-1.5 pl-8 pr-3 text-sm text-ink-gray-8 placeholder-ink-gray-4 focus:border-outline-gray-4 focus:bg-surface-white focus:outline-none"
         @input="onSearch"
       />
       <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink-gray-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -366,9 +366,9 @@ const allColumns = ref([
   { key: 'status', label: 'Status', visible: true },
   { key: 'remarks', label: 'Remarks', visible: true },
   { key: 'owner_name', label: 'Created By', visible: true },
-  { key: 'creation', label: 'Created On', visible: true },
-  { key: 'modified_by_name', label: 'Last Updated By', visible: true },
-  { key: 'modified', label: 'Last Updated On', visible: true },
+  { key: 'creation', label: 'Created On', visible: false },
+  { key: 'modified_by_name', label: 'Last Updated By', visible: false },
+  { key: 'modified', label: 'Last Updated On', visible: false },
   { key: 'alternate_phone', label: 'Alternative Phone Number', visible: false },
   { key: 'commercial_type', label: 'Commercial Type', visible: false },
   { key: 'skill_level', label: 'Skill Level', visible: false },
