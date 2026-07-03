@@ -200,3 +200,100 @@ def remove_team_member(deal_name, user):
 	_remove_assignments("CRM Deal", deal_name, [user], ignore_permissions=True)
 
 	return get_deal_team(deal_name)
+
+
+# ─────────────────────────────────────────────────────────────────────────
+#  Creation-time exception
+# ─────────────────────────────────────────────────────────────────────────
+#
+# Requirement: "whoever creates the deal can assign that deal to 1-10
+# employees" - i.e. the CREATOR of a new Deal may set its initial team,
+# even if they don't hold a team-manager role (System Manager / Sales
+# Manager / Solution Manager). Once the deal exists with a team, all
+# FURTHER changes go back through add_team_members/remove_team_member
+# above, which remain manager-only.
+#
+# This can't be enforced by "was this call made within N seconds of
+# insert" (too fragile/spoofable), so instead it's bounded by three
+# separate, server-verifiable conditions - ALL must hold:
+#   1. The calling user is the Deal's `owner` (Frappe's built-in
+#      "who created this record" field - distinct from the custom
+#      `deal_owner` field), i.e. they are the actual creator.
+#   2. The Deal currently has ZERO assigned team members - this makes
+#      the exception genuinely single-use: once a team exists (even a
+#      team of one), this function refuses and the caller must use the
+#      manager-gated endpoints instead.
+#   3. The calling user has standard Frappe "write" permission on this
+#      Deal (normal doctype permission - already true for any Sales
+#      User per the existing CRM Deal permission rows).
+# This means a Sales User can set the team once, immediately after
+# creating their own deal, and never again - closing the gap a
+# time-based check would leave open.
+
+@frappe.whitelist()
+def assign_team_on_create(deal_name, users):
+	"""
+	One-time, creator-only team assignment for a freshly created Deal.
+	See the module-level comment above for the exact security boundary.
+	"""
+	if not frappe.db.exists("CRM Deal", deal_name):
+		frappe.throw(_("Deal {0} not found").format(deal_name))
+
+	if isinstance(users, str):
+		users = frappe.parse_json(users)
+	if not isinstance(users, list) or not users:
+		frappe.throw(_("At least one user must be provided"))
+
+	deal_creator = frappe.db.get_value("CRM Deal", deal_name, "owner")
+	if deal_creator != frappe.session.user:
+		frappe.throw(
+			_("Only the person who created this Deal can set its initial team."),
+			frappe.PermissionError,
+		)
+
+	if not frappe.has_permission("CRM Deal", "write", deal_name):
+		frappe.throw(_("You do not have permission to modify this Deal."), frappe.PermissionError)
+
+	current = _get_assigned_users(deal_name)
+	if current:
+		frappe.throw(
+			_("This Deal already has an assigned team. "
+			  "Further changes must be made by an Admin, Sales Manager, or Solution Manager."),
+			frappe.PermissionError,
+		)
+
+	users = list(dict.fromkeys(users))  # de-duplicate, preserve order
+	if len(users) > MAX_TEAM_SIZE:
+		frappe.throw(
+			_("A Deal can have at most {0} assigned team members. You selected {1}.").format(
+				MAX_TEAM_SIZE, len(users)
+			)
+		)
+
+	try:
+		assign_to_add({
+			"assign_to": users,
+			"doctype": "CRM Deal",
+			"name": deal_name,
+		}, ignore_permissions=True)
+	except TypeError:
+		assign_to_add({
+			"assign_to": users,
+			"doctype": "CRM Deal",
+			"name": deal_name,
+		})
+	except Exception:
+		frappe.log_error(title="assign_team_on_create failed", message=frappe.get_traceback())
+		frappe.throw(_("Could not assign team member(s). Please try again."))
+
+	# frappe.desk.form.assign_to.add() creates a ToDo AND a Notification
+	# Log entry for each assigned user by default (Frappe core behaviour,
+	# same mechanism your existing deal_owner assignment already relies
+	# on via assign_agent() in crm_deal.py) - so newly assigned team
+	# members are notified through Frappe's standard notification bell
+	# automatically, with no extra code needed here. Worth a quick check
+	# on your site after deploying to confirm notifications are enabled
+	# in Notification Settings, since that's a site-level toggle outside
+	# this code's control.
+
+	return get_deal_team(deal_name)
