@@ -97,10 +97,20 @@
               <span class="px-2 py-0.5 text-xs rounded-full" :class="availabilityClass(trainer.availability)">{{ trainer.availability || '—' }}</span>
             </template>
             <template v-else-if="col.key === 'commercial'">
-              {{ trainer.commercial ? formatCurrency(trainer.commercial) : '—' }}
+              <span v-if="trainer.commercial">{{ formatCurrency(trainer.commercial) }} <span class="text-ink-gray-5">/ {{ trainer.commercial_type || 'Per Day' }}</span></span>
+              <span v-else>—</span>
             </template>
             <template v-else-if="col.key === 'remarks'">
               <span class="truncate block max-w-xs">{{ stripHtml(trainer.remarks) }}</span>
+            </template>
+            <template v-else-if="col.key === 'creation' || col.key === 'modified'">
+              {{ formatAuditDate(trainer[col.key]) }}
+            </template>
+            <template v-else-if="col.key === 'owner_name'">
+              {{ formatAuditUser(trainer.owner_name, trainer.owner_email) }}
+            </template>
+            <template v-else-if="col.key === 'modified_by_name'">
+              {{ formatAuditUser(trainer.modified_by_name, trainer.modified_by_email) }}
             </template>
             <template v-else>{{ trainer[col.key] || '—' }}</template>
           </td>
@@ -155,6 +165,10 @@
             <input v-model="form.phone" type="text" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none focus:border-outline-gray-4" />
           </div>
           <div>
+            <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Alternative Phone Number') }}</label>
+            <input v-model="form.alternate_phone" type="text" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none focus:border-outline-gray-4" />
+          </div>
+          <div>
             <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Email') }}</label>
             <input v-model="form.email" type="email" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none focus:border-outline-gray-4" />
           </div>
@@ -195,8 +209,14 @@
             </select>
           </div>
           <div>
-            <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Commercial (₹/day)') }}</label>
-            <input v-model="form.commercial" type="number" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none focus:border-outline-gray-4" />
+            <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Commercial') }}</label>
+            <div class="flex gap-2">
+              <input v-model="form.commercial" type="number" min="0" :placeholder="__('Amount')" class="w-full rounded-md border border-outline-gray-2 px-3 py-1.5 text-sm focus:outline-none focus:border-outline-gray-4" />
+              <select v-model="form.commercial_type" class="w-32 flex-shrink-0 rounded-md border border-outline-gray-2 px-2 py-1.5 text-sm focus:outline-none focus:border-outline-gray-4">
+                <option value="Per Day">{{ __('Per Day') }}</option>
+                <option value="Per Hour">{{ __('Per Hour') }}</option>
+              </select>
+            </div>
           </div>
           <div>
             <label class="text-xs font-medium text-ink-gray-6 mb-1 block">{{ __('Company') }}</label>
@@ -327,9 +347,10 @@ const activeFilters = computed(() => {
 })
 
 const emptyForm = () => ({
-  trainer_name: '', phone: '', email: '', linkedin_profile: '',
+  trainer_name: '', phone: '', alternate_phone: '', email: '', linkedin_profile: '',
   location: '', technology_expert_in: '', skill_level: '', experience: '',
-  availability: '', status: 'Active', commercial: '', company: '', remarks: '',
+  availability: '', status: 'Active', commercial: '', commercial_type: 'Per Day',
+  company: '', remarks: '',
 })
 
 const form = reactive(emptyForm())
@@ -337,13 +358,19 @@ const form = reactive(emptyForm())
 const allColumns = ref([
   { key: 'trainer_name', label: 'Trainer Name', visible: true },
   { key: 'phone', label: 'Phone Number', visible: true },
+  { key: 'email', label: 'Email', visible: true },
   { key: 'technology_expert_in', label: 'Technology Expert In', visible: true },
   { key: 'linkedin_profile', label: 'LinkedIn Profile', visible: true },
   { key: 'location', label: 'Location', visible: true },
   { key: 'commercial', label: 'Commercial', visible: true },
   { key: 'status', label: 'Status', visible: true },
   { key: 'remarks', label: 'Remarks', visible: true },
-  { key: 'email', label: 'Email', visible: false },
+  { key: 'owner_name', label: 'Created By', visible: true },
+  { key: 'creation', label: 'Created On', visible: true },
+  { key: 'modified_by_name', label: 'Last Updated By', visible: true },
+  { key: 'modified', label: 'Last Updated On', visible: true },
+  { key: 'alternate_phone', label: 'Alternative Phone Number', visible: false },
+  { key: 'commercial_type', label: 'Commercial Type', visible: false },
   { key: 'skill_level', label: 'Skill Level', visible: false },
   { key: 'experience', label: 'Experience', visible: false },
   { key: 'availability', label: 'Availability', visible: false },
@@ -361,7 +388,7 @@ async function loadTrainers() {
 
     const result = await call('crm.api.trainers.get_trainers', {
       filters: JSON.stringify(filters),
-      order_by: `${sortKey.value} ${sortOrder.value}`,
+      order_by: `${SORT_KEY_MAP[sortKey.value] || sortKey.value} ${sortOrder.value}`,
       page_length: pageLength.value,
       page: page.value,
       search: searchQuery.value || null,
@@ -380,6 +407,10 @@ function onSearch() {
   if (searchTimeout.value) clearTimeout(searchTimeout.value)
   searchTimeout.value = setTimeout(() => { page.value = 1; loadTrainers() }, 300)
 }
+
+// owner_name / modified_by_name are enriched display fields, not real
+// columns on CRM Trainer - map them to the underlying sortable column.
+const SORT_KEY_MAP = { owner_name: 'owner', modified_by_name: 'modified_by' }
 
 function sortBy(key) {
   sortOrder.value = sortKey.value === key && sortOrder.value === 'asc' ? 'desc' : 'asc'
@@ -402,11 +433,13 @@ function openEditModal(trainer) {
   editingTrainer.value = trainer
   Object.assign(form, {
     trainer_name: trainer.trainer_name || '', phone: trainer.phone || '',
+    alternate_phone: trainer.alternate_phone || '',
     email: trainer.email || '', linkedin_profile: trainer.linkedin_profile || '',
     location: trainer.location || '', technology_expert_in: trainer.technology_expert_in || '',
     skill_level: trainer.skill_level || '', experience: trainer.experience || '',
     availability: trainer.availability || '', status: trainer.status || 'Active',
-    commercial: trainer.commercial || '', company: trainer.company || '',
+    commercial: trainer.commercial || '', commercial_type: trainer.commercial_type || 'Per Day',
+    company: trainer.company || '',
     remarks: trainer.remarks || '',
   })
   formError.value = null
