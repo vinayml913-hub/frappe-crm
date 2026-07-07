@@ -35,6 +35,7 @@ from frappe import _
 from frappe.desk.form.assign_to import add as assign_to_add
 
 from crm.api.doc import remove_assignments as _remove_assignments
+from crm.api.todo import notify_assigned_user
 
 MAX_TEAM_SIZE = 10
 MIN_TEAM_SIZE = 1
@@ -53,6 +54,31 @@ def _require_team_manager():
 			_("Only Admin, Sales Manager, or Solution Manager can modify the Task's assigned team."),
 			frappe.PermissionError,
 		)
+
+
+def _notify_new_team_members(task_name, new_users):
+	"""
+	Explicitly guarantee a notification for every newly-assigned user,
+	reusing the same notify_assigned_user() logic crm.api.todo.after_insert
+	already uses for the existing single-agent Task assignment
+	(crm_task.py's assign_to()). See the identical helper in
+	crm.api.deal_team for the full rationale on why this is called
+	explicitly rather than assumed to happen automatically via the ToDo
+	after_insert hook when assign_to_add() is given multiple users in
+	one batched call.
+	"""
+	for user in new_users:
+		try:
+			notify_assigned_user(frappe._dict({
+				"reference_type": "CRM Task",
+				"reference_name": task_name,
+				"allocated_to": user,
+			}))
+		except Exception:
+			frappe.log_error(
+				title="Task team assignment notification failed",
+				message=frappe.get_traceback(),
+			)
 
 
 def _get_assigned_users(task_name):
@@ -192,6 +218,8 @@ def add_team_members(task_name, users):
 		# it, syncing the legacy assigned_to field for backward compat.
 		_sync_primary_assignee(task_name, new_users[0])
 
+	_notify_new_team_members(task_name, new_users)
+
 	return get_task_team(task_name)
 
 
@@ -302,5 +330,7 @@ def assign_team_on_create(task_name, users):
 		frappe.throw(_("Could not assign team member(s). Please try again."))
 
 	_sync_primary_assignee(task_name, users[0])
+
+	_notify_new_team_members(task_name, users)
 
 	return get_task_team(task_name)
