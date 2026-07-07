@@ -28,6 +28,7 @@ from frappe import _
 from frappe.desk.form.assign_to import add as assign_to_add
 
 from crm.api.doc import remove_assignments as _remove_assignments
+from crm.api.todo import notify_assigned_user
 
 MAX_TEAM_SIZE = 10
 MIN_TEAM_SIZE = 1
@@ -51,6 +52,45 @@ def _require_team_manager():
 			_("Only Admin, Sales Manager, or Solution Manager can modify the Assigned Team."),
 			frappe.PermissionError,
 		)
+
+
+def _notify_new_team_members(deal_name, new_users):
+	"""
+	Explicitly guarantee a notification is sent to every newly-assigned
+	user, by calling the SAME notify_assigned_user() function
+	crm.api.todo.after_insert already uses for the existing single-agent
+	assignment flow (crm_deal.py's assign_agent) - reusing its message
+	formatting and CRM Notification creation logic rather than
+	duplicating it.
+
+	Why this exists as an explicit call, rather than relying only on the
+	ToDo `after_insert` doc_event firing automatically for each user when
+	assign_to_add() is called with a LIST of multiple users in one
+	request: that hook chain is not independently verifiable in this
+	environment (no Frappe core source available to confirm per-ToDo
+	hook firing during a batched multi-user assign call), so this
+	function makes notification delivery a first-class, guaranteed part
+	of THIS module's own code instead of an assumed side effect.
+	Calling notify_assigned_user() twice for the same user (once via the
+	hook, once via this explicit call) is safe and produces no duplicate
+	notification - see notify_user()'s own frappe.db.exists() check in
+	crm_notification.py, which already de-duplicates identical
+	(from_user, to_user, message, ...) combinations.
+	"""
+	for user in new_users:
+		try:
+			notify_assigned_user(frappe._dict({
+				"reference_type": "CRM Deal",
+				"reference_name": deal_name,
+				"allocated_to": user,
+			}))
+		except Exception:
+			# Notification failure should never block the actual
+			# assignment from succeeding - log and continue.
+			frappe.log_error(
+				title="Deal team assignment notification failed",
+				message=frappe.get_traceback(),
+			)
 
 
 def _get_assigned_users(deal_name):
@@ -165,6 +205,8 @@ def add_team_members(deal_name, users):
 	except Exception:
 		frappe.log_error(title="add_team_members failed", message=frappe.get_traceback())
 		frappe.throw(_("Could not add team member(s). Please try again."))
+
+	_notify_new_team_members(deal_name, new_users)
 
 	return get_deal_team(deal_name)
 
@@ -286,14 +328,6 @@ def assign_team_on_create(deal_name, users):
 		frappe.log_error(title="assign_team_on_create failed", message=frappe.get_traceback())
 		frappe.throw(_("Could not assign team member(s). Please try again."))
 
-	# frappe.desk.form.assign_to.add() creates a ToDo AND a Notification
-	# Log entry for each assigned user by default (Frappe core behaviour,
-	# same mechanism your existing deal_owner assignment already relies
-	# on via assign_agent() in crm_deal.py) - so newly assigned team
-	# members are notified through Frappe's standard notification bell
-	# automatically, with no extra code needed here. Worth a quick check
-	# on your site after deploying to confirm notifications are enabled
-	# in Notification Settings, since that's a site-level toggle outside
-	# this code's control.
+	_notify_new_team_members(deal_name, users)
 
 	return get_deal_team(deal_name)
