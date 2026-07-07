@@ -1,284 +1,895 @@
 {
- "actions": [],
- "allow_import": 1,
- "allow_rename": 1,
- "autoname": "naming_series:",
- "creation": "2023-11-06 17:56:25.210449",
- "doctype": "DocType",
- "engine": "InnoDB",
- "field_order": [
-  "organization_tab",
-  "naming_series",
-  "organization",
-  "next_step",
-  "column_break_ijan",
-  "status",
-  "deal_owner",
-  "section_break_jgpm",
-  "probability",
-  "expected_deal_value",
-  "deal_value",
-  "column_break_kpxa",
-  "expected_closure_date",
-  "closed_date",
-  "contacts_tab",
-  "contacts",
-  "contact",
-  "lead_details_tab",
-  "lead",
-  "source",
-  "column_break_wsde",
-  "lead_name",
-  "organization_details_section",
-  "organization_name",
-  "website",
-  "no_of_employees",
-  "job_title",
-  "column_break_xbyf",
-  "territory",
-  "currency",
-  "exchange_rate",
-  "annual_revenue",
-  "industry",
-  "person_section",
-  "salutation",
-  "first_name",
-  "last_name",
-  "column_break_xjmy",
-  "email",
-  "mobile_no",
-  "phone",
-  "gender",
-  "deal_details_tab",
-  "section_deal_info",
-  "deal_name",
-  "account",
-  "expected_close_date",
-  "column_break_deal1",
-  "stage",
-  "probability_pct",
-  "section_trainer_costing",
-  "trainer_commercial",
-  "costing_type",
-  "no_of_days",
-  "no_of_hours",
-  "column_break_tc1",
-  "trainer_cost",
-  "lab_expense",
-  "total_expense",
-  "section_financials",
-  "margin_pct",
-  "gst_percentage",
-  "column_break_fin1",
-  "gross_profit",
-  "gst_amount",
-  "base_amount",
-  "final_amount",
-  "gross_profit_pct",
-  "section_flags",
-  "lead_source",
-  "lab_required",
-  "training_required",
-  "section_team",
-  "sales_manager",
-  "account_manager",
-  "column_break_team2",
-  "training_engagement_manager",
-  "section_notes",
-  "accounting_notes",
-  "column_break_notes",
-  "te_notes",
-  "project_tab",
-  "section_project_info",
-  "technology",
-  "delivery_type",
-  "duration",
-  "column_break_project1",
-  "start_date",
-  "end_date",
-  "delivery_date",
-  "section_trainer",
-  "trainer",
-  "trainer_status",
-  "column_break_trainer",
-  "trainer_notes",
-  "section_costing_notes",
-  "costing_remarks",
-  "products_tab",
-  "products",
-  "section_break_ccbj",
-  "total",
-  "column_break_udbq",
-  "net_total",
-  "sla_tab",
-  "sla",
-  "sla_creation",
-  "column_break_pfvq",
-  "sla_status",
-  "communication_status",
-  "response_details_section",
-  "response_by",
-  "column_break_hpvj",
-  "first_response_time",
-  "first_responded_on",
-  "section_break_mwvg",
-  "rolling_responses",
-  "section_break_jgdr",
-  "last_response_time",
-  "column_break_evzj",
-  "last_responded_on",
-  "log_tab",
-  "status_change_log",
-  "lost_details_tab",
-  "lost_reason",
-  "lost_notes"
- ],
- "fields": [
-  {"fieldname":"organization","fieldtype":"Link","in_standard_filter":1,"label":"Organization","options":"CRM Organization"},
-  {"fieldname":"probability","fieldtype":"Percent","label":"Probability"},
-  {"fetch_from":".annual_revenue","fieldname":"annual_revenue","fieldtype":"Currency","label":"Annual Revenue","options":"currency"},
-  {"fetch_from":".website","fieldname":"website","fieldtype":"Data","label":"Website"},
-  {"fieldname":"next_step","fieldtype":"Data","label":"Next Step"},
-  {"fieldname":"lead","fieldtype":"Link","label":"Lead","options":"CRM Lead"},
-  {"fieldname":"deal_owner","fieldtype":"Link","label":"Deal Owner","options":"User"},
-  {"default":"CRM-DEAL-.YYYY.-","fieldname":"naming_series","fieldtype":"Select","label":"Naming Series","options":"CRM-DEAL-.YYYY.-"},
-  {"fieldname":"contacts_tab","fieldtype":"Tab Break","label":"Contacts"},
-  {"fieldname":"email","fieldtype":"Data","in_standard_filter":1,"label":"Primary email","options":"Email"},
-  {"fieldname":"mobile_no","fieldtype":"Data","label":"Primary mobile no","options":"Phone"},
-  {"fieldname":"status","fieldtype":"Link","in_list_view":1,"in_standard_filter":1,"label":"Status","options":"CRM Deal Status","reqd":1,"search_index":1},
-  {"fieldname":"contacts","fieldtype":"Table","label":"Contacts","options":"CRM Contacts"},
-  {"fieldname":"organization_tab","fieldtype":"Tab Break","label":"Organization"},
-  {"fieldname":"sla_tab","fieldtype":"Tab Break","label":"SLA","read_only":1},
-  {"fieldname":"sla","fieldtype":"Link","label":"SLA","options":"CRM Service Level Agreement"},
-  {"fieldname":"response_by","fieldtype":"Datetime","label":"Response By","read_only":1},
-  {"fieldname":"column_break_pfvq","fieldtype":"Column Break"},
-  {"fieldname":"sla_status","fieldtype":"Select","label":"SLA Status","options":"\nFirst Response Due\nRolling Response Due\nFailed\nFulfilled","read_only":1},
-  {"fieldname":"sla_creation","fieldtype":"Datetime","label":"SLA Creation","read_only":1},
-  {"fieldname":"response_details_section","fieldtype":"Section Break","label":"Response Details"},
-  {"fieldname":"column_break_hpvj","fieldtype":"Column Break"},
-  {"fieldname":"first_response_time","fieldtype":"Duration","label":"First Response Time","read_only":1},
-  {"fieldname":"first_responded_on","fieldtype":"Datetime","label":"First Responded On","read_only":1},
-  {"default":"Open","fieldname":"communication_status","fieldtype":"Link","label":"Communication Status","options":"CRM Communication Status"},
-  {"fetch_from":".territory","fieldname":"territory","fieldtype":"Link","label":"Territory","options":"CRM Territory"},
-  {"fieldname":"source","fieldtype":"Link","label":"Source","options":"CRM Lead Source"},
-  {"fieldname":"no_of_employees","fieldtype":"Select","label":"No. of Employees","options":"1-10\n11-50\n51-200\n201-500\n501-1000\n1000+"},
-  {"fieldname":"job_title","fieldtype":"Data","label":"Job Title"},
-  {"fieldname":"phone","fieldtype":"Data","label":"Primary phone","options":"Phone"},
-  {"fieldname":"log_tab","fieldtype":"Tab Break","label":"Log","read_only":1},
-  {"fieldname":"status_change_log","fieldtype":"Table","label":"Status Change Log","options":"CRM Status Change Log"},
-  {"fieldname":"lead_name","fieldtype":"Data","label":"Lead Name"},
-  {"fieldname":"column_break_ijan","fieldtype":"Column Break"},
-  {"fieldname":"lead_details_tab","fieldtype":"Tab Break","label":"Lead Details"},
-  {"fieldname":"column_break_wsde","fieldtype":"Column Break"},
-  {"fieldname":"organization_details_section","fieldtype":"Section Break","label":"Organization Details"},
-  {"fieldname":"organization_name","fieldtype":"Data","label":"Organization Name"},
-  {"fieldname":"column_break_xbyf","fieldtype":"Column Break"},
-  {"fieldname":"industry","fieldtype":"Link","label":"Industry","options":"CRM Industry"},
-  {"fieldname":"person_section","fieldtype":"Section Break","label":"Person"},
-  {"fieldname":"salutation","fieldtype":"Link","label":"Salutation","options":"Salutation"},
-  {"fieldname":"first_name","fieldtype":"Data","label":"First name"},
-  {"fieldname":"last_name","fieldtype":"Data","label":"Last name"},
-  {"fieldname":"column_break_xjmy","fieldtype":"Column Break"},
-  {"fieldname":"gender","fieldtype":"Link","label":"Gender","options":"Gender"},
-  {"fieldname":"contact","fieldtype":"Link","label":"Contact","options":"Contact"},
-  {"fieldname":"currency","fieldtype":"Link","label":"Currency","options":"Currency"},
-  {"fieldname":"products_tab","fieldtype":"Tab Break","label":"Products"},
-  {"fieldname":"products","fieldtype":"Table","label":"Products","options":"CRM Products"},
-  {"fieldname":"section_break_ccbj","fieldtype":"Section Break"},
-  {"fieldname":"column_break_udbq","fieldtype":"Column Break"},
-  {"fieldname":"total","fieldtype":"Currency","label":"Total","options":"currency","read_only":1},
-  {"description":"Total after discount","fieldname":"net_total","fieldtype":"Currency","label":"Net Total","options":"currency","read_only":1},
-  {"fieldname":"section_break_jgpm","fieldtype":"Section Break"},
-  {"fieldname":"deal_value","fieldtype":"Currency","label":"Deal Value","options":"currency"},
-  {"fieldname":"column_break_kpxa","fieldtype":"Column Break"},
-  {"fieldname":"lost_reason","fieldtype":"Link","label":"Lost Reason","options":"CRM Lost Reason"},
-  {"fieldname":"lost_notes","fieldtype":"Text","label":"Lost Notes","mandatory_depends_on":"eval: doc.lost_reason == \"Other\""},
-  {"default":"1","fieldname":"exchange_rate","fieldtype":"Float","label":"Exchange Rate"},
-  {"fieldname":"expected_deal_value","fieldtype":"Currency","label":"Expected Deal Value","options":"currency"},
-  {"fieldname":"expected_closure_date","fieldtype":"Date","label":"Expected Closure Date"},
-  {"fieldname":"closed_date","fieldtype":"Date","label":"Closed Date"},
-  {"fieldname":"section_break_mwvg","fieldtype":"Section Break"},
-  {"fieldname":"rolling_responses","fieldtype":"Table","label":"Rolling Responses","options":"CRM Rolling Response Time"},
-  {"fieldname":"section_break_jgdr","fieldtype":"Section Break"},
-  {"fieldname":"last_response_time","fieldtype":"Duration","label":"Last Response Time","read_only":1},
-  {"fieldname":"column_break_evzj","fieldtype":"Column Break"},
-  {"fieldname":"last_responded_on","fieldtype":"Datetime","label":"Last Responded On","read_only":1},
-  {"fieldname":"lost_details_tab","fieldtype":"Tab Break","label":"Lost Details"},
-  {"fieldname":"deal_details_tab","fieldtype":"Tab Break","label":"Deal Details"},
-  {"fieldname":"section_deal_info","fieldtype":"Section Break","label":"Deal Information"},
-  {"fieldname":"deal_name","fieldtype":"Data","in_list_view":1,"in_standard_filter":1,"label":"Deal Name","reqd":1},
-  {"fieldname":"account","fieldtype":"Link","label":"Account","options":"CRM Organization"},
-  {"fieldname":"expected_close_date","fieldtype":"Date","label":"Expected Close Date"},
-  {"fieldname":"column_break_deal1","fieldtype":"Column Break"},
-  {"fieldname":"stage","fieldtype":"Select","label":"Stage","options":"\nRequirement Shared\nProposal Sent\nNegotiation\nPO Received\nWon\nLost"},
-  {"fieldname":"probability_pct","fieldtype":"Percent","label":"Probability %"},
-  {"fieldname":"section_trainer_costing","fieldtype":"Section Break","label":"Trainer & Costing"},
-  {"fieldname":"trainer_commercial","fieldtype":"Currency","label":"Trainer Commercial (Per Day/Hour)","options":"currency"},
-  {"fieldname":"costing_type","fieldtype":"Select","label":"Costing Type","options":"\nPer Day\nPer Hour"},
-  {"fieldname":"no_of_days","fieldtype":"Int","label":"No. of Days","depends_on":"eval: doc.costing_type == 'Per Day'"},
-  {"fieldname":"no_of_hours","fieldtype":"Float","label":"No. of Hours","depends_on":"eval: doc.costing_type == 'Per Hour'"},
-  {"fieldname":"column_break_tc1","fieldtype":"Column Break"},
-  {"fieldname":"trainer_cost","fieldtype":"Currency","label":"Trainer Cost (Auto)","options":"currency","read_only":1},
-  {"fieldname":"lab_expense","fieldtype":"Currency","label":"Lab / Other Expense","options":"currency"},
-  {"fieldname":"total_expense","fieldtype":"Currency","label":"Total Expense (Auto)","options":"currency","read_only":1},
-  {"fieldname":"section_financials","fieldtype":"Section Break","label":"Financial Summary"},
-  {"fieldname":"margin_pct","fieldtype":"Int","label":"Margin %","description":"Enter margin % on Total Expense to calculate GP"},
-  {"default":"18","fieldname":"gst_percentage","fieldtype":"Int","label":"GST %"},
-  {"fieldname":"column_break_fin1","fieldtype":"Column Break"},
-  {"fieldname":"gross_profit","fieldtype":"Currency","label":"Gross Profit (Auto)","options":"currency","read_only":1},
-  {"fieldname":"gst_amount","fieldtype":"Currency","label":"GST Amount (Auto)","options":"currency","read_only":1},
-  {"fieldname":"base_amount","fieldtype":"Currency","label":"Base Amount (Auto)","options":"currency","read_only":1},
-  {"fieldname":"final_amount","fieldtype":"Currency","label":"Final Amount to Client (Auto)","options":"currency","read_only":1},
-  {"fieldname":"gross_profit_pct","fieldtype":"Percent","label":"GP %","read_only":1},
-  {"fieldname":"section_flags","fieldtype":"Section Break","label":"Other Details"},
-  {"fieldname":"lead_source","fieldtype":"Link","label":"Lead Source","options":"CRM Lead Source"},
-  {"default":"0","fieldname":"lab_required","fieldtype":"Check","label":"Lab Required"},
-  {"default":"0","fieldname":"training_required","fieldtype":"Check","label":"Training Required"},
-  {"fieldname":"section_team","fieldtype":"Section Break","label":"Team"},
-  {"fieldname":"sales_manager","fieldtype":"Link","label":"Sales Manager","options":"User","reqd":1},
-  {"fieldname":"account_manager","fieldtype":"Link","label":"Solution Manager","options":"User","reqd":1},
-  {"fieldname":"column_break_team2","fieldtype":"Column Break"},
-  {"fieldname":"training_engagement_manager","fieldtype":"Link","label":"Training Engagement Co-ordinator","options":"User"},
-  {"fieldname":"section_notes","fieldtype":"Section Break","label":"Notes"},
-  {"fieldname":"accounting_notes","fieldtype":"Text Editor","label":"Accounting Notes"},
-  {"fieldname":"column_break_notes","fieldtype":"Column Break"},
-  {"fieldname":"te_notes","fieldtype":"Text Editor","label":"TE Notes"},
-  {"fieldname":"project_tab","fieldtype":"Tab Break","label":"Project Info"},
-  {"fieldname":"section_project_info","fieldtype":"Section Break","label":"Project Details"},
-  {"fieldname":"technology","fieldtype":"Data","label":"Technology"},
-  {"fieldname":"delivery_type","fieldtype":"Select","label":"Delivery Type","options":"\nOnsite\nOnline\nHybrid"},
-  {"fieldname":"duration","fieldtype":"Data","label":"Duration"},
-  {"fieldname":"column_break_project1","fieldtype":"Column Break"},
-  {"fieldname":"start_date","fieldtype":"Date","label":"Start Date"},
-  {"fieldname":"end_date","fieldtype":"Date","label":"End Date"},
-  {"fieldname":"delivery_date","fieldtype":"Date","label":"Delivery Date"},
-  {"fieldname":"section_trainer","fieldtype":"Section Break","label":"Trainer Details"},
-  {"fieldname":"trainer","fieldtype":"Link","label":"Trainer","options":"CRM Trainer"},
-  {"fieldname":"trainer_status","fieldtype":"Select","label":"Trainer Status","options":"\nSourcing\nShortlisted\nConfirmed\nRejected"},
-  {"fieldname":"column_break_trainer","fieldtype":"Column Break"},
-  {"fieldname":"trainer_notes","fieldtype":"Text Editor","label":"Trainer Notes"},
-  {"fieldname":"section_costing_notes","fieldtype":"Section Break","label":"Costing Remarks"},
-  {"fieldname":"costing_remarks","fieldtype":"Text Editor","label":"Costing Remarks"}
- ],
- "grid_page_length": 50,
- "index_web_pages_for_search": 1,
- "links": [],
- "modified": "2026-06-10 00:00:00.000000",
- "modified_by": "Administrator",
- "module": "FCRM",
- "name": "CRM Deal",
- "naming_rule": "By \"Naming Series\" field",
- "owner": "Administrator",
- "permissions": [
-  {"create":1,"delete":1,"email":1,"export":1,"print":1,"read":1,"report":1,"role":"System Manager","share":1,"write":1},
-  {"create":1,"delete":1,"email":1,"export":1,"print":1,"read":1,"report":1,"role":"Sales Manager","share":1,"write":1},
-  {"create":1,"delete":1,"email":1,"export":1,"print":1,"read":1,"report":1,"role":"Sales User","share":1,"write":1}
- ],
- "row_format": "Dynamic",
- "show_title_field_in_link": 1,
- "sort_field": "modified",
- "sort_order": "DESC",
- "states": [],
- "title_field": "organization",
- "track_changes": 1
+  "actions": [],
+  "allow_import": 1,
+  "allow_rename": 1,
+  "autoname": "naming_series:",
+  "creation": "2023-11-06 17:56:25.210449",
+  "doctype": "DocType",
+  "engine": "InnoDB",
+  "field_order": [
+    "organization_tab",
+    "naming_series",
+    "organization",
+    "next_step",
+    "column_break_ijan",
+    "status",
+    "deal_owner",
+    "section_break_jgpm",
+    "probability",
+    "expected_deal_value",
+    "deal_value",
+    "column_break_kpxa",
+    "expected_closure_date",
+    "closed_date",
+    "contacts_tab",
+    "contacts",
+    "contact",
+    "lead_details_tab",
+    "lead",
+    "source",
+    "column_break_wsde",
+    "lead_name",
+    "organization_details_section",
+    "organization_name",
+    "website",
+    "no_of_employees",
+    "job_title",
+    "column_break_xbyf",
+    "territory",
+    "currency",
+    "exchange_rate",
+    "annual_revenue",
+    "industry",
+    "person_section",
+    "salutation",
+    "first_name",
+    "last_name",
+    "column_break_xjmy",
+    "email",
+    "mobile_no",
+    "phone",
+    "gender",
+    "deal_details_tab",
+    "section_deal_info",
+    "deal_name",
+    "account",
+    "expected_close_date",
+    "column_break_deal1",
+    "stage",
+    "probability_pct",
+    "section_trainer_costing",
+    "trainer_commercial",
+    "costing_type",
+    "no_of_days",
+    "no_of_hours",
+    "column_break_tc1",
+    "trainer_cost",
+    "lab_expense",
+    "total_expense",
+    "training_commercial",
+    "section_financials",
+    "margin_pct",
+    "gst_percentage",
+    "column_break_fin1",
+    "gross_profit",
+    "gst_amount",
+    "base_amount",
+    "final_amount",
+    "gross_profit_pct",
+    "section_flags",
+    "lead_source",
+    "lab_required",
+    "training_required",
+    "section_team",
+    "sales_manager",
+    "account_manager",
+    "column_break_team2",
+    "training_engagement_manager",
+    "section_notes",
+    "accounting_notes",
+    "column_break_notes",
+    "te_notes",
+    "project_tab",
+    "section_project_info",
+    "technology",
+    "delivery_type",
+    "duration",
+    "column_break_project1",
+    "start_date",
+    "end_date",
+    "delivery_date",
+    "section_trainer",
+    "trainer",
+    "trainer_status",
+    "column_break_trainer",
+    "trainer_notes",
+    "section_costing_notes",
+    "costing_remarks",
+    "products_tab",
+    "products",
+    "section_break_ccbj",
+    "total",
+    "column_break_udbq",
+    "net_total",
+    "sla_tab",
+    "sla",
+    "sla_creation",
+    "column_break_pfvq",
+    "sla_status",
+    "communication_status",
+    "response_details_section",
+    "response_by",
+    "column_break_hpvj",
+    "first_response_time",
+    "first_responded_on",
+    "section_break_mwvg",
+    "rolling_responses",
+    "section_break_jgdr",
+    "last_response_time",
+    "column_break_evzj",
+    "last_responded_on",
+    "log_tab",
+    "status_change_log",
+    "lost_details_tab",
+    "lost_reason",
+    "lost_notes"
+  ],
+  "fields": [
+    {
+      "fieldname": "organization",
+      "fieldtype": "Link",
+      "in_standard_filter": 1,
+      "label": "Organization",
+      "options": "CRM Organization"
+    },
+    {
+      "fieldname": "probability",
+      "fieldtype": "Percent",
+      "label": "Probability"
+    },
+    {
+      "fetch_from": ".annual_revenue",
+      "fieldname": "annual_revenue",
+      "fieldtype": "Currency",
+      "label": "Annual Revenue",
+      "options": "currency"
+    },
+    {
+      "fetch_from": ".website",
+      "fieldname": "website",
+      "fieldtype": "Data",
+      "label": "Website"
+    },
+    {
+      "fieldname": "next_step",
+      "fieldtype": "Data",
+      "label": "Next Step"
+    },
+    {
+      "fieldname": "lead",
+      "fieldtype": "Link",
+      "label": "Lead",
+      "options": "CRM Lead"
+    },
+    {
+      "fieldname": "deal_owner",
+      "fieldtype": "Link",
+      "label": "Deal Owner",
+      "options": "User"
+    },
+    {
+      "default": "CRM-DEAL-.YYYY.-",
+      "fieldname": "naming_series",
+      "fieldtype": "Select",
+      "label": "Naming Series",
+      "options": "CRM-DEAL-.YYYY.-"
+    },
+    {
+      "fieldname": "contacts_tab",
+      "fieldtype": "Tab Break",
+      "label": "Contacts"
+    },
+    {
+      "fieldname": "email",
+      "fieldtype": "Data",
+      "in_standard_filter": 1,
+      "label": "Primary email",
+      "options": "Email"
+    },
+    {
+      "fieldname": "mobile_no",
+      "fieldtype": "Data",
+      "label": "Primary mobile no",
+      "options": "Phone"
+    },
+    {
+      "fieldname": "status",
+      "fieldtype": "Link",
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "label": "Status",
+      "options": "CRM Deal Status",
+      "reqd": 1,
+      "search_index": 1
+    },
+    {
+      "fieldname": "contacts",
+      "fieldtype": "Table",
+      "label": "Contacts",
+      "options": "CRM Contacts"
+    },
+    {
+      "fieldname": "organization_tab",
+      "fieldtype": "Tab Break",
+      "label": "Organization"
+    },
+    {
+      "fieldname": "sla_tab",
+      "fieldtype": "Tab Break",
+      "label": "SLA",
+      "read_only": 1
+    },
+    {
+      "fieldname": "sla",
+      "fieldtype": "Link",
+      "label": "SLA",
+      "options": "CRM Service Level Agreement"
+    },
+    {
+      "fieldname": "response_by",
+      "fieldtype": "Datetime",
+      "label": "Response By",
+      "read_only": 1
+    },
+    {
+      "fieldname": "column_break_pfvq",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "sla_status",
+      "fieldtype": "Select",
+      "label": "SLA Status",
+      "options": "\nFirst Response Due\nRolling Response Due\nFailed\nFulfilled",
+      "read_only": 1
+    },
+    {
+      "fieldname": "sla_creation",
+      "fieldtype": "Datetime",
+      "label": "SLA Creation",
+      "read_only": 1
+    },
+    {
+      "fieldname": "response_details_section",
+      "fieldtype": "Section Break",
+      "label": "Response Details"
+    },
+    {
+      "fieldname": "column_break_hpvj",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "first_response_time",
+      "fieldtype": "Duration",
+      "label": "First Response Time",
+      "read_only": 1
+    },
+    {
+      "fieldname": "first_responded_on",
+      "fieldtype": "Datetime",
+      "label": "First Responded On",
+      "read_only": 1
+    },
+    {
+      "default": "Open",
+      "fieldname": "communication_status",
+      "fieldtype": "Link",
+      "label": "Communication Status",
+      "options": "CRM Communication Status"
+    },
+    {
+      "fetch_from": ".territory",
+      "fieldname": "territory",
+      "fieldtype": "Link",
+      "label": "Territory",
+      "options": "CRM Territory"
+    },
+    {
+      "fieldname": "source",
+      "fieldtype": "Link",
+      "label": "Source",
+      "options": "CRM Lead Source"
+    },
+    {
+      "fieldname": "no_of_employees",
+      "fieldtype": "Select",
+      "label": "No. of Employees",
+      "options": "1-10\n11-50\n51-200\n201-500\n501-1000\n1000+"
+    },
+    {
+      "fieldname": "job_title",
+      "fieldtype": "Data",
+      "label": "Job Title"
+    },
+    {
+      "fieldname": "phone",
+      "fieldtype": "Data",
+      "label": "Primary phone",
+      "options": "Phone"
+    },
+    {
+      "fieldname": "log_tab",
+      "fieldtype": "Tab Break",
+      "label": "Log",
+      "read_only": 1
+    },
+    {
+      "fieldname": "status_change_log",
+      "fieldtype": "Table",
+      "label": "Status Change Log",
+      "options": "CRM Status Change Log"
+    },
+    {
+      "fieldname": "lead_name",
+      "fieldtype": "Data",
+      "label": "Lead Name"
+    },
+    {
+      "fieldname": "column_break_ijan",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "lead_details_tab",
+      "fieldtype": "Tab Break",
+      "label": "Lead Details"
+    },
+    {
+      "fieldname": "column_break_wsde",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "organization_details_section",
+      "fieldtype": "Section Break",
+      "label": "Organization Details"
+    },
+    {
+      "fieldname": "organization_name",
+      "fieldtype": "Data",
+      "label": "Organization Name"
+    },
+    {
+      "fieldname": "column_break_xbyf",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "industry",
+      "fieldtype": "Link",
+      "label": "Industry",
+      "options": "CRM Industry"
+    },
+    {
+      "fieldname": "person_section",
+      "fieldtype": "Section Break",
+      "label": "Person"
+    },
+    {
+      "fieldname": "salutation",
+      "fieldtype": "Link",
+      "label": "Salutation",
+      "options": "Salutation"
+    },
+    {
+      "fieldname": "first_name",
+      "fieldtype": "Data",
+      "label": "First name"
+    },
+    {
+      "fieldname": "last_name",
+      "fieldtype": "Data",
+      "label": "Last name"
+    },
+    {
+      "fieldname": "column_break_xjmy",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "gender",
+      "fieldtype": "Link",
+      "label": "Gender",
+      "options": "Gender"
+    },
+    {
+      "fieldname": "contact",
+      "fieldtype": "Link",
+      "label": "Contact",
+      "options": "Contact"
+    },
+    {
+      "fieldname": "currency",
+      "fieldtype": "Link",
+      "label": "Currency",
+      "options": "Currency"
+    },
+    {
+      "fieldname": "products_tab",
+      "fieldtype": "Tab Break",
+      "label": "Products"
+    },
+    {
+      "fieldname": "products",
+      "fieldtype": "Table",
+      "label": "Products",
+      "options": "CRM Products"
+    },
+    {
+      "fieldname": "section_break_ccbj",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "column_break_udbq",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "total",
+      "fieldtype": "Currency",
+      "label": "Total",
+      "options": "currency",
+      "read_only": 1
+    },
+    {
+      "description": "Total after discount",
+      "fieldname": "net_total",
+      "fieldtype": "Currency",
+      "label": "Net Total",
+      "options": "currency",
+      "read_only": 1
+    },
+    {
+      "fieldname": "section_break_jgpm",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "deal_value",
+      "fieldtype": "Currency",
+      "label": "Deal Value",
+      "options": "currency"
+    },
+    {
+      "fieldname": "column_break_kpxa",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "lost_reason",
+      "fieldtype": "Link",
+      "label": "Lost Reason",
+      "options": "CRM Lost Reason"
+    },
+    {
+      "fieldname": "lost_notes",
+      "fieldtype": "Text",
+      "label": "Lost Notes",
+      "mandatory_depends_on": "eval: doc.lost_reason == \"Other\""
+    },
+    {
+      "default": "1",
+      "fieldname": "exchange_rate",
+      "fieldtype": "Float",
+      "label": "Exchange Rate"
+    },
+    {
+      "fieldname": "expected_deal_value",
+      "fieldtype": "Currency",
+      "label": "Expected Deal Value",
+      "options": "currency"
+    },
+    {
+      "fieldname": "expected_closure_date",
+      "fieldtype": "Date",
+      "label": "Expected Closure Date"
+    },
+    {
+      "fieldname": "closed_date",
+      "fieldtype": "Date",
+      "label": "Closed Date"
+    },
+    {
+      "fieldname": "section_break_mwvg",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "rolling_responses",
+      "fieldtype": "Table",
+      "label": "Rolling Responses",
+      "options": "CRM Rolling Response Time"
+    },
+    {
+      "fieldname": "section_break_jgdr",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "last_response_time",
+      "fieldtype": "Duration",
+      "label": "Last Response Time",
+      "read_only": 1
+    },
+    {
+      "fieldname": "column_break_evzj",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "last_responded_on",
+      "fieldtype": "Datetime",
+      "label": "Last Responded On",
+      "read_only": 1
+    },
+    {
+      "fieldname": "lost_details_tab",
+      "fieldtype": "Tab Break",
+      "label": "Lost Details"
+    },
+    {
+      "fieldname": "deal_details_tab",
+      "fieldtype": "Tab Break",
+      "label": "Deal Details"
+    },
+    {
+      "fieldname": "section_deal_info",
+      "fieldtype": "Section Break",
+      "label": "Deal Information"
+    },
+    {
+      "fieldname": "deal_name",
+      "fieldtype": "Data",
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "label": "Deal Name",
+      "reqd": 1
+    },
+    {
+      "fieldname": "account",
+      "fieldtype": "Link",
+      "label": "Account",
+      "options": "CRM Organization"
+    },
+    {
+      "fieldname": "expected_close_date",
+      "fieldtype": "Date",
+      "label": "Expected Close Date"
+    },
+    {
+      "fieldname": "column_break_deal1",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "stage",
+      "fieldtype": "Select",
+      "label": "Stage",
+      "options": "\nRequirement Shared\nProposal Sent\nNegotiation\nPO Received\nWon\nLost"
+    },
+    {
+      "fieldname": "probability_pct",
+      "fieldtype": "Percent",
+      "label": "Probability %"
+    },
+    {
+      "fieldname": "section_trainer_costing",
+      "fieldtype": "Section Break",
+      "label": "Trainer & Costing"
+    },
+    {
+      "fieldname": "trainer_commercial",
+      "fieldtype": "Currency",
+      "label": "Trainer Commercial (Per Day/Hour)",
+      "options": "currency"
+    },
+    {
+      "fieldname": "costing_type",
+      "fieldtype": "Select",
+      "label": "Costing Type",
+      "options": "\nPer Day\nPer Hour"
+    },
+    {
+      "fieldname": "no_of_days",
+      "fieldtype": "Int",
+      "label": "No. of Days",
+      "depends_on": "eval: doc.costing_type == 'Per Day'"
+    },
+    {
+      "fieldname": "no_of_hours",
+      "fieldtype": "Float",
+      "label": "No. of Hours",
+      "depends_on": "eval: doc.costing_type == 'Per Hour'"
+    },
+    {
+      "fieldname": "column_break_tc1",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "trainer_cost",
+      "fieldtype": "Currency",
+      "label": "Trainer Cost (Auto)",
+      "options": "currency",
+      "read_only": 1
+    },
+    {
+      "fieldname": "lab_expense",
+      "fieldtype": "Currency",
+      "label": "Lab / Other Expense",
+      "options": "currency"
+    },
+    {
+      "fieldname": "total_expense",
+      "fieldtype": "Currency",
+      "label": "Total Expense (Auto)",
+      "options": "currency",
+      "read_only": 1
+    },
+    {
+      "fieldname": "section_financials",
+      "fieldtype": "Section Break",
+      "label": "Financial Summary"
+    },
+    {
+      "fieldname": "margin_pct",
+      "fieldtype": "Int",
+      "label": "Margin %",
+      "description": "Enter margin % on Total Expense to calculate GP"
+    },
+    {
+      "default": "18",
+      "fieldname": "gst_percentage",
+      "fieldtype": "Int",
+      "label": "GST %"
+    },
+    {
+      "fieldname": "column_break_fin1",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "gross_profit",
+      "fieldtype": "Currency",
+      "label": "Gross Profit (Auto)",
+      "options": "currency",
+      "read_only": 1
+    },
+    {
+      "fieldname": "gst_amount",
+      "fieldtype": "Currency",
+      "label": "GST Amount (Auto)",
+      "options": "currency",
+      "read_only": 1
+    },
+    {
+      "fieldname": "base_amount",
+      "fieldtype": "Currency",
+      "label": "Base Amount (Auto)",
+      "options": "currency",
+      "read_only": 1
+    },
+    {
+      "fieldname": "final_amount",
+      "fieldtype": "Currency",
+      "label": "Final Amount to Client (Auto)",
+      "options": "currency",
+      "read_only": 1
+    },
+    {
+      "fieldname": "gross_profit_pct",
+      "fieldtype": "Percent",
+      "label": "GP %",
+      "read_only": 1
+    },
+    {
+      "fieldname": "section_flags",
+      "fieldtype": "Section Break",
+      "label": "Other Details"
+    },
+    {
+      "fieldname": "lead_source",
+      "fieldtype": "Link",
+      "label": "Lead Source",
+      "options": "CRM Lead Source"
+    },
+    {
+      "default": "0",
+      "fieldname": "lab_required",
+      "fieldtype": "Check",
+      "label": "Lab Required"
+    },
+    {
+      "default": "0",
+      "fieldname": "training_required",
+      "fieldtype": "Check",
+      "label": "Training Required"
+    },
+    {
+      "fieldname": "section_team",
+      "fieldtype": "Section Break",
+      "label": "Team"
+    },
+    {
+      "fieldname": "sales_manager",
+      "fieldtype": "Link",
+      "label": "Sales Manager",
+      "options": "User",
+      "reqd": 1
+    },
+    {
+      "fieldname": "account_manager",
+      "fieldtype": "Link",
+      "label": "Solution Manager",
+      "options": "User",
+      "reqd": 1
+    },
+    {
+      "fieldname": "column_break_team2",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "training_engagement_manager",
+      "fieldtype": "Link",
+      "label": "Training Engagement Co-ordinator",
+      "options": "User"
+    },
+    {
+      "fieldname": "section_notes",
+      "fieldtype": "Section Break",
+      "label": "Notes"
+    },
+    {
+      "fieldname": "accounting_notes",
+      "fieldtype": "Text Editor",
+      "label": "Accounting Notes"
+    },
+    {
+      "fieldname": "column_break_notes",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "te_notes",
+      "fieldtype": "Text Editor",
+      "label": "TE Notes"
+    },
+    {
+      "fieldname": "project_tab",
+      "fieldtype": "Tab Break",
+      "label": "Project Info"
+    },
+    {
+      "fieldname": "section_project_info",
+      "fieldtype": "Section Break",
+      "label": "Project Details"
+    },
+    {
+      "fieldname": "technology",
+      "fieldtype": "Data",
+      "label": "Technology"
+    },
+    {
+      "fieldname": "delivery_type",
+      "fieldtype": "Select",
+      "label": "Delivery Type",
+      "options": "\nOnsite\nOnline\nHybrid"
+    },
+    {
+      "fieldname": "duration",
+      "fieldtype": "Data",
+      "label": "Duration"
+    },
+    {
+      "fieldname": "column_break_project1",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "start_date",
+      "fieldtype": "Date",
+      "label": "Start Date"
+    },
+    {
+      "fieldname": "end_date",
+      "fieldtype": "Date",
+      "label": "End Date"
+    },
+    {
+      "fieldname": "delivery_date",
+      "fieldtype": "Date",
+      "label": "Delivery Date"
+    },
+    {
+      "fieldname": "section_trainer",
+      "fieldtype": "Section Break",
+      "label": "Trainer Details"
+    },
+    {
+      "fieldname": "trainer",
+      "fieldtype": "Link",
+      "label": "Trainer",
+      "options": "CRM Trainer"
+    },
+    {
+      "fieldname": "trainer_status",
+      "fieldtype": "Select",
+      "label": "Trainer Status",
+      "options": "\nSourcing\nShortlisted\nConfirmed\nRejected"
+    },
+    {
+      "fieldname": "column_break_trainer",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "trainer_notes",
+      "fieldtype": "Text Editor",
+      "label": "Trainer Notes"
+    },
+    {
+      "fieldname": "section_costing_notes",
+      "fieldtype": "Section Break",
+      "label": "Costing Remarks"
+    },
+    {
+      "fieldname": "costing_remarks",
+      "fieldtype": "Text Editor",
+      "label": "Costing Remarks"
+    },
+    {
+      "fieldname": "training_commercial",
+      "fieldtype": "Currency",
+      "label": "Training Commercial (Client Amount)",
+      "options": "currency",
+      "description": "Amount client pays. If filled: GP = Training Commercial - Trainer Cost - Lab Expense. Leave blank to use Margin % method."
+    }
+  ],
+  "grid_page_length": 50,
+  "index_web_pages_for_search": 1,
+  "links": [],
+  "modified": "2026-06-10 00:00:00.000000",
+  "modified_by": "Administrator",
+  "module": "FCRM",
+  "name": "CRM Deal",
+  "naming_rule": "By \"Naming Series\" field",
+  "owner": "Administrator",
+  "permissions": [
+    {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "System Manager",
+      "share": 1,
+      "write": 1
+    },
+    {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "Sales Manager",
+      "share": 1,
+      "write": 1
+    },
+    {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "Sales User",
+      "share": 1,
+      "write": 1
+    }
+  ],
+  "row_format": "Dynamic",
+  "show_title_field_in_link": 1,
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "states": [],
+  "title_field": "organization",
+  "track_changes": 1
 }
