@@ -166,10 +166,12 @@ function handleNotificationClick(n) {
 onBeforeUnmount(() => {
   $socket.off('crm_notification')
   $socket.off('event_notification')
+  stopNotificationPolling()
 })
 
 onMounted(() => {
   $socket.on('crm_notification', () => notifications.reload())
   $socket.on('event_notification', (data) => handleEventNotification(data))
+  startNotificationPolling()
 })
 </script>
