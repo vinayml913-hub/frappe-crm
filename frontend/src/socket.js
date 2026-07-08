@@ -11,7 +11,10 @@ export function initSocket() {
 
   let socket = io(url, {
     withCredentials: true,
-    reconnectionAttempts: 5,
+    reconnection: true,
+    reconnectionAttempts: Infinity,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 10000,
   })
   socket.on('refetch_resource', (data) => {
     if (data.cache_key) {
