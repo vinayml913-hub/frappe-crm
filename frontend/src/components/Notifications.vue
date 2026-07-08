@@ -102,6 +102,8 @@ import {
   visible,
   notifications,
   notificationsStore,
+  startNotificationPolling,
+  stopNotificationPolling,
 } from '@/stores/notifications'
 import { useEventNotificationAlert } from '@/data/notifications'
 import { globalStore } from '@/stores/global'
