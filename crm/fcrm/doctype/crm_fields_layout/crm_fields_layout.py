@@ -111,12 +111,20 @@ def get_fields_layout(doctype: str, type: str, parent_doctype: str | None = None
 
 @frappe.whitelist()
 def get_sidepanel_sections(doctype: str):
-	if not frappe.db.exists("CRM Fields Layout", {"dt": doctype, "type": "Side Panel"}):
-		return []
-	layout = frappe.get_doc("CRM Fields Layout", {"dt": doctype, "type": "Side Panel"}).layout
+	layout = None
+	if frappe.db.exists("CRM Fields Layout", {"dt": doctype, "type": "Side Panel"}):
+		layout = frappe.get_doc("CRM Fields Layout", {"dt": doctype, "type": "Side Panel"}).layout
 
 	if not layout:
-		return []
+		# Self-heal: no saved layout (or it was cleared) — rebuild one
+		# from the doctype's current fields instead of returning an
+		# empty sidebar.
+		from crm.patches.v1_0.create_default_sidebar_fields_layout import (
+			create_doctype_fields_layout,
+		)
+		frappe.db.delete("CRM Fields Layout", {"dt": doctype, "type": "Side Panel"})
+		section_fields = create_doctype_fields_layout(doctype)
+		layout = json.dumps(section_fields)
 
 	layout = json.loads(layout)
 
