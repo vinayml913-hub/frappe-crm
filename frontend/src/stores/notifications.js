@@ -14,6 +14,23 @@ export const unreadNotificationsCount = computed(
   () => notifications.data?.filter((n) => !n.read).length || 0,
 )
 
+// Polling fallback: refresh every 60s in case the websocket
+// connection silently dropped and stopped delivering
+// real-time 'crm_notification' events.
+let pollInterval = null
+export function startNotificationPolling() {
+  if (pollInterval) return
+  pollInterval = setInterval(() => {
+    notifications.reload()
+  }, 60000)
+}
+export function stopNotificationPolling() {
+  if (pollInterval) {
+    clearInterval(pollInterval)
+    pollInterval = null
+  }
+}
+
 export const notificationsStore = defineStore('crm-notifications', () => {
   const mark_as_read = createResource({
     url: 'crm.api.notifications.mark_as_read',
