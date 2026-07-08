@@ -1,6 +1,8 @@
 # Copyright (c) 2023, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
+import json
+
 import frappe
 from frappe import _
 from frappe.desk.form.assign_to import add as assign
@@ -10,6 +12,73 @@ from crm.api.exchange_rate import get_exchange_rate
 from crm.fcrm.doctype.crm_service_level_agreement.utils import get_sla
 from crm.fcrm.doctype.crm_status_change_log.crm_status_change_log import add_status_change_log
 from crm.fcrm.doctype.utils import add_or_remove_lost_reason_section_in_sidepanel
+
+# Users who can always see every deal, regardless of whether they're
+# personally tied to it.
+DEAL_ADMIN_ROLES = ("System Manager",)
+
+# Fields on CRM Deal that name a specific person tied to that deal. Anyone
+# named in one of these fields (on that particular deal) can see it, in
+# addition to the deal's creator and whoever it's assigned to.
+DEAL_PERSON_FIELDS = ("deal_owner", "sales_manager", "account_manager", "training_engagement_manager")
+
+
+def _is_deal_admin(user):
+	return user == "Administrator" or bool(set(frappe.get_roles(user)) & set(DEAL_ADMIN_ROLES))
+
+
+def has_permission(doc, ptype=None, user=None):
+	"""Restrict direct access to a single CRM Deal to: the deal's creator,
+	its deal_owner/sales_manager/account_manager(Solution Manager)/
+	training_engagement_manager, anyone it's assigned to, anyone it's been
+	explicitly shared with, or a System Manager/Administrator."""
+	user = user or frappe.session.user
+	if _is_deal_admin(user):
+		return True
+
+	if doc.get("owner") == user:
+		return True
+
+	if any(doc.get(fieldname) == user for fieldname in DEAL_PERSON_FIELDS):
+		return True
+
+	assigned = doc.get("_assign")
+	if assigned:
+		try:
+			assigned = json.loads(assigned) if isinstance(assigned, str) else assigned
+		except (TypeError, ValueError):
+			assigned = []
+		if user in (assigned or []):
+			return True
+
+	if user in frappe.share.get_users(doc.doctype, doc.name):
+		return True
+
+	return False
+
+
+def get_permission_query_conditions(user=None):
+	"""Restrict the CRM Deal list/kanban/report views the same way as
+	has_permission() above, so users only see deals they're tied to."""
+	user = user or frappe.session.user
+	if _is_deal_admin(user):
+		return ""
+
+	user_e = frappe.db.escape(user)
+	assign_match_e = frappe.db.escape(f"%{user}%")
+	person_conditions = " OR ".join(
+		f"`tabCRM Deal`.`{fieldname}` = {user_e}" for fieldname in DEAL_PERSON_FIELDS
+	)
+
+	return f"""(
+		`tabCRM Deal`.`owner` = {user_e}
+		OR {person_conditions}
+		OR `tabCRM Deal`.`_assign` LIKE {assign_match_e}
+		OR `tabCRM Deal`.`name` IN (
+			SELECT share_name FROM `tabDocShare`
+			WHERE share_doctype = 'CRM Deal' AND user = {user_e}
+		)
+	)"""
 
 
 class CRMDeal(Document):
@@ -91,7 +160,6 @@ class CRMDeal(Document):
 		base_amount: DF.Currency
 		final_amount: DF.Currency
 		gross_profit_pct: DF.Percent
-		training_commercial: DF.Currency
 		# PBS Other
 		lead_source: DF.Link | None
 		lab_required: DF.Check
@@ -145,20 +213,15 @@ class CRMDeal(Document):
 
 	def calculate_financials(self):
 		"""
-		PBS Financial Calculation — Two methods:
+		Complete PBS Financial Calculation:
 
-		Method 1 (Training Commercial filled — client amount provided):
-		  Gross Profit = Training Commercial - Trainer Cost - Lab Expense
-		  GP% = Gross Profit / Training Commercial x 100
-		  GST Amount = Training Commercial x GST%
-		  Final Amount = Training Commercial + GST Amount
-
-		Method 2 (Margin % only — Training Commercial not filled):
-		  Gross Profit = Total Expense x Margin% / 100
-		  Base Amount = Total Expense + Gross Profit
-		  GST Amount = Base Amount x GST%
-		  Final Amount = Base Amount + GST Amount
-		  GP% = Gross Profit / Base Amount x 100
+		1. Trainer Cost = Trainer Commercial × Days/Hours
+		2. Total Expense = Trainer Cost + Lab Expense
+		3. GP = Total Expense × Margin% / 100
+		4. Base Amount = Total Expense + GP
+		5. GST Amount = Base Amount × GST% / 100
+		6. Final Amount = Base Amount + GST Amount
+		7. GP% = GP / Base Amount × 100
 		"""
 		trainer_commercial = float(self.trainer_commercial or 0)
 		costing_type = self.costing_type or ""
@@ -166,9 +229,13 @@ class CRMDeal(Document):
 		no_of_hours = float(self.no_of_hours or 0)
 		lab_expense = float(self.lab_expense or 0)
 		gst_pct = float(self.gst_percentage or 18)
-		training_commercial = float(self.training_commercial or 0)
 
-		# Step 1: Trainer Cost = Trainer Commercial x Days or Hours
+		# Default Margin % to 20 if left blank, so GP is never silently zero
+		if not self.margin_pct:
+			self.margin_pct = 20
+		margin_pct = float(self.margin_pct or 0)
+
+		# Step 1: Trainer Cost
 		if costing_type == "Per Day":
 			self.trainer_cost = trainer_commercial * no_of_days
 		elif costing_type == "Per Hour":
@@ -178,36 +245,32 @@ class CRMDeal(Document):
 
 		trainer_cost = float(self.trainer_cost or 0)
 
-		# Step 2: Total Expense = Trainer Cost + Lab Expense
+		# Step 2: Total Expense
 		self.total_expense = trainer_cost + lab_expense
+
 		total_expense = float(self.total_expense or 0)
 
-		if training_commercial > 0:
-			# ── Method 1: Training Commercial (client amount) is filled ──
-			self.gross_profit = training_commercial - total_expense
-			self.base_amount = training_commercial
-			self.gst_amount = training_commercial * gst_pct / 100
-			self.final_amount = training_commercial + self.gst_amount
-			self.gross_profit_pct = (self.gross_profit / training_commercial) * 100 if training_commercial > 0 else 0
-			self.margin_pct = 0
-		else:
-			# ── Method 2: Margin % based calculation ──
-			if not self.margin_pct:
-				self.margin_pct = 20
-			margin_pct = float(self.margin_pct or 0)
+		if total_expense > 0 and margin_pct > 0:
+			# Step 3: Gross Profit
+			self.gross_profit = total_expense * margin_pct / 100
 
-			if total_expense > 0 and margin_pct > 0:
-				self.gross_profit = total_expense * margin_pct / 100
-				self.base_amount = total_expense + self.gross_profit
-				self.gst_amount = self.base_amount * gst_pct / 100
-				self.final_amount = self.base_amount + self.gst_amount
-				self.gross_profit_pct = (self.gross_profit / self.base_amount) * 100
-			else:
-				self.gross_profit = 0
-				self.base_amount = total_expense
-				self.gst_amount = total_expense * gst_pct / 100
-				self.final_amount = total_expense + self.gst_amount
-				self.gross_profit_pct = 0
+			# Step 4: Base Amount
+			self.base_amount = total_expense + self.gross_profit
+
+			# Step 5: GST Amount
+			self.gst_amount = self.base_amount * gst_pct / 100
+
+			# Step 6: Final Amount
+			self.final_amount = self.base_amount + self.gst_amount
+
+			# Step 7: GP%
+			self.gross_profit_pct = (self.gross_profit / self.base_amount) * 100
+		else:
+			self.gross_profit = 0
+			self.base_amount = total_expense
+			self.gst_amount = total_expense * gst_pct / 100
+			self.final_amount = total_expense + self.gst_amount
+			self.gross_profit_pct = 0
 
 	def validate_status(self):
 		if self.is_new() and not self.status:
