@@ -116,7 +116,7 @@
         </template>
       </Link>
     </div>
-
+    <RevenueTargetCard />
     <div class="w-full overflow-y-scroll">
       <DashboardGrid
         v-if="!dashboardItems.loading && dashboardItems.data"
@@ -154,6 +154,7 @@ import {
   Tooltip,
 } from 'frappe-ui'
 import { ref, reactive, computed, provide } from 'vue'
+import RevenueTargetCard from '@/components/Dashboard/RevenueTargetCard.vue'
 
 const { users, getUser, isManager, isAdmin } = usersStore()
 
