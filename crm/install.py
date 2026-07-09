@@ -87,19 +87,19 @@ def add_default_lead_statuses():
 
 def add_default_deal_statuses():
 	statuses = {
-		"Qualification": {
+		"Qualified": {
 			"color": "gray",
 			"type": "Open",
 			"probability": 10,
 			"position": 1,
 		},
-		"Demo/Making": {
+		"Profile Shared": {
 			"color": "orange",
 			"type": "Ongoing",
 			"probability": 25,
 			"position": 2,
 		},
-		"Proposal/Quotation": {
+		"Scoping Call / Evaluation": {
 			"color": "blue",
 			"type": "Ongoing",
 			"probability": 50,
