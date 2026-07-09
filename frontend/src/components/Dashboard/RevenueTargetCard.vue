@@ -56,7 +56,11 @@
         </div>
       </div>
 
-      <div v-else class="text-sm text-ink-gray-4 py-2">
+      <div v-if="donutConfig" class="h-52 mt-4">
+        <DonutChart :config="donutConfig" />
+      </div>
+
+      <div v-if="!target.data" class="text-sm text-ink-gray-4 py-2">
         {{ isAdmin() ? __('No target set for this period.') : __('No revenue target has been set for you yet.') }}
       </div>
     </template>
@@ -72,15 +76,51 @@
 <script setup>
 import SetTargetModal from '@/components/Dashboard/SetTargetModal.vue'
 import { usersStore } from '@/stores/users'
-import { createResource } from 'frappe-ui'
-import { ref, computed } from 'vue'
+import { createResource, DonutChart } from 'frappe-ui'
+import { ref, computed, inject, watch } from 'vue'
 
 const { isAdmin } = usersStore()
 const showTargetModal = ref(false)
 
+// Same reactive filters object Dashboard.vue provides to every card on the
+// page (see `provide('filters', filters)` in Dashboard.vue) - this is what
+// the "Sales User" dropdown at the top of the dashboard writes to, so
+// reading it here is what makes this card follow that selection.
+const filters = inject('filters', null)
+
 const target = createResource({
   url: 'crm.api.revenue_target.get_current_target',
+  makeParams() {
+    return { employee: filters?.user || undefined }
+  },
   auto: true,
+})
+
+// Refetch whenever the admin picks a different salesperson from the
+// dashboard's dropdown.
+if (filters) {
+  watch(
+    () => filters.user,
+    () => target.reload(),
+  )
+}
+
+const donutConfig = computed(() => {
+  if (!target.data) return null
+  const achieved = target.data.achieved_revenue || 0
+  const remaining = Math.max(target.data.remaining_revenue || 0, 0)
+  if (!achieved && !remaining) return null
+  return {
+    data: [
+      { label: __('Achieved'), value: achieved },
+      { label: __('Remaining'), value: remaining },
+    ],
+    title: __('Target Achievement'),
+    subtitle: periodLabel.value,
+    categoryColumn: 'label',
+    valueColumn: 'value',
+    colors: ['green', 'gray'],
+  }
 })
 
 const periodLabel = computed(() => {
