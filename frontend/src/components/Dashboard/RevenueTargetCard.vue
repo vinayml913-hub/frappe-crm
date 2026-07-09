@@ -77,33 +77,30 @@
 import SetTargetModal from '@/components/Dashboard/SetTargetModal.vue'
 import { usersStore } from '@/stores/users'
 import { createResource, DonutChart } from 'frappe-ui'
-import { ref, computed, inject, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
+
+const props = defineProps({
+  employee: { type: String, default: null },
+})
 
 const { isAdmin } = usersStore()
 const showTargetModal = ref(false)
 
-// Same reactive filters object Dashboard.vue provides to every card on the
-// page (see `provide('filters', filters)` in Dashboard.vue) - this is what
-// the "Sales User" dropdown at the top of the dashboard writes to, so
-// reading it here is what makes this card follow that selection.
-const filters = inject('filters', null)
-
 const target = createResource({
   url: 'crm.api.revenue_target.get_current_target',
   makeParams() {
-    return { employee: filters?.user || undefined }
+    return { employee: props.employee || undefined }
   },
   auto: true,
 })
 
 // Refetch whenever the admin picks a different salesperson from the
-// dashboard's dropdown.
-if (filters) {
-  watch(
-    () => filters.user,
-    () => target.reload(),
-  )
-}
+// dashboard's "Sales User" dropdown (Dashboard.vue passes it in as the
+// `employee` prop).
+watch(
+  () => props.employee,
+  () => target.reload(),
+)
 
 const donutConfig = computed(() => {
   if (!target.data) return null
