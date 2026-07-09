@@ -42,7 +42,7 @@
       :rows="rows"
       doctype="CRM Deal"
     >
-      <ListRowItem :item="item" :align="column.align" class="overflow-hidden">
+      <ListRowItem :item="item" :align="column.align" class="overflow-hidden group">
         <template #prefix>
           <div
             v-if="column.key === '_assign'"
@@ -176,19 +176,32 @@
           />
           <div
             v-else-if="label"
-            class="truncate text-base"
-            @click="
-              (event) =>
-                emit('applyFilter', {
-                  event,
-                  idx,
-                  column,
-                  item,
-                  firstColumn: columns[0],
-                })
-            "
+            class="flex items-center gap-2 truncate text-base"
+            :class="column.align === 'right' ? 'justify-end' : ''"
           >
-            {{ getLabel(label, column) }}
+            <span
+              class="truncate"
+              @click="
+                (event) =>
+                  emit('applyFilter', {
+                    event,
+                    idx,
+                    column,
+                    item,
+                    firstColumn: columns[0],
+                  })
+              "
+            >
+              {{ getLabel(label, column) }}
+            </span>
+            <Tooltip v-if="column.align === 'right'" :text="__('Edit')">
+              <Button
+                variant="ghost"
+                icon="edit-2"
+                class="opacity-0 group-hover:opacity-100"
+                @click="(event) => openDealForEdit(event, row)"
+              />
+            </Tooltip>
           </div>
         </template>
       </ListRowItem>
@@ -266,6 +279,7 @@ const emit = defineEmits([
 ])
 
 const route = useRoute()
+const router = useRouter()
 
 const pageLengthCount = defineModel({ type: Number })
 const list = defineModel('list', { type: Object })
@@ -274,6 +288,16 @@ function getLabel(label, column) {
   if (column.type === 'Duration') return formatDuration(label)
   if (column.options && isTranslatable(column.options)) return __(label)
   return label
+}
+
+function openDealForEdit(event, row) {
+  event.stopPropagation()
+  event.preventDefault()
+  router.push({
+    name: 'Deal',
+    params: { dealId: row.name },
+    query: { view: route.query.view, viewType: route.params.viewType },
+  })
 }
 
 const isLikeFilterApplied = computed(() => {
