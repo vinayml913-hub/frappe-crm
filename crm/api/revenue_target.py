@@ -121,7 +121,7 @@ def get_current_target(employee: str | None = None) -> dict | None:
 	all_targets = frappe.get_all(
 		"CRM Revenue Target",
 		filters={"employee": employee},
-		fields=["name", "target_type", "year", "month", "quarter", "target_amount", "creation"],
+		fields=["name", "employee", "target_type", "year", "month", "quarter", "target_amount", "creation"],
 		order_by="creation desc",
 	)
 
