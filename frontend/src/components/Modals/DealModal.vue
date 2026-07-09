@@ -5,7 +5,7 @@
         <div class="mb-5 flex items-center justify-between">
           <div>
             <h3 class="text-2xl font-semibold leading-6 text-ink-gray-9">
-              {{ __('Create Deal') }}
+              {{ isEditMode ? __('Edit Deal') : __('Create Deal') }}
             </h3>
           </div>
           <div class="flex items-center gap-1">
@@ -27,7 +27,7 @@
         </div>
         <div>
           <div
-            v-if="hasOrganizationSections || hasContactSections"
+            v-if="!isEditMode && (hasOrganizationSections || hasContactSections)"
             class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3"
           >
             <div
@@ -46,7 +46,7 @@
             </div>
           </div>
           <div
-            v-if="hasOrganizationSections || hasContactSections"
+            v-if="!isEditMode && (hasOrganizationSections || hasContactSections)"
             class="h-px w-full border-t my-5"
           />
           <FieldLayout
@@ -56,7 +56,7 @@
             doctype="CRM Deal"
           />
 
-          <div class="mt-4 pt-4 border-t border-outline-gray-modals">
+          <div v-if="!isEditMode" class="mt-4 pt-4 border-t border-outline-gray-modals">
             <div class="text-sm font-medium text-ink-gray-6 mb-2">
               {{ __('Assign To') }}
               <span class="text-ink-gray-4 font-normal">
@@ -113,9 +113,9 @@
         <div class="flex flex-row-reverse gap-2">
           <Button
             variant="solid"
-            :label="__('Create')"
+            :label="isEditMode ? __('Update') : __('Create')"
             :loading="isDealCreating"
-            @click="createDeal"
+            @click="isEditMode ? updateDeal() : createDeal()"
           />
         </div>
       </div>
@@ -140,7 +140,12 @@ import { useRouter } from 'vue-router'
 
 const props = defineProps({
   defaults: { type: Object, default: () => ({}) },
+  dealName: { type: String, default: null },
 })
+
+const emit = defineEmits(['updated'])
+
+const isEditMode = computed(() => !!props.dealName)
 
 const { getUser, isManager, users } = usersStore()
 const { getDealStatus, statusOptions } = statusesStore()
@@ -173,7 +178,7 @@ const show = defineModel({ type: Boolean })
 const router = useRouter()
 const error = ref(null)
 
-const { document: deal, triggerOnBeforeCreate } = useDocument('CRM Deal')
+const { document: deal, triggerOnBeforeCreate } = useDocument('CRM Deal', props.dealName)
 
 const hasOrganizationSections = ref(true)
 const hasContactSections = ref(true)
@@ -322,6 +327,43 @@ async function createDeal() {
   })
 }
 
+async function updateDeal() {
+  error.value = null
+
+  if (deal.doc.website && !deal.doc.website.startsWith('http')) {
+    deal.doc.website = 'https://' + deal.doc.website
+  }
+  if (deal.doc.annual_revenue && typeof deal.doc.annual_revenue === 'string') {
+    deal.doc.annual_revenue = deal.doc.annual_revenue.replace(/,/g, '')
+  }
+  if (deal.doc.mobile_no && isNaN(deal.doc.mobile_no.replace(/[-+() ]/g, ''))) {
+    error.value = __('Mobile No. should be a number')
+    return
+  }
+  if (deal.doc.email && !deal.doc.email.includes('@')) {
+    error.value = __('Invalid email address')
+    return
+  }
+  if (!deal.doc.status) {
+    error.value = __('Status is required')
+    return
+  }
+
+  isDealCreating.value = true
+  deal.save.submit(null, {
+    onSuccess: () => {
+      isDealCreating.value = false
+      show.value = false
+      toast.success(__('Deal updated successfully'))
+      emit('updated')
+    },
+    onError: (err) => {
+      isDealCreating.value = false
+      error.value = err.messages?.join('\n') || err.message
+    },
+  })
+}
+
 function openQuickEntryModal() {
   showQuickEntryModal.value = true
   quickEntryProps.value = { doctype: 'CRM Deal' }
@@ -333,6 +375,8 @@ watch(show, (isOpen) => {
 })
 
 onMounted(() => {
+  if (isEditMode.value) return
+
   deal.doc.no_of_employees = '1-10'
   Object.assign(deal.doc, props.defaults)
 
