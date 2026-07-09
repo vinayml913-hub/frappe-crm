@@ -12,7 +12,7 @@
         variant="solid"
         :label="__('Create')"
         iconLeft="plus"
-        @click="showDealModal = true"
+        @click="openCreateDealModal"
       />
     </template>
   </LayoutHeader>
@@ -228,6 +228,7 @@
     @selectionsChanged="
       (selections) => viewControls.updateSelections(selections)
     "
+    @editDeal="openEditDealModal"
   />
   <EmptyState
     v-else-if="deals.data && !rows.length"
@@ -238,6 +239,8 @@
     v-if="showDealModal"
     v-model="showDealModal"
     :defaults="defaults"
+    :dealName="editDealName"
+    @updated="onDealUpdated"
   />
   <NoteModal
     v-if="showNoteModal"
@@ -296,6 +299,7 @@ const route = useRoute()
 
 const dealsListView = ref(null)
 const showDealModal = ref(false)
+const editDealName = ref(null)
 
 const defaults = reactive({})
 
@@ -305,6 +309,21 @@ const loadMore = ref(1)
 const triggerResize = ref(1)
 const updatedPageCount = ref(20)
 const viewControls = ref(null)
+
+function openCreateDealModal() {
+  editDealName.value = null
+  showDealModal.value = true
+}
+
+function openEditDealModal(dealName) {
+  editDealName.value = dealName
+  showDealModal.value = true
+}
+
+function onDealUpdated() {
+  editDealName.value = null
+  viewControls.value?.reload?.()
+}
 
 function getRow(name, field) {
   function getValue(value) {
@@ -505,6 +524,7 @@ function onNewClick(column) {
     defaults[column_field] = column.column.name
   }
 
+  editDealName.value = null
   showDealModal.value = true
 }
 
