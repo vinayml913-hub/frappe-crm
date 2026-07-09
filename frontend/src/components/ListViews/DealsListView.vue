@@ -238,7 +238,7 @@ import {
 } from 'frappe-ui'
 import { sessionStore } from '@/stores/session'
 import { ref, computed, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 defineProps({
   rows: { type: Array, required: true },
