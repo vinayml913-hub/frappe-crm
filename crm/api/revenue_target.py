@@ -102,9 +102,14 @@ def _is_admin() -> bool:
 @frappe.whitelist()
 def get_current_target(employee: str | None = None) -> dict | None:
 	"""
-	Returns the current-period target (whichever period covers today)
-	for the given employee. Non-admins can only ever fetch their own
-	target, regardless of what `employee` is passed as.
+	Returns the most relevant target for the given employee:
+	1. A target whose period actually covers today, if one exists.
+	2. Otherwise, the most recently created target for that employee
+	   (so admins see the target they just set even if it's for a
+	   past or future period, instead of the card going blank).
+
+	Non-admins can only ever fetch their own target, regardless of
+	what `employee` is passed as.
 	"""
 	if not _is_admin():
 		employee = frappe.session.user
@@ -112,33 +117,39 @@ def get_current_target(employee: str | None = None) -> dict | None:
 		employee = frappe.session.user
 
 	today = frappe.utils.nowdate()
-	today_year = frappe.utils.getdate(today).year
 
-	targets = frappe.get_all(
+	all_targets = frappe.get_all(
 		"CRM Revenue Target",
-		filters={"employee": employee, "year": today_year},
-		fields=["name", "employee", "target_type", "year", "month", "quarter", "target_amount"],
+		filters={"employee": employee},
+		fields=["name", "target_type", "year", "month", "quarter", "target_amount", "creation"],
+		order_by="creation desc",
 	)
 
-	# Prefer the most specific period that actually covers today:
-	# Monthly > Quarterly > Yearly
+	if not all_targets:
+		return None
+
+	today_year = frappe.utils.getdate(today).year
 	current_month_name = frappe.utils.formatdate(today, "MMMM")
 	current_quarter = f"Q{(frappe.utils.getdate(today).month - 1) // 3 + 1}"
 
+	this_year_targets = [t for t in all_targets if t.year == today_year]
+
 	monthly = next(
-		(t for t in targets if t.target_type == "Monthly" and t.month == current_month_name), None
+		(t for t in this_year_targets if t.target_type == "Monthly" and t.month == current_month_name),
+		None,
 	)
 	quarterly = next(
-		(t for t in targets if t.target_type == "Quarterly" and t.quarter == current_quarter), None
+		(t for t in this_year_targets if t.target_type == "Quarterly" and t.quarter == current_quarter),
+		None,
 	)
-	yearly = next((t for t in targets if t.target_type == "Yearly"), None)
+	yearly = next((t for t in this_year_targets if t.target_type == "Yearly"), None)
 
-	match = monthly or quarterly or yearly
-	if not match:
-		return None
+	# Prefer a target that actually covers today (Monthly > Quarterly > Yearly).
+	# Fall back to the most recently created target so the card never goes
+	# blank just because the set period doesn't include today.
+	match = monthly or quarterly or yearly or all_targets[0]
 
 	return _build_target_payload(match)
-
 
 @frappe.whitelist()
 def list_targets(employee: str | None = None) -> list[dict]:
