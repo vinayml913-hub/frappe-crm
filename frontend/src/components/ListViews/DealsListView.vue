@@ -276,6 +276,7 @@ const emit = defineEmits([
   'applyLikeFilter',
   'likeDoc',
   'selectionsChanged',
+  'editDeal',
 ])
 
 const route = useRoute()
@@ -293,11 +294,7 @@ function getLabel(label, column) {
 function openDealForEdit(event, row) {
   event.stopPropagation()
   event.preventDefault()
-  router.push({
-    name: 'Deal',
-    params: { dealId: row.name },
-    query: { view: route.query.view, viewType: route.params.viewType },
-  })
+  emit('editDeal', row.name)
 }
 
 const isLikeFilterApplied = computed(() => {
