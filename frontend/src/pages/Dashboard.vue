@@ -116,7 +116,7 @@
         </template>
       </Link>
     </div>
-    <RevenueTargetCard />
+    <RevenueTargetCard :employee="filters.user" />
     <div class="w-full overflow-y-scroll">
       <DashboardGrid
         v-if="!dashboardItems.loading && dashboardItems.data"
