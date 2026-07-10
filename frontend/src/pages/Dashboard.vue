@@ -117,6 +117,9 @@
       </Link>
     </div>
     <RevenueTargetCard :employee="filters.user" />
+    <div class="mx-5 mb-4">
+      <TargetAchievementChart :employee="filters.user" />
+    </div>
     <div class="w-full overflow-y-scroll">
       <DashboardGrid
         v-if="!dashboardItems.loading && dashboardItems.data"
@@ -155,6 +158,7 @@ import {
 } from 'frappe-ui'
 import { ref, reactive, computed, provide } from 'vue'
 import RevenueTargetCard from '@/components/Dashboard/RevenueTargetCard.vue'
+import TargetAchievementChart from '@/components/Dashboard/TargetAchievementChart.vue'
 
 const { users, getUser, isManager, isAdmin } = usersStore()
 
