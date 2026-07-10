@@ -56,10 +56,6 @@
         </div>
       </div>
 
-      <div v-if="donutConfig" class="relative h-56 w-full mt-4 overflow-hidden">
-        <DonutChart :config="donutConfig" />
-      </div>
-
       <div v-if="!target.data" class="text-sm text-ink-gray-4 py-2">
         {{ isAdmin() ? __('No target set for this period.') : __('No revenue target has been set for you yet.') }}
       </div>
@@ -76,7 +72,7 @@
 <script setup>
 import SetTargetModal from '@/components/Dashboard/SetTargetModal.vue'
 import { usersStore } from '@/stores/users'
-import { createResource, DonutChart } from 'frappe-ui'
+import { createResource } from 'frappe-ui'
 import { ref, computed, watch } from 'vue'
 
 const props = defineProps({
@@ -101,24 +97,6 @@ watch(
   () => props.employee,
   () => target.reload(),
 )
-
-const donutConfig = computed(() => {
-  if (!target.data) return null
-  const achieved = target.data.achieved_revenue || 0
-  const remaining = Math.max(target.data.remaining_revenue || 0, 0)
-  if (!achieved && !remaining) return null
-  return {
-    data: [
-      { label: __('Achieved'), value: achieved },
-      { label: __('Remaining'), value: remaining },
-    ],
-    title: __('Target Achievement'),
-    subtitle: periodLabel.value,
-    categoryColumn: 'label',
-    valueColumn: 'value',
-    colors: ['green', 'gray'],
-  }
-})
 
 const periodLabel = computed(() => {
   if (!target.data) return ''
