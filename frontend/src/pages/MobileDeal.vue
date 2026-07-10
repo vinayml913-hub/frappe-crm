@@ -502,6 +502,8 @@ const sections = createResource({
 function getParsedFields(sections) {
   sections.forEach((section) => {
     if (section.name == 'contacts_section') return
+    if (section.name == 'assigned_team_section') return
+    if (!section.columns || !section.columns.length) return
     section.columns[0].fields.forEach((field) => {
       if (field.name == 'organization') {
         field.create = (value, close) => {
