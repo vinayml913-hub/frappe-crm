@@ -631,6 +631,8 @@ if (!sections.data) sections.fetch()
 function getParsedSections(_sections) {
   _sections.forEach((section) => {
     if (section.name == 'contacts_section') return
+    if (section.name == 'assigned_team_section') return
+    if (!section.columns || !section.columns.length) return
     section.columns[0].fields.forEach((field) => {
       if (field.fieldname == 'organization') {
         field.create = (value, close) => {
