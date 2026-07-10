@@ -30,7 +30,6 @@ def execute():
 			"CRM Deal Status",
 			old_name,
 			new_name,
-			ignore_permissions=True,
 			force=True,
 		)
 
