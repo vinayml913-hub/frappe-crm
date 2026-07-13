@@ -116,11 +116,12 @@
         </template>
       </Link>
     </div>
-    <RevenueTargetCard :employee="filters.user" />
-    <div class="mx-5 mb-4">
-      <TargetAchievementChart :employee="filters.user" />
-    </div>
+
     <div class="w-full overflow-y-scroll">
+      <div class="mx-5 mb-4">
+        <RevenueTargetCard :employee="filters.user" />
+        <TargetAchievementChart :employee="filters.user" />
+      </div>
       <DashboardGrid
         v-if="!dashboardItems.loading && dashboardItems.data"
         v-model="dashboardItems.data"
