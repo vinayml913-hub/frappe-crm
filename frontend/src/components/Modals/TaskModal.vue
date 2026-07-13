@@ -208,6 +208,7 @@ const editMode = ref(false)
 const _task = ref({
   title: '',
   description: '',
+  response: '',
   due_date: '',
   status: 'Backlog',
   priority: 'Low',
