@@ -5,6 +5,22 @@ import frappe
 from frappe.model.document import Document
 
 from crm.api.exchange_rate import get_exchange_rate
+from crm.utils.permissions import owner_only_has_permission, owner_only_query_conditions
+
+# Record-level access to CRM Organization ("Client" in the sidebar) is
+# strict "creator only", same rule as CRM Deal - see
+# crm.utils.permissions. Only System Manager/Administrator bypass this.
+
+
+def has_permission(doc, ptype=None, user=None):
+	"""A CRM Organization is visible only to the user who created it, or
+	to a System Manager/Administrator."""
+	return owner_only_has_permission(doc, ptype=ptype, user=user)
+
+
+def get_permission_query_conditions(user=None):
+	"""List/kanban/report view counterpart to has_permission() above."""
+	return owner_only_query_conditions("CRM Organization", user=user)
 
 
 class CRMOrganization(Document):
