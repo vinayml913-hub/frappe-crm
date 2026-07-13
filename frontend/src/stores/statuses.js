@@ -12,11 +12,11 @@ export const statusesStore = defineStore('crm-statuses', () => {
 
   const { capture } = useTelemetry()
 
-  const leadStatuses = createListResource({
+const leadStatuses = createListResource({
     doctype: 'CRM Lead Status',
     fields: ['name', 'color', 'position', 'type'],
     orderBy: 'position asc',
-    cache: 'lead-statuses',
+    cache: 'lead-statuses-v2',
     initialData: [],
     auto: true,
     transform(statuses) {
@@ -32,7 +32,7 @@ export const statusesStore = defineStore('crm-statuses', () => {
     doctype: 'CRM Deal Status',
     fields: ['name', 'color', 'position', 'type'],
     orderBy: 'position asc',
-    cache: 'deal-statuses',
+    cache: 'deal-statuses-v2',
     initialData: [],
     auto: true,
     transform(statuses) {
