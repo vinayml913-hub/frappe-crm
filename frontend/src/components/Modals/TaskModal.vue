@@ -133,6 +133,20 @@
             </span>
           </div>
         </div>
+        <div v-if="editMode">
+          <div class="mb-1.5 text-xs text-ink-gray-5">
+            {{ __('Response') }}
+          </div>
+          <TextEditor
+            ref="response"
+            variant="outline"
+            editor-class="!prose-sm overflow-auto min-h-[120px] max-h-60 py-1.5 px-2 rounded border border-[--surface-gray-2] bg-surface-gray-2 placeholder-ink-gray-4 hover:border-outline-gray-modals hover:bg-surface-gray-3 hover:shadow-sm focus:bg-surface-white focus:border-outline-gray-4 focus:shadow-sm focus:ring-0 focus-visible:ring-2 focus-visible:ring-outline-gray-3 text-ink-gray-8 transition-colors"
+            :bubbleMenu="true"
+            :content="_task.response"
+            :placeholder="__('Add your response here...')"
+            @change="(val) => (_task.response = val)"
+          />
+        </div>
       </div>
     </template>
     <template #actions>
