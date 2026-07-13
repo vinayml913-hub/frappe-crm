@@ -130,12 +130,14 @@ before_uninstall = "crm.uninstall.before_uninstall"
 
 permission_query_conditions = {
 	"CRM Deal": "crm.fcrm.doctype.crm_deal.crm_deal.get_permission_query_conditions",
+	"CRM Lead": "crm.fcrm.doctype.crm_lead.crm_lead.get_permission_query_conditions",
 	"CRM Organization": "crm.fcrm.doctype.crm_organization.crm_organization.get_permission_query_conditions",
 	"Contact": "crm.overrides.contact.get_permission_query_conditions",
 }
 
 has_permission = {
 	"CRM Deal": "crm.fcrm.doctype.crm_deal.crm_deal.has_permission",
+	"CRM Lead": "crm.fcrm.doctype.crm_lead.crm_lead.has_permission",
 	"CRM Organization": "crm.fcrm.doctype.crm_organization.crm_organization.has_permission",
 	"Contact": "crm.overrides.contact.has_permission",
 }
