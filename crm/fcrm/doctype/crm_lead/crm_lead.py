@@ -14,6 +14,23 @@ from crm.fcrm.doctype.crm_status_change_log.crm_status_change_log import (
 	add_status_change_log,
 )
 from crm.fcrm.doctype.utils import add_or_remove_lost_reason_section_in_sidepanel
+from crm.utils.permissions import owner_only_has_permission, owner_only_query_conditions
+
+# Record-level access to CRM Lead is strict "creator only", same rule as
+# CRM Organization/Contact - see crm.utils.permissions. Only System
+# Manager/Administrator bypass this. (Unlike CRM Deal, lead_owner/
+# assign_to do NOT grant access here - confirmed with the business.)
+
+
+def has_permission(doc, ptype=None, user=None):
+	"""A CRM Lead is visible only to the user who created it, or to a
+	System Manager/Administrator."""
+	return owner_only_has_permission(doc, ptype=ptype, user=user)
+
+
+def get_permission_query_conditions(user=None):
+	"""List/kanban/report view counterpart to has_permission() above."""
+	return owner_only_query_conditions("CRM Lead", user=user)
 
 
 class CRMLead(Document):
