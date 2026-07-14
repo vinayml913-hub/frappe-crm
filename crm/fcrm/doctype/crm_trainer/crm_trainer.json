@@ -245,7 +245,9 @@
    "write": 0
   }
  ],
+ "search_fields": "trainer_name,phone,email",
  "sort_field": "modified",
  "sort_order": "DESC",
+ "title_field": "trainer_name",
  "track_changes": 1
 }
