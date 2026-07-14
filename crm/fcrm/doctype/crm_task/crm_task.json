@@ -18,7 +18,9 @@
   "status",
   "due_date",
   "section_break_bzhd",
-  "description"
+  "description",
+  "response_section",
+  "response"
  ],
  "fields": [
   {
