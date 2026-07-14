@@ -454,6 +454,7 @@ def get_linked_calls(name: str):
 				"name",
 				"title",
 				"description",
+				"response",
 				"assigned_to",
 				"due_date",
 				"priority",
@@ -484,6 +485,7 @@ def get_linked_tasks(name: str):
 			"name",
 			"title",
 			"description",
+			"response",
 			"assigned_to",
 			"due_date",
 			"priority",
@@ -493,7 +495,6 @@ def get_linked_tasks(name: str):
 		],
 	)
 	return tasks or []
-
 
 def parse_attachment_log(html: str, type: str):
 	soup = BeautifulSoup(html, "html.parser")
