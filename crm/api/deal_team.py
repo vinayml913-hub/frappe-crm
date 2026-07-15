@@ -296,7 +296,25 @@ def assign_team_on_create(deal_name, users):
 	if not frappe.has_permission("CRM Deal", "write", deal_name):
 		frappe.throw(_("You do not have permission to modify this Deal."), frappe.PermissionError)
 
-	current = _get_assigned_users(deal_name)
+	# `current` would incorrectly include deal_owner/sales_manager/
+	# account_manager/training_engagement_manager here - those fields
+	# already auto-assign (and notify) whoever they're set to, as part
+	# of the same insert() that just created this Deal, which happens
+	# BEFORE this separate follow-up request runs. Excluding them from
+	# this check means the creator's one-time "Assign To" addition still
+	# goes through on a freshly created Deal; the guard still correctly
+	# blocks a second, later call (e.g. someone genuinely added via this
+	# same endpoint before) since those users aren't excluded.
+	auto_assigned_via_fields = {
+		value
+		for value in frappe.db.get_value(
+			"CRM Deal", deal_name,
+			["deal_owner", "sales_manager", "account_manager", "training_engagement_manager"],
+			as_dict=True,
+		).values()
+		if value
+	}
+	current = [u for u in _get_assigned_users(deal_name) if u not in auto_assigned_via_fields]
 	if current:
 		frappe.throw(
 			_("This Deal already has an assigned team. "
