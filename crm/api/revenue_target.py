@@ -1,7 +1,8 @@
 import frappe
 from frappe import _
-from frappe.query_builder import DocType, Case
+from frappe.query_builder import DocType
 from frappe.query_builder.functions import Coalesce, Sum
+from pypika import Case
 
 MONTH_TO_NUM = {
 	"January": 1, "February": 2, "March": 3, "April": 4,
@@ -38,9 +39,7 @@ def _get_achieved_revenue(employee: str, from_date: str, to_date: str) -> float:
 	field - it's `training_commercial` when the sales rep fills it in
 	directly, or the auto-calculated `final_amount` (from
 	CRMDeal.calculate_financials: Trainer Cost + Margin% + GST) when
-	left blank. This mirrors that same fallback rule already used on
-	the Deal form itself - no new revenue-calculation logic invented
-	here, just reading the field PBS Deal actually populates.
+	left blank.
 	"""
 	Deal = DocType("CRM Deal")
 	Status = DocType("CRM Deal Status")
@@ -66,6 +65,24 @@ def _get_achieved_revenue(employee: str, from_date: str, to_date: str) -> float:
 		.run(as_dict=True)
 	)
 	return float(result[0].total or 0) if result else 0.0
+
+
+def _get_status(achievement_percentage: float) -> str:
+	if achievement_percentage >= 100:
+		return "Completed"
+	if achievement_percentage >= 70:
+		return "On Track"
+	return "Behind Target"
+
+
+def _build_target_payload(target: dict) -> dict:
+	from_date, to_date = _get_period_dates(
+		target["target_type"], target["year"], target.get("month"), target.get("quarter")
+	)
+	achieved = _get_achieved_revenue(target["employee"], from_date, to_date)
+	target_amount = float(target["target_amount"] or 0)
+	remaining = target_amount - achieved
+	achievement_percentage = (achieved / target_amount * 100) if target_amount else 0
 
 	return {
 		"name": target["name"],
@@ -139,6 +156,7 @@ def get_current_target(employee: str | None = None) -> dict | None:
 	match = monthly or quarterly or yearly or all_targets[0]
 
 	return _build_target_payload(match)
+
 
 @frappe.whitelist()
 def list_targets(employee: str | None = None) -> list[dict]:
