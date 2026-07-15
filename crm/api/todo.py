@@ -14,7 +14,25 @@ def after_insert(doc, method):
 			)
 
 	if doc.reference_type in ["CRM Lead", "CRM Deal", "CRM Task"] and doc.reference_name and doc.allocated_to:
-		notify_assigned_user(doc)
+		_notify_assigned_user_safely(doc)
+
+
+def _notify_assigned_user_safely(doc, is_cancelled=False):
+	"""Wraps notify_assigned_user() so a notification failure (bad data,
+	a transient DB/email issue, etc.) can never block or roll back the
+	actual assignment - same safety pattern already used in
+	crm.api.deal_team._notify_new_team_members(). Without this guard, an
+	exception here propagates up through the ToDo `after_insert`/
+	`on_update` doc_event and can abort the whole request (including the
+	Deal/Lead save that triggered the assignment), which can look like
+	"assignment doesn't seem to notify - or even work" from the outside."""
+	try:
+		notify_assigned_user(doc, is_cancelled=is_cancelled)
+	except Exception:
+		frappe.log_error(
+			title="CRM Assignment Notification Failed",
+			message=frappe.get_traceback(),
+		)
 
 
 def on_update(doc, method):
@@ -25,7 +43,7 @@ def on_update(doc, method):
 		and doc.reference_name
 		and doc.allocated_to
 	):
-		notify_assigned_user(doc, is_cancelled=True)
+		_notify_assigned_user_safely(doc, is_cancelled=True)
 
 
 def notify_assigned_user(doc, is_cancelled=False):
