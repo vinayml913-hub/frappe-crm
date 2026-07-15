@@ -193,6 +193,21 @@ class CRMDeal(Document):
 		if not self.is_new() and self.has_value_changed("deal_owner") and self.deal_owner:
 			self.share_with_agent(self.deal_owner)
 			self.assign_agent(self.deal_owner)
+		# Team fields (Sales Manager / Solution Manager / Training Engagement
+		# Co-ordinator) only ever set a plain value on the record - unlike
+		# deal_owner, they never actually notified anyone. Give them the
+		# same assign (-> ToDo -> notification) behaviour deal_owner
+		# already gets, whenever one of these fields is set/changed.
+		# NOTE: deliberately NOT calling share_with_agent() here - that
+		# method is written to be exclusive to a single agent (it revokes
+		# DocShare from anyone else), so calling it for three different
+		# people would keep clobbering each other's access. It's also
+		# unnecessary: view access for these fields is already granted
+		# independently via has_permission()'s DEAL_PERSON_FIELDS check.
+		if not self.is_new():
+			for fieldname in ("sales_manager", "account_manager", "training_engagement_manager"):
+				if self.has_value_changed(fieldname) and self.get(fieldname):
+					self.assign_agent(self.get(fieldname))
 		if self.has_value_changed("status"):
 			add_status_change_log(self)
 			if frappe.db.get_value("CRM Deal Status", self.status, "type") == "Won":
@@ -207,6 +222,15 @@ class CRMDeal(Document):
 			if self.deal_owner != frappe.session.user:
 				self.share_with_agent(self.deal_owner)
 			self.assign_agent(self.deal_owner)
+		# Same Team-field notification fix as validate() above, for the
+		# case where these fields are already filled in on first creation
+		# (e.g. the "Team" section of the New Deal dialog) rather than
+		# added later as an edit. No share_with_agent() here either - see
+		# the comment in validate() for why.
+		for fieldname in ("sales_manager", "account_manager", "training_engagement_manager"):
+			value = self.get(fieldname)
+			if value:
+				self.assign_agent(value)
 
 	def before_save(self):
 		self.apply_sla()
