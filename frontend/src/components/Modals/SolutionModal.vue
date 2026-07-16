@@ -21,6 +21,17 @@
     <template #body-content>
       <div class="flex flex-col gap-4">
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div class="sm:col-span-2">
+            <div class="mb-1.5 text-xs text-ink-gray-5">
+              {{ __('Existing Trainer Profile (optional)') }}
+            </div>
+            <Link
+              v-model="_solution.trainer"
+              class="form-control"
+              doctype="CRM Trainer"
+              :placeholder="__('Search existing trainers to auto-fill')"
+            />
+          </div>
           <FormControl
             ref="trainerName"
             v-model="_solution.trainer_name"
@@ -48,6 +59,12 @@
             type="number"
             :label="__('Costing for Training (in days/hour)')"
             :placeholder="__('0.00')"
+          />
+          <FormControl
+            v-model="_solution.costing_type"
+            type="select"
+            :label="__('Costing Type')"
+            :options="['Per Day', 'Per Hour']"
           />
           <FormControl
             v-model="_solution.lab_cost"
@@ -122,6 +139,8 @@
               v-for="a in attachments"
               :key="a.file_url"
               :label="a.file_name"
+              class="cursor-pointer"
+              @click="downloadAttachment(a)"
             >
               <template #suffix>
                 <FeatherIcon
@@ -140,7 +159,14 @@
       </div>
     </template>
     <template #actions>
-      <div class="flex justify-end">
+      <div class="flex items-center justify-between gap-2">
+        <Button
+          v-if="_solution.name && _solution.reference_doctype == 'CRM Deal'"
+          :label="__('Select as Trainer for this Deal')"
+          :loading="selecting"
+          @click="selectAsTrainer"
+        />
+        <div v-else />
         <Button
           :label="editMode ? __('Done') : __('Create')"
           variant="solid"
@@ -182,6 +208,7 @@ const { getUser } = usersStore()
 
 const error = ref(null)
 const loading = ref(false)
+const selecting = ref(false)
 const trainerName = ref(null)
 const editMode = ref(false)
 let _solution = ref({})
@@ -189,6 +216,44 @@ const attachments = ref([])
 
 function removeAttachment(attachment) {
   attachments.value = attachments.value.filter((a) => a !== attachment)
+}
+
+function downloadAttachment(attachment) {
+  window.open(attachment.file_url, '_blank')
+}
+
+async function onTrainerPicked(trainerId) {
+  if (!trainerId) return
+  try {
+    const trainer = await call('frappe.client.get', {
+      doctype: 'CRM Trainer',
+      name: trainerId,
+    })
+    _solution.value.trainer_name = trainer.trainer_name
+    _solution.value.trainer_experience = trainer.experience
+    _solution.value.location = trainer.location
+    _solution.value.costing_for_training = trainer.commercial
+    _solution.value.costing_type = trainer.commercial_type
+  } catch (err) {
+    // ignore - user can still fill fields manually
+  }
+}
+
+async function selectAsTrainer() {
+  if (!_solution.value.name) return
+  selecting.value = true
+  try {
+    await call('crm.api.activities.select_solution_as_trainer', {
+      solution: _solution.value.name,
+    })
+    emit('after', _solution.value)
+    show.value = false
+  } catch (err) {
+    error.value =
+      err?.messages?.[0] || err?.message || 'Could not update the deal'
+  } finally {
+    selecting.value = false
+  }
 }
 
 async function updateSolution() {
@@ -241,6 +306,13 @@ function redirect() {
   }
   router.push({ name: name, params: params })
 }
+
+watch(
+  () => _solution.value.trainer,
+  (trainerId, oldId) => {
+    if (trainerId && trainerId !== oldId) onTrainerPicked(trainerId)
+  },
+)
 
 watch(
   () => show.value,
