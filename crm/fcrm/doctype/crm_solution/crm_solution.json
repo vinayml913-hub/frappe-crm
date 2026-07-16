@@ -8,11 +8,13 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "trainer",
   "trainer_name",
   "trainer_experience",
   "location",
   "column_break_1",
   "costing_for_training",
+  "costing_type",
   "lab_cost",
   "duration",
   "section_break_availability",
@@ -25,6 +27,12 @@
   "reference_docname"
  ],
  "fields": [
+  {
+   "fieldname": "trainer",
+   "fieldtype": "Link",
+   "label": "Trainer (existing profile)",
+   "options": "CRM Trainer"
+  },
   {
    "fieldname": "trainer_name",
    "fieldtype": "Data",
@@ -54,6 +62,13 @@
    "fieldtype": "Currency",
    "in_list_view": 1,
    "label": "Costing for Training (in days/hour)"
+  },
+  {
+   "default": "Per Day",
+   "fieldname": "costing_type",
+   "fieldtype": "Select",
+   "label": "Costing Type",
+   "options": "Per Day\nPer Hour"
   },
   {
    "fieldname": "lab_cost",
