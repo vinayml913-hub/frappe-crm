@@ -374,17 +374,34 @@ watch(show, (isOpen) => {
   if (isOpen) assignToOnCreate.value = []
 })
 
-onMounted(() => {
-  if (isEditMode.value) return
+// In edit mode, decide up front whether to show the "existing
+// organization/contact" Link section or the "type a new one" details
+// section, based on what the deal already has - instead of always
+// defaulting to the typed-entry section (which writes to
+// organization_name/first_name/etc, NOT the real organization/contact
+// Link fields the rest of the CRM reads from). Waiting on deal.doc.name
+// here because useDocument() loads the existing record asynchronously.
+watch(
+  () => deal.doc?.name,
+  (name) => {
+    if (!name) return
 
-  deal.doc.no_of_employees = '1-10'
-  Object.assign(deal.doc, props.defaults)
+    if (isEditMode.value) {
+      chooseExistingOrganization.value = !!deal.doc.organization
+      chooseExistingContact.value = !!deal.doc.contact
+      return
+    }
 
-  if (!deal.doc.deal_owner) {
-    deal.doc.deal_owner = getUser().name
-  }
-  if (!deal.doc.status && dealStatuses.value[0].value) {
-    deal.doc.status = dealStatuses.value[0].value
-  }
-})
+    deal.doc.no_of_employees = '1-10'
+    Object.assign(deal.doc, props.defaults)
+
+    if (!deal.doc.deal_owner) {
+      deal.doc.deal_owner = getUser().name
+    }
+    if (!deal.doc.status && dealStatuses.value[0].value) {
+      deal.doc.status = dealStatuses.value[0].value
+    }
+  },
+  { immediate: true },
+)
 </script>
