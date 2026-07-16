@@ -318,6 +318,49 @@ def get_lead_activities(name: str):
 	return activities, calls, notes, tasks, attachments, solutions
 
 
+@frappe.whitelist()
+def select_solution_as_trainer(solution: str):
+	"""Push a sourced Solution's trainer info onto the linked Deal/Lead
+	and (if not already linked) create a reusable CRM Trainer record."""
+	solution_doc = frappe.get_doc("CRM Solution", solution)
+
+	if not frappe.has_permission(solution_doc.reference_doctype, "write", solution_doc.reference_docname):
+		frappe.throw(_("Not permitted"), frappe.PermissionError)
+
+	trainer_name = solution_doc.trainer
+	if not trainer_name:
+		trainer_doc = frappe.get_doc(
+			{
+				"doctype": "CRM Trainer",
+				"trainer_name": solution_doc.trainer_name,
+				"experience": solution_doc.trainer_experience,
+				"location": solution_doc.location,
+				"commercial": solution_doc.costing_for_training,
+				"commercial_type": solution_doc.costing_type or "Per Day",
+			}
+		)
+		trainer_doc.insert(ignore_permissions=True)
+		trainer_name = trainer_doc.name
+		solution_doc.trainer = trainer_name
+		solution_doc.save(ignore_permissions=True)
+
+	if solution_doc.reference_doctype != "CRM Deal":
+		return {"trainer": trainer_name}
+
+	deal = frappe.get_doc("CRM Deal", solution_doc.reference_docname)
+	deal.trainer = trainer_name
+	deal.trainer_status = "Confirmed"
+	if solution_doc.costing_for_training:
+		deal.trainer_commercial = solution_doc.costing_for_training
+	if solution_doc.costing_type:
+		deal.costing_type = solution_doc.costing_type
+	if solution_doc.lab_cost:
+		deal.lab_expense = solution_doc.lab_cost
+	deal.save(ignore_permissions=True)
+
+	return {"trainer": trainer_name, "deal": deal.name}
+
+
 def get_attachments(doctype: str, name: str):
 	return (
 		frappe.db.get_all(
