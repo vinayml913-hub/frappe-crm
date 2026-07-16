@@ -1,0 +1,253 @@
+{
+ "actions": [],
+ "autoname": "naming_series:",
+ "creation": "2026-06-01 00:00:00",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "trainer_name",
+  "phone",
+  "alternate_phone",
+  "email",
+  "linkedin_profile",
+  "location",
+  "column_break_1",
+  "technology_expert_in",
+  "skill_level",
+  "experience",
+  "availability",
+  "status",
+  "section_break_commercial",
+  "commercial",
+  "commercial_type",
+  "company",
+  "remarks",
+  "section_audit",
+  "creation",
+  "owner",
+  "column_break_audit",
+  "modified",
+  "modified_by"
+ ],
+ "fields": [
+  {
+   "default": "CRM-TRAINER-.YYYY.-",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "CRM-TRAINER-.YYYY.-"
+  },
+  {
+   "fieldname": "trainer_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Trainer Name",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "phone",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Phone Number",
+   "options": "Phone"
+  },
+  {
+   "fieldname": "alternate_phone",
+   "fieldtype": "Data",
+   "in_list_view": 0,
+   "label": "Alternative Phone Number",
+   "options": "Phone"
+  },
+  {
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Email",
+   "options": "Email",
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "linkedin_profile",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "LinkedIn Profile"
+  },
+  {
+   "fieldname": "location",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Location"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "technology_expert_in",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Technology Expert In"
+  },
+  {
+   "fieldname": "skill_level",
+   "fieldtype": "Select",
+   "label": "Skill Level",
+   "options": "\nBeginner\nIntermediate\nAdvanced\nExpert"
+  },
+  {
+   "fieldname": "experience",
+   "fieldtype": "Data",
+   "label": "Experience"
+  },
+  {
+   "fieldname": "availability",
+   "fieldtype": "Select",
+   "label": "Availability",
+   "options": "\nAvailable\nPartially Available\nNot Available"
+  },
+  {
+   "default": "Active",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Active\nInactive\nBlacklisted"
+  },
+  {
+   "fieldname": "section_break_commercial",
+   "fieldtype": "Section Break",
+   "label": "Commercial"
+  },
+  {
+   "fieldname": "commercial",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Commercial"
+  },
+  {
+   "default": "Per Day",
+   "fieldname": "commercial_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Commercial Type",
+   "options": "Per Day\nPer Hour"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Data",
+   "label": "Company"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Text Editor",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "section_audit",
+   "fieldtype": "Section Break",
+   "label": "Audit Information"
+  },
+  {
+   "fieldname": "creation",
+   "fieldtype": "Datetime",
+   "label": "Created On",
+   "read_only": 1,
+   "in_list_view": 0
+  },
+  {
+   "fieldname": "owner",
+   "fieldtype": "Link",
+   "label": "Created By",
+   "options": "User",
+   "read_only": 1,
+   "in_list_view": 0
+  },
+  {
+   "fieldname": "column_break_audit",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "modified",
+   "fieldtype": "Datetime",
+   "label": "Last Updated On",
+   "read_only": 1,
+   "in_list_view": 0
+  },
+  {
+   "fieldname": "modified_by",
+   "fieldtype": "Link",
+   "label": "Last Updated By",
+   "options": "User",
+   "read_only": 1,
+   "in_list_view": 0
+  }
+ ],
+ "links": [],
+ "modified": "2026-07-02 00:00:00",
+ "modified_by": "Administrator",
+ "module": "FCRM",
+ "name": "CRM Trainer",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Sales Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 0,
+   "export": 0,
+   "print": 1,
+   "read": 1,
+   "report": 0,
+   "role": "Sales User",
+   "share": 0,
+   "write": 1
+  },
+  {
+   "create": 0,
+   "delete": 0,
+   "email": 0,
+   "export": 0,
+   "print": 0,
+   "read": 1,
+   "report": 0,
+   "role": "Solution Manager",
+   "share": 0,
+   "write": 0
+  }
+ ],
+ "search_fields": "trainer_name,phone,email",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "title_field": "trainer_name",
+ "track_changes": 1
+}

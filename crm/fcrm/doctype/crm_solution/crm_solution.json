@@ -1,0 +1,174 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "creation": "2026-07-16 00:00:00",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "trainer_name",
+  "trainer_experience",
+  "location",
+  "column_break_1",
+  "costing_for_training",
+  "lab_cost",
+  "duration",
+  "section_break_availability",
+  "availability_for_training",
+  "availability_for_discussion_call",
+  "column_break_2",
+  "sm",
+  "section_break_reference",
+  "reference_doctype",
+  "reference_docname"
+ ],
+ "fields": [
+  {
+   "fieldname": "trainer_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Trainer Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "trainer_experience",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Trainer Experience"
+  },
+  {
+   "fieldname": "location",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Location"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "costing_for_training",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Costing for Training (in days/hour)"
+  },
+  {
+   "fieldname": "lab_cost",
+   "fieldtype": "Currency",
+   "label": "Lab Cost"
+  },
+  {
+   "fieldname": "duration",
+   "fieldtype": "Data",
+   "label": "Duration (in days/hour)"
+  },
+  {
+   "fieldname": "section_break_availability",
+   "fieldtype": "Section Break",
+   "label": "Availability"
+  },
+  {
+   "fieldname": "availability_for_training",
+   "fieldtype": "Data",
+   "label": "Availability for Training"
+  },
+  {
+   "fieldname": "availability_for_discussion_call",
+   "fieldtype": "Data",
+   "label": "Availability for Discussion Call"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "sm",
+   "fieldtype": "Link",
+   "label": "SM",
+   "options": "User"
+  },
+  {
+   "fieldname": "section_break_reference",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "CRM Deal",
+   "fieldname": "reference_doctype",
+   "fieldtype": "Link",
+   "label": "Reference Document Type",
+   "options": "DocType"
+  },
+  {
+   "fieldname": "reference_docname",
+   "fieldtype": "Dynamic Link",
+   "label": "Reference Doc",
+   "options": "reference_doctype"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-07-16 00:00:00",
+ "modified_by": "Administrator",
+ "module": "FCRM",
+ "name": "CRM Solution",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Sales Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Sales User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Solution Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "trainer_name",
+ "track_changes": 1
+}

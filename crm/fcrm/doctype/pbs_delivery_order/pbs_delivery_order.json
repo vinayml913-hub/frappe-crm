@@ -1,0 +1,169 @@
+{
+ "actions": [],
+ "creation": "2026-01-01 00:00:00",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "product_code",
+  "item",
+  "description",
+  "delivery_product_type",
+  "column_break_1",
+  "qty",
+  "rate",
+  "amount",
+  "status",
+  "section_break_dates",
+  "start_date",
+  "end_date",
+  "column_break_2",
+  "delivery_order_number",
+  "account",
+  "section_break_persons",
+  "sales_manager",
+  "account_manager",
+  "column_break_3",
+  "delivery_person",
+  "trainers"
+ ],
+ "fields": [
+  {
+   "fieldname": "product_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Product Code"
+  },
+  {
+   "fieldname": "item",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Description"
+  },
+  {
+   "fieldname": "delivery_product_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Delivery Product Type",
+   "options": "\nProduct\nService\nLicense\nTraining\nSupport"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Qty",
+   "reqd": 1
+  },
+  {
+   "fieldname": "rate",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Rate"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Open\nIn Progress\nDelivered\nCancelled\nOn Hold"
+  },
+  {
+   "fieldname": "section_break_dates",
+   "fieldtype": "Section Break",
+   "label": "Dates & Reference"
+  },
+  {
+   "fieldname": "start_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Start Date"
+  },
+  {
+   "fieldname": "end_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "End Date"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "delivery_order_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Delivery Order Number"
+  },
+  {
+   "fieldname": "account",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Account"
+  },
+  {
+   "fieldname": "section_break_persons",
+   "fieldtype": "Section Break",
+   "label": "Persons"
+  },
+  {
+   "fieldname": "sales_manager",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Sales Manager",
+   "options": "User"
+  },
+  {
+   "fieldname": "account_manager",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Solution Manager",
+   "options": "User"
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "delivery_person",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Delivery Person",
+   "options": "User"
+  },
+  {
+   "fieldname": "trainers",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Trainers"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-06-01 00:00:00",
+ "modified_by": "Administrator",
+ "module": "FCRM",
+ "name": "PBS Delivery Order",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

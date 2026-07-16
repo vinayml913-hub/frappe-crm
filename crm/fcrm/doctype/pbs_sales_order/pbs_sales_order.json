@@ -1,0 +1,246 @@
+{
+ "actions": [],
+ "autoname": "format:SO-{YYYY}-{#####}",
+ "creation": "2026-05-28",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "so_number",
+  "deal",
+  "organization",   
+  "contact_person",
+  "status",
+  "amount",
+  "total_expense",
+  "gross_profit",
+  "gross_profit_percentage",
+  "sales_manager",
+  "account_manager",
+  "delivery_date",
+  "lab_required",
+  "training_required",
+  "notes",
+  "delivery_orders_section",
+  "delivery_orders",
+  "email",
+  "phone",
+  "company",
+  "technology",
+  "trainer_assigned",
+  "delivery_type",
+  "project_duration",
+  "start_date",
+  "end_date",
+  "delivery_manager",
+  "tax",
+  "discount",
+  "final_amount",
+  "payment_status"
+ ],
+ "fields": [
+  {
+   "fieldname": "deal",
+   "fieldtype": "Link",
+   "label": "Deal",
+   "options": "CRM Deal"
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "label": "Organization",
+   "options": "CRM Organization"
+  },
+  {
+   "fieldname": "contact_person",
+   "fieldtype": "Link",
+   "label": "Contact Person",
+   "options": "Contact"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Open\nIn Progress\nDelivered\nClosed\nCancelled\nArchived"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "label": "Amount"
+  },
+  {
+   "fieldname": "total_expense",
+   "fieldtype": "Currency",
+   "label": "Total Expense"
+  },
+  {
+   "fieldname": "gross_profit",
+   "fieldtype": "Currency",
+   "label": "Gross Profit"
+  },
+  {
+   "fieldname": "gross_profit_percentage",
+   "fieldtype": "Percent",
+   "label": "Gross Profit %"
+  },
+  {
+   "fieldname": "sales_manager",
+   "fieldtype": "Link",
+   "label": "Sales Manager",
+   "options": "User"
+  },
+  {
+   "fieldname": "account_manager",
+   "fieldtype": "Link",
+   "label": "Solution Manager",
+   "options": "User"
+  },
+  {
+   "fieldname": "delivery_date",
+   "fieldtype": "Date",
+   "label": "Delivery Date"
+  },
+  {
+   "fieldname": "lab_required",
+   "fieldtype": "Check",
+   "label": "Lab Required"
+  },
+  {
+   "fieldname": "training_required",
+   "fieldtype": "Check",
+   "label": "Training Required"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Text Editor",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "delivery_orders_section",
+   "fieldtype": "Section Break",
+   "label": "Delivery Orders"
+  },
+  {
+   "fieldname": "delivery_orders",
+   "fieldtype": "Table",
+   "label": "Delivery Orders",
+   "options": "PBS Delivery Order"
+  },
+  {
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "label": "Email",
+   "options": "Email"
+  },
+  {
+   "fieldname": "phone",
+   "fieldtype": "Data",
+   "label": "Phone Number",
+   "options": "Phone"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Data",
+   "label": "Company"
+  },
+  {
+   "fieldname": "technology",
+   "fieldtype": "Data",
+   "label": "Technology"
+  },
+  {
+   "fieldname": "trainer_assigned",
+   "fieldtype": "Link",
+   "label": "Trainer Assigned",
+   "options": "CRM Trainer"
+  },
+  {
+   "fieldname": "delivery_type",
+   "fieldtype": "Select",
+   "label": "Delivery Type",
+   "options": "\nOnsite\nOnline\nHybrid"
+  },
+  {
+   "fieldname": "project_duration",
+   "fieldtype": "Data",
+   "label": "Project Duration"
+  },
+  {
+   "fieldname": "start_date",
+   "fieldtype": "Date",
+   "label": "Start Date"
+  },
+  {
+   "fieldname": "end_date",
+   "fieldtype": "Date",
+   "label": "End Date"
+  },
+  {
+   "fieldname": "delivery_manager",
+   "fieldtype": "Link",
+   "label": "Training Engagement Co-ordinator",
+   "options": "User"
+  },
+  {
+   "fieldname": "tax",
+   "fieldtype": "Currency",
+   "label": "Tax"
+  },
+  {
+   "fieldname": "discount",
+   "fieldtype": "Currency",
+   "label": "Discount"
+  },
+  {
+   "fieldname": "final_amount",
+   "fieldtype": "Currency",
+   "label": "Final Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "payment_status",
+   "fieldtype": "Select",
+   "label": "Payment Status",
+   "options": "\nPending\nPartial\nPaid\nOverdue"
+  }
+ ],
+ "links": [],
+ "modified": "2026-05-28",
+ "modified_by": "Administrator",
+ "module": "FCRM",
+ "name": "PBS Sales Order",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1
+  },
+  {
+   "role": "Sales Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 0
+  },
+  {
+   "role": "Sales User",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 0
+  },
+  {
+   "role": "Solution Manager",
+   "read": 0,
+   "write": 0,
+   "create": 0,
+   "delete": 0
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}
