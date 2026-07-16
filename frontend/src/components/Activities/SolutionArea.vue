@@ -9,6 +9,12 @@
       <Dropdown
         :options="[
           {
+            label: __('Select as Trainer for this Deal'),
+            icon: 'check-circle',
+            onClick: () => selectAsTrainer(solution.name),
+            condition: () => solution.reference_doctype == 'CRM Deal',
+          },
+          {
             label: __('Delete'),
             icon: 'trash-2',
             onClick: () => deleteSolution(solution.name),
@@ -41,9 +47,15 @@
       <div v-if="solution.lab_cost" class="truncate">
         {{ __('Lab Cost') }}: {{ formatNumberIntoCurrency(solution.lab_cost) }}
       </div>
-      <div v-if="solution.attachments?.length" class="truncate">
-        {{ solution.attachments.length }}
-        {{ solution.attachments.length == 1 ? __('Attachment') : __('Attachments') }}
+      <div v-if="solution.attachments?.length" class="flex flex-col gap-1">
+        <div
+          v-for="a in solution.attachments"
+          :key="a.file_url"
+          class="flex cursor-pointer items-center gap-1 truncate text-ink-blue-3 hover:underline"
+          @click.stop="downloadAttachment(a)"
+        >
+          {{ a.file_name }}
+        </div>
       </div>
     </div>
     <div class="mt-1 flex items-center justify-between gap-2">
@@ -81,6 +93,17 @@ const { getUser } = usersStore()
 function formatNumberIntoCurrency(value) {
   if (!value) return ''
   return '₹' + Number(value).toLocaleString('en-IN')
+}
+
+function downloadAttachment(attachment) {
+  window.open(attachment.file_url, '_blank')
+}
+
+async function selectAsTrainer(name) {
+  await call('crm.api.activities.select_solution_as_trainer', {
+    solution: name,
+  })
+  solutions.value?.reload()
 }
 
 async function deleteSolution(name) {
