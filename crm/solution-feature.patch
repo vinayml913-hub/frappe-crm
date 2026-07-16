@@ -1,0 +1,935 @@
+diff --git a/crm/api/activities.py b/crm/api/activities.py
+index a899545..7f29fe4 100644
+--- a/crm/api/activities.py
++++ b/crm/api/activities.py
+@@ -47,10 +47,11 @@ def get_deal_activities(name: str):
+ 	notes = []
+ 	tasks = []
+ 	attachments = []
++	solutions = []
+ 	creation_text = _("created this deal")
+ 
+ 	if lead:
+-		activities, calls, notes, tasks, attachments = get_lead_activities(lead)
++		activities, calls, notes, tasks, attachments, solutions = get_lead_activities(lead)
+ 		creation_text = _("converted the lead to this deal")
+ 
+ 	activities.append(
+@@ -167,11 +168,12 @@ def get_deal_activities(name: str):
+ 	notes = notes + get_linked_notes(name) + get_linked_calls(name).get("notes", [])
+ 	tasks = tasks + get_linked_tasks(name) + get_linked_calls(name).get("tasks", [])
+ 	attachments = attachments + get_attachments("CRM Deal", name)
++	solutions = solutions + get_linked_solutions(name)
+ 
+ 	activities.sort(key=lambda x: x["creation"], reverse=True)
+ 	activities = handle_multiple_versions(activities)
+ 
+-	return activities, calls, notes, tasks, attachments
++	return activities, calls, notes, tasks, attachments, solutions
+ 
+ 
+ def get_lead_activities(name: str):
+@@ -308,11 +310,12 @@ def get_lead_activities(name: str):
+ 	notes = get_linked_notes(name) + get_linked_calls(name).get("notes", [])
+ 	tasks = get_linked_tasks(name) + get_linked_calls(name).get("tasks", [])
+ 	attachments = get_attachments("CRM Lead", name)
++	solutions = get_linked_solutions(name)
+ 
+ 	activities.sort(key=lambda x: x["creation"], reverse=True)
+ 	activities = handle_multiple_versions(activities)
+ 
+-	return activities, calls, notes, tasks, attachments
++	return activities, calls, notes, tasks, attachments, solutions
+ 
+ 
+ def get_attachments(doctype: str, name: str):
+@@ -477,6 +480,31 @@ def get_linked_notes(name: str):
+ 	return notes or []
+ 
+ 
++def get_linked_solutions(name: str):
++	solutions = frappe.db.get_all(
++		"CRM Solution",
++		filters={"reference_docname": name},
++		fields=[
++			"name",
++			"trainer_name",
++			"trainer_experience",
++			"costing_for_training",
++			"lab_cost",
++			"duration",
++			"availability_for_training",
++			"availability_for_discussion_call",
++			"location",
++			"sm",
++			"owner",
++			"modified",
++			"creation",
++		],
++	)
++	for solution in solutions or []:
++		solution["attachments"] = get_attachments("CRM Solution", solution["name"])
++	return solutions or []
++
++
+ def get_linked_tasks(name: str):
+ 	tasks = frappe.db.get_all(
+ 		"CRM Task",
+diff --git a/crm/fcrm/doctype/crm_solution/__init__.py b/crm/fcrm/doctype/crm_solution/__init__.py
+new file mode 100644
+index 0000000..e69de29
+diff --git a/crm/fcrm/doctype/crm_solution/crm_solution.json b/crm/fcrm/doctype/crm_solution/crm_solution.json
+new file mode 100644
+index 0000000..4e8422a
+--- /dev/null
++++ b/crm/fcrm/doctype/crm_solution/crm_solution.json
+@@ -0,0 +1,174 @@
++{
++ "actions": [],
++ "allow_import": 1,
++ "allow_rename": 1,
++ "creation": "2026-07-16 00:00:00",
++ "default_view": "List",
++ "doctype": "DocType",
++ "editable_grid": 1,
++ "engine": "InnoDB",
++ "field_order": [
++  "trainer_name",
++  "trainer_experience",
++  "location",
++  "column_break_1",
++  "costing_for_training",
++  "lab_cost",
++  "duration",
++  "section_break_availability",
++  "availability_for_training",
++  "availability_for_discussion_call",
++  "column_break_2",
++  "sm",
++  "section_break_reference",
++  "reference_doctype",
++  "reference_docname"
++ ],
++ "fields": [
++  {
++   "fieldname": "trainer_name",
++   "fieldtype": "Data",
++   "in_list_view": 1,
++   "in_standard_filter": 1,
++   "label": "Trainer Name",
++   "reqd": 1
++  },
++  {
++   "fieldname": "trainer_experience",
++   "fieldtype": "Data",
++   "in_list_view": 1,
++   "label": "Trainer Experience"
++  },
++  {
++   "fieldname": "location",
++   "fieldtype": "Data",
++   "in_list_view": 1,
++   "label": "Location"
++  },
++  {
++   "fieldname": "column_break_1",
++   "fieldtype": "Column Break"
++  },
++  {
++   "fieldname": "costing_for_training",
++   "fieldtype": "Currency",
++   "in_list_view": 1,
++   "label": "Costing for Training (in days/hour)"
++  },
++  {
++   "fieldname": "lab_cost",
++   "fieldtype": "Currency",
++   "label": "Lab Cost"
++  },
++  {
++   "fieldname": "duration",
++   "fieldtype": "Data",
++   "label": "Duration (in days/hour)"
++  },
++  {
++   "fieldname": "section_break_availability",
++   "fieldtype": "Section Break",
++   "label": "Availability"
++  },
++  {
++   "fieldname": "availability_for_training",
++   "fieldtype": "Data",
++   "label": "Availability for Training"
++  },
++  {
++   "fieldname": "availability_for_discussion_call",
++   "fieldtype": "Data",
++   "label": "Availability for Discussion Call"
++  },
++  {
++   "fieldname": "column_break_2",
++   "fieldtype": "Column Break"
++  },
++  {
++   "fieldname": "sm",
++   "fieldtype": "Link",
++   "label": "SM",
++   "options": "User"
++  },
++  {
++   "fieldname": "section_break_reference",
++   "fieldtype": "Section Break"
++  },
++  {
++   "default": "CRM Deal",
++   "fieldname": "reference_doctype",
++   "fieldtype": "Link",
++   "label": "Reference Document Type",
++   "options": "DocType"
++  },
++  {
++   "fieldname": "reference_docname",
++   "fieldtype": "Dynamic Link",
++   "label": "Reference Doc",
++   "options": "reference_doctype"
++  }
++ ],
++ "index_web_pages_for_search": 1,
++ "links": [],
++ "modified": "2026-07-16 00:00:00",
++ "modified_by": "Administrator",
++ "module": "FCRM",
++ "name": "CRM Solution",
++ "owner": "Administrator",
++ "permissions": [
++  {
++   "create": 1,
++   "delete": 1,
++   "email": 1,
++   "export": 1,
++   "print": 1,
++   "read": 1,
++   "report": 1,
++   "role": "System Manager",
++   "share": 1,
++   "write": 1
++  },
++  {
++   "create": 1,
++   "delete": 1,
++   "email": 1,
++   "export": 1,
++   "print": 1,
++   "read": 1,
++   "report": 1,
++   "role": "Sales Manager",
++   "share": 1,
++   "write": 1
++  },
++  {
++   "create": 1,
++   "delete": 1,
++   "email": 1,
++   "export": 1,
++   "print": 1,
++   "read": 1,
++   "report": 1,
++   "role": "Sales User",
++   "share": 1,
++   "write": 1
++  },
++  {
++   "create": 1,
++   "delete": 1,
++   "email": 1,
++   "export": 1,
++   "print": 1,
++   "read": 1,
++   "report": 1,
++   "role": "Solution Manager",
++   "share": 1,
++   "write": 1
++  }
++ ],
++ "row_format": "Dynamic",
++ "sort_field": "modified",
++ "sort_order": "DESC",
++ "states": [],
++ "title_field": "trainer_name",
++ "track_changes": 1
++}
+diff --git a/crm/fcrm/doctype/crm_solution/crm_solution.py b/crm/fcrm/doctype/crm_solution/crm_solution.py
+new file mode 100644
+index 0000000..0befa7d
+--- /dev/null
++++ b/crm/fcrm/doctype/crm_solution/crm_solution.py
+@@ -0,0 +1,48 @@
++# Copyright (c) 2026, Frappe Technologies Pvt. Ltd. and contributors
++# For license information, please see license.txt
++
++# import frappe
++from frappe.model.document import Document
++
++
++class CRMSolution(Document):
++	# begin: auto-generated types
++	# This code is auto-generated. Do not modify anything in this block.
++
++	from typing import TYPE_CHECKING
++
++	if TYPE_CHECKING:
++		from frappe.types import DF
++
++		availability_for_discussion_call: DF.Data | None
++		availability_for_training: DF.Data | None
++		costing_for_training: DF.Currency
++		duration: DF.Data | None
++		lab_cost: DF.Currency
++		location: DF.Data | None
++		reference_docname: DF.DynamicLink | None
++		reference_doctype: DF.Link | None
++		sm: DF.Link | None
++		trainer_experience: DF.Data | None
++		trainer_name: DF.Data
++	# end: auto-generated types
++
++	@staticmethod
++	def default_list_data():
++		rows = [
++			"name",
++			"trainer_name",
++			"trainer_experience",
++			"costing_for_training",
++			"lab_cost",
++			"duration",
++			"availability_for_training",
++			"availability_for_discussion_call",
++			"location",
++			"sm",
++			"reference_doctype",
++			"reference_docname",
++			"owner",
++			"modified",
++		]
++		return {"columns": [], "rows": rows}
+diff --git a/frontend/src/components/Activities/Activities.vue b/frontend/src/components/Activities/Activities.vue
+index eb3e5a0..3690c9c 100644
+--- a/frontend/src/components/Activities/Activities.vue
++++ b/frontend/src/components/Activities/Activities.vue
+@@ -48,6 +48,18 @@
+           <NoteArea v-model="all_activities" :note="note" />
+         </div>
+       </div>
++      <div
++        v-else-if="title == 'Solutions'"
++        class="grid grid-cols-1 gap-4 px-3 pb-3 sm:px-10 sm:pb-5 lg:grid-cols-2 xl:grid-cols-3"
++      >
++        <div
++          v-for="solution in activities"
++          :key="solution.name"
++          @click="modalRef.showSolution(solution)"
++        >
++          <SolutionArea v-model="all_activities" :solution="solution" />
++        </div>
++      </div>
+       <div v-else-if="title == 'Comments'" class="pb-5">
+         <div v-for="(comment, i) in activities" :key="comment.name">
+           <div
+@@ -448,6 +460,7 @@ import EmailArea from '@/components/Activities/EmailArea.vue'
+ import CommentArea from '@/components/Activities/CommentArea.vue'
+ import CallArea from '@/components/Activities/CallArea.vue'
+ import NoteArea from '@/components/Activities/NoteArea.vue'
++import SolutionArea from '@/components/Activities/SolutionArea.vue'
+ import TaskArea from '@/components/Activities/TaskArea.vue'
+ import AttachmentArea from '@/components/Activities/AttachmentArea.vue'
+ import DataFields from '@/components/Activities/DataFields.vue'
+@@ -458,6 +471,7 @@ import DetailsIcon from '@/components/Icons/DetailsIcon.vue'
+ import CalendarIcon from '@/components/Icons/CalendarIcon.vue'
+ import PhoneIcon from '@/components/Icons/PhoneIcon.vue'
+ import NoteIcon from '@/components/Icons/NoteIcon.vue'
++import SolutionIcon from '@/components/Icons/SolutionIcon.vue'
+ import TaskIcon from '@/components/Icons/TaskIcon.vue'
+ import AttachmentIcon from '@/components/Icons/AttachmentIcon.vue'
+ import WhatsAppIcon from '@/components/Icons/WhatsAppIcon.vue'
+@@ -539,8 +553,8 @@ const all_activities = createResource({
+   params: { name: props.docname },
+   cache: ['activity', props.docname],
+   auto: true,
+-  transform: ([versions, calls, notes, tasks, attachments]) => {
+-    return { versions, calls, notes, tasks, attachments }
++  transform: ([versions, calls, notes, tasks, attachments, solutions]) => {
++    return { versions, calls, notes, tasks, attachments, solutions }
+   },
+   onSuccess: () => nextTick(() => scroll()),
+ })
+@@ -636,6 +650,9 @@ const activities = computed(() => {
+   } else if (title.value == 'Attachments') {
+     if (!all_activities.data?.attachments) return []
+     return sortByModified(all_activities.data.attachments)
++  } else if (title.value == 'Solutions') {
++    if (!all_activities.data?.solutions) return []
++    return sortByModified(all_activities.data.solutions)
+   }
+ 
+   _activities.forEach((activity) => {
+@@ -711,6 +728,8 @@ const emptyText = computed(() => {
+     text = 'No Tasks Found'
+   } else if (title.value == 'Attachments') {
+     text = 'No Attachments Found'
++  } else if (title.value == 'Solutions') {
++    text = 'No Solutions Found'
+   } else if (title.value == 'WhatsApp') {
+     text = 'No WhatsApp Messages Found'
+   }
+@@ -737,6 +756,9 @@ const emptyTextDescription = computed(() => {
+   } else if (title.value == 'Attachments') {
+     description =
+       'No files have been attached yet. Upload files to see them here.'
++  } else if (title.value == 'Solutions') {
++    description =
++      'No profiles sourced yet. Add a solution once a profile is sourced.'
+   } else if (title.value == 'WhatsApp') {
+     description = 'Start a conversation now!'
+   }
+@@ -759,6 +781,8 @@ const emptyTextIcon = computed(() => {
+     icon = TaskIcon
+   } else if (title.value == 'Attachments') {
+     icon = AttachmentIcon
++  } else if (title.value == 'Solutions') {
++    icon = SolutionIcon
+   } else if (title.value == 'WhatsApp') {
+     icon = WhatsAppIcon
+   }
+diff --git a/frontend/src/components/Activities/ActivityHeader.vue b/frontend/src/components/Activities/ActivityHeader.vue
+index eacb1c5..eea6fb6 100644
+--- a/frontend/src/components/Activities/ActivityHeader.vue
++++ b/frontend/src/components/Activities/ActivityHeader.vue
+@@ -42,6 +42,13 @@
+       iconLeft="plus"
+       @click="modalRef.showNote()"
+     />
++    <Button
++      v-else-if="title == 'Solutions'"
++      variant="solid"
++      :label="__('New Solution')"
++      iconLeft="plus"
++      @click="modalRef.showSolution()"
++    />
+     <Button
+       v-else-if="title == 'Tasks'"
+       variant="solid"
+@@ -88,6 +95,7 @@ import CommentIcon from '@/components/Icons/CommentIcon.vue'
+ import EventIcon from '@/components/Icons/EventIcon.vue'
+ import PhoneIcon from '@/components/Icons/PhoneIcon.vue'
+ import NoteIcon from '@/components/Icons/NoteIcon.vue'
++import SolutionIcon from '@/components/Icons/SolutionIcon.vue'
+ import TaskIcon from '@/components/Icons/TaskIcon.vue'
+ import AttachmentIcon from '@/components/Icons/AttachmentIcon.vue'
+ import WhatsAppIcon from '@/components/Icons/WhatsAppIcon.vue'
+@@ -146,6 +154,11 @@ const defaultActions = computed(() => {
+       label: __('Note'),
+       onClick: () => props.modalRef.showNote(),
+     },
++    {
++      icon: h(SolutionIcon, { class: 'h-4 w-4' }),
++      label: __('Solution'),
++      onClick: () => props.modalRef.showSolution(),
++    },
+     {
+       icon: h(TaskIcon, { class: 'h-4 w-4' }),
+       label: __('Task'),
+diff --git a/frontend/src/components/Activities/AllModals.vue b/frontend/src/components/Activities/AllModals.vue
+index a990b31..94b62af 100644
+--- a/frontend/src/components/Activities/AllModals.vue
++++ b/frontend/src/components/Activities/AllModals.vue
+@@ -29,12 +29,21 @@
+     :doctype="doctype"
+     :docname="doc?.name"
+   />
++  <SolutionModal
++    v-model="showSolutionModal"
++    v-model:reloadSolutions="activities"
++    :solution="solution"
++    :doctype="doctype"
++    :doc="doc?.name"
++    @after="redirect('solutions')"
++  />
+ </template>
+ <script setup>
+ import TaskModal from '@/components/Modals/TaskModal.vue'
+ import NoteModal from '@/components/Modals/NoteModal.vue'
+ import CallLogModal from '@/components/Modals/CallLogModal.vue'
+ import EventModal from '@/components/Modals/EventModal.vue'
++import SolutionModal from '@/components/Modals/SolutionModal.vue'
+ import { showEventModal, activeEvent } from '@/composables/event'
+ import { call } from 'frappe-ui'
+ import { ref } from 'vue'
+@@ -116,6 +125,25 @@ function createCallLog() {
+   showCallLogModal.value = true
+ }
+ 
++// Solutions
++const showSolutionModal = ref(false)
++const solution = ref({})
++
++function showSolution(s) {
++  solution.value = s || {
++    trainer_name: '',
++    trainer_experience: '',
++    location: '',
++    duration: '',
++    costing_for_training: '',
++    lab_cost: '',
++    availability_for_training: '',
++    availability_for_discussion_call: '',
++    sm: '',
++  }
++  showSolutionModal.value = true
++}
++
+ // common
+ const route = useRoute()
+ const router = useRouter()
+@@ -136,5 +164,6 @@ defineExpose({
+   updateTaskStatus,
+   showNote,
+   createCallLog,
++  showSolution,
+ })
+ </script>
+diff --git a/frontend/src/components/Activities/SolutionArea.vue b/frontend/src/components/Activities/SolutionArea.vue
+new file mode 100644
+index 0000000..0b0379c
+--- /dev/null
++++ b/frontend/src/components/Activities/SolutionArea.vue
+@@ -0,0 +1,93 @@
++<template>
++  <div
++    class="activity group flex h-56 cursor-pointer flex-col justify-between gap-2 rounded-md bg-surface-gray-1 px-4 py-3 hover:bg-surface-gray-2"
++  >
++    <div class="flex items-center justify-between">
++      <div class="truncate text-lg font-medium text-ink-gray-8">
++        {{ solution.trainer_name }}
++      </div>
++      <Dropdown
++        :options="[
++          {
++            label: __('Delete'),
++            icon: 'trash-2',
++            onClick: () => deleteSolution(solution.name),
++          },
++        ]"
++        class="h-6 w-6"
++        @click.stop
++      >
++        <Button
++          icon="more-horizontal"
++          variant="ghosted"
++          class="!h-6 !w-6 hover:bg-surface-gray-2"
++          @click.stop.prevent
++        />
++      </Dropdown>
++    </div>
++    <div class="flex-1 space-y-1.5 overflow-hidden text-p-sm text-ink-gray-6">
++      <div v-if="solution.trainer_experience" class="truncate">
++        {{ __('Experience') }}: {{ solution.trainer_experience }}
++      </div>
++      <div v-if="solution.location" class="truncate">
++        {{ __('Location') }}: {{ solution.location }}
++      </div>
++      <div v-if="solution.duration" class="truncate">
++        {{ __('Duration') }}: {{ solution.duration }}
++      </div>
++      <div v-if="solution.costing_for_training" class="truncate">
++        {{ __('Costing') }}: {{ formatNumberIntoCurrency(solution.costing_for_training) }}
++      </div>
++      <div v-if="solution.lab_cost" class="truncate">
++        {{ __('Lab Cost') }}: {{ formatNumberIntoCurrency(solution.lab_cost) }}
++      </div>
++      <div v-if="solution.attachments?.length" class="truncate">
++        {{ solution.attachments.length }}
++        {{ solution.attachments.length == 1 ? __('Attachment') : __('Attachments') }}
++      </div>
++    </div>
++    <div class="mt-1 flex items-center justify-between gap-2">
++      <div class="flex items-center gap-2 truncate">
++        <UserAvatar :user="solution.owner" size="xs" />
++        <div
++          class="truncate text-sm text-ink-gray-8"
++          :title="getUser(solution.owner).full_name"
++        >
++          {{ getUser(solution.owner).full_name }}
++        </div>
++      </div>
++      <Tooltip :text="formatDate(solution.modified)">
++        <div class="truncate text-sm text-ink-gray-7">
++          {{ __(timeAgo(solution.modified)) }}
++        </div>
++      </Tooltip>
++    </div>
++  </div>
++</template>
++<script setup>
++import UserAvatar from '@/components/UserAvatar.vue'
++import { timeAgo, formatDate } from '@/utils'
++import { Tooltip, Dropdown, call } from 'frappe-ui'
++import { usersStore } from '@/stores/users'
++
++defineProps({
++  solution: { type: Object, default: () => ({}) },
++})
++
++const solutions = defineModel({ type: Object })
++
++const { getUser } = usersStore()
++
++function formatNumberIntoCurrency(value) {
++  if (!value) return ''
++  return '₹' + Number(value).toLocaleString('en-IN')
++}
++
++async function deleteSolution(name) {
++  await call('frappe.client.delete', {
++    doctype: 'CRM Solution',
++    name,
++  })
++  solutions.value?.reload()
++}
++</script>
+diff --git a/frontend/src/components/Icons/SolutionIcon.vue b/frontend/src/components/Icons/SolutionIcon.vue
+new file mode 100644
+index 0000000..bb1e0ac
+--- /dev/null
++++ b/frontend/src/components/Icons/SolutionIcon.vue
+@@ -0,0 +1,17 @@
++<template>
++  <svg
++    width="16"
++    height="16"
++    viewBox="0 0 16 16"
++    fill="none"
++    xmlns="http://www.w3.org/2000/svg"
++  >
++    <path
++      fill-rule="evenodd"
++      clip-rule="evenodd"
++      d="M8 1.5C5.51472 1.5 3.5 3.51472 3.5 6C3.5 7.65127 4.38442 9.09642 5.70527 9.88555C5.87957 9.98977 6 10.1885 6 10.4V11.5C6 11.7761 6.22386 12 6.5 12H9.5C9.77614 12 10 11.7761 10 11.5V10.4C10 10.1885 10.1204 9.98977 10.2947 9.88555C11.6156 9.09642 12.5 7.65127 12.5 6C12.5 3.51472 10.4853 1.5 8 1.5ZM2.5 6C2.5 2.96243 4.96243 0.5 8 0.5C11.0376 0.5 13.5 2.96243 13.5 6C13.5 7.97542 12.4633 9.7086 10.9052 10.6789C10.9186 10.6863 10.9186 10.6907 10.9186 10.6907C10.9723 10.9219 11 11.1596 11 11.4V11.5C11 12.3284 10.3284 13 9.5 13H9V13.5C9 14.3284 8.32843 15 7.5 15H7C6.44772 15 6 14.5523 6 14C6 13.4477 6.44772 13 7 13H7.5C7.77614 13 8 12.7761 8 12.5V13H6.5C5.67157 13 5 12.3284 5 11.5V11.4C5 11.1596 5.02771 10.9219 5.08139 10.6907C5.08139 10.6907 5.08139 10.6863 5.09479 10.6789C3.53669 9.7086 2.5 7.97542 2.5 6Z"
++      fill="currentColor"
++      fill-opacity="0.72"
++    />
++  </svg>
++</template>
+diff --git a/frontend/src/components/Modals/SolutionModal.vue b/frontend/src/components/Modals/SolutionModal.vue
+new file mode 100644
+index 0000000..e70192c
+--- /dev/null
++++ b/frontend/src/components/Modals/SolutionModal.vue
+@@ -0,0 +1,260 @@
++<template>
++  <Dialog v-model="show" :options="{ size: '3xl' }">
++    <template #body-title>
++      <div class="flex items-center gap-3">
++        <h3 class="text-2xl font-semibold leading-6 text-ink-gray-9">
++          {{ editMode ? __('Edit Solution') : __('Add Solution') }}
++        </h3>
++        <Button
++          v-if="_solution?.reference_docname"
++          size="sm"
++          :label="
++            _solution.reference_doctype == 'CRM Deal'
++              ? __('Open Deal')
++              : __('Open Lead')
++          "
++          :iconRight="ArrowUpRightIcon"
++          @click="redirect()"
++        />
++      </div>
++    </template>
++    <template #body-content>
++      <div class="flex flex-col gap-4">
++        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
++          <FormControl
++            ref="trainerName"
++            v-model="_solution.trainer_name"
++            :label="__('Trainer Name')"
++            :placeholder="__('John Doe')"
++            required
++          />
++          <FormControl
++            v-model="_solution.trainer_experience"
++            :label="__('Trainer Experience')"
++            :placeholder="__('5 years')"
++          />
++          <FormControl
++            v-model="_solution.location"
++            :label="__('Location')"
++            :placeholder="__('Bengaluru')"
++          />
++          <FormControl
++            v-model="_solution.duration"
++            :label="__('Duration (in days/hour)')"
++            :placeholder="__('3 days')"
++          />
++          <FormControl
++            v-model="_solution.costing_for_training"
++            type="number"
++            :label="__('Costing for Training (in days/hour)')"
++            :placeholder="__('0.00')"
++          />
++          <FormControl
++            v-model="_solution.lab_cost"
++            type="number"
++            :label="__('Lab Cost')"
++            :placeholder="__('0.00')"
++          />
++          <FormControl
++            v-model="_solution.availability_for_training"
++            :label="__('Availability for Training')"
++            :placeholder="__('e.g. 20th Aug onwards')"
++          />
++          <FormControl
++            v-model="_solution.availability_for_discussion_call"
++            :label="__('Availability for Discussion Call')"
++            :placeholder="__('e.g. Weekdays after 5 PM')"
++          />
++          <div>
++            <div class="mb-1.5 text-xs text-ink-gray-5">{{ __('SM') }}</div>
++            <Link
++              v-model="_solution.sm"
++              class="form-control"
++              doctype="User"
++              :placeholder="__('Solution Manager')"
++            >
++              <template #item-prefix="{ option }">
++                <UserAvatar class="mr-2" :user="option.value" size="sm" />
++              </template>
++              <template #item-label="{ option }">
++                <Tooltip :text="option.value">
++                  <div class="cursor-pointer text-ink-gray-9">
++                    {{ getUser(option.value).full_name }}
++                  </div>
++                </Tooltip>
++              </template>
++            </Link>
++          </div>
++        </div>
++        <div>
++          <div class="mb-1.5 flex items-center justify-between text-xs text-ink-gray-5">
++            <span>{{ __('Documents') }}</span>
++            <FileUploader
++              v-if="_solution.name"
++              :upload-args="{
++                doctype: 'CRM Solution',
++                docname: _solution.name,
++                private: true,
++              }"
++              @success="(f) => attachments.push(f)"
++            >
++              <template #default="{ openFileSelector }">
++                <Button
++                  size="sm"
++                  :label="__('Attach File')"
++                  @click="openFileSelector()"
++                >
++                  <template #prefix>
++                    <AttachmentIcon class="h-4 w-4" />
++                  </template>
++                </Button>
++              </template>
++            </FileUploader>
++            <div v-else class="text-ink-gray-4">
++              {{ __('Save to attach PDF, Word, or other files') }}
++            </div>
++          </div>
++          <div
++            v-if="attachments.length"
++            class="flex flex-wrap gap-2 rounded border border-outline-gray-modals p-2"
++          >
++            <AttachmentItem
++              v-for="a in attachments"
++              :key="a.file_url"
++              :label="a.file_name"
++            >
++              <template #suffix>
++                <FeatherIcon
++                  class="h-3.5"
++                  name="x"
++                  @click.stop="removeAttachment(a)"
++                />
++              </template>
++            </AttachmentItem>
++          </div>
++          <div v-else class="text-p-sm text-ink-gray-4">
++            {{ __('No documents attached yet') }}
++          </div>
++        </div>
++        <ErrorMessage v-if="error" class="mt-1" :message="__(error)" />
++      </div>
++    </template>
++    <template #actions>
++      <div class="flex justify-end">
++        <Button
++          :label="editMode ? __('Done') : __('Create')"
++          variant="solid"
++          :loading="loading"
++          @click="updateSolution"
++        />
++      </div>
++    </template>
++  </Dialog>
++</template>
++
++<script setup>
++import ArrowUpRightIcon from '@/components/Icons/ArrowUpRightIcon.vue'
++import AttachmentIcon from '@/components/Icons/AttachmentIcon.vue'
++import AttachmentItem from '@/components/AttachmentItem.vue'
++import Link from '@/components/Controls/Link.vue'
++import UserAvatar from '@/components/UserAvatar.vue'
++import { usersStore } from '@/stores/users'
++import { FileUploader, Tooltip, FeatherIcon, call } from 'frappe-ui'
++import { ref, nextTick, watch } from 'vue'
++import { useRouter } from 'vue-router'
++
++const props = defineProps({
++  solution: { type: Object, default: () => ({}) },
++  doctype: { type: String, default: 'CRM Deal' },
++  doc: { type: String, default: '' },
++})
++
++const show = defineModel({ type: Boolean })
++const solutions = defineModel('reloadSolutions', {
++  type: Object,
++  default: () => ({}),
++})
++
++const emit = defineEmits(['after'])
++
++const router = useRouter()
++const { getUser } = usersStore()
++
++const error = ref(null)
++const loading = ref(false)
++const trainerName = ref(null)
++const editMode = ref(false)
++let _solution = ref({})
++const attachments = ref([])
++
++function removeAttachment(attachment) {
++  attachments.value = attachments.value.filter((a) => a !== attachment)
++}
++
++async function updateSolution() {
++  if (!_solution.value.trainer_name) {
++    error.value = 'Trainer Name is mandatory'
++    return
++  }
++  error.value = null
++  loading.value = true
++  try {
++    if (_solution.value.name) {
++      await call('frappe.client.set_value', {
++        doctype: 'CRM Solution',
++        name: _solution.value.name,
++        fieldname: _solution.value,
++      })
++      solutions.value?.reload?.()
++      emit('after', _solution.value)
++      show.value = false
++    } else {
++      const d = await call('frappe.client.insert', {
++        doc: {
++          doctype: 'CRM Solution',
++          ..._solution.value,
++          reference_doctype: props.doctype,
++          reference_docname: props.doc || '',
++        },
++      })
++      if (d.name) {
++        _solution.value = { ..._solution.value, name: d.name }
++        editMode.value = true
++        solutions.value?.reload?.()
++        emit('after', d, true)
++      }
++    }
++  } catch (err) {
++    error.value =
++      err?.messages?.[0] || err?.message || 'Could not save solution'
++  } finally {
++    loading.value = false
++  }
++}
++
++function redirect() {
++  if (!props.solution?.reference_docname) return
++  let name = props.solution.reference_doctype == 'CRM Deal' ? 'Deal' : 'Lead'
++  let params = { leadId: props.solution.reference_docname }
++  if (name == 'Deal') {
++    params = { dealId: props.solution.reference_docname }
++  }
++  router.push({ name: name, params: params })
++}
++
++watch(
++  () => show.value,
++  (value) => {
++    if (!value) return
++    editMode.value = false
++    attachments.value = props.solution?.attachments || []
++    nextTick(() => {
++      trainerName.value?.el?.focus()
++      _solution.value = { ...props.solution }
++      if (_solution.value.name) {
++        editMode.value = true
++      }
++    })
++  },
++)
++</script>
+diff --git a/frontend/src/pages/Deal.vue b/frontend/src/pages/Deal.vue
+index 5ef2c7c..d9bed5a 100644
+--- a/frontend/src/pages/Deal.vue
++++ b/frontend/src/pages/Deal.vue
+@@ -354,6 +354,7 @@ import EventIcon from '@/components/Icons/EventIcon.vue'
+ import PhoneIcon from '@/components/Icons/PhoneIcon.vue'
+ import TaskIcon from '@/components/Icons/TaskIcon.vue'
+ import NoteIcon from '@/components/Icons/NoteIcon.vue'
++import SolutionIcon from '@/components/Icons/SolutionIcon.vue'
+ import WhatsAppIcon from '@/components/Icons/WhatsAppIcon.vue'
+ import IndicatorIcon from '@/components/Icons/IndicatorIcon.vue'
+ import LinkIcon from '@/components/Icons/LinkIcon.vue'
+@@ -601,6 +602,11 @@ const tabs = computed(() => {
+       label: __('Notes'),
+       icon: NoteIcon,
+     },
++    {
++      name: 'Solutions',
++      label: __('Solutions'),
++      icon: SolutionIcon,
++    },
+     {
+       name: 'Attachments',
+       label: __('Attachments'),
+diff --git a/frontend/src/pages/Lead.vue b/frontend/src/pages/Lead.vue
+index 2e66c00..8770e8b 100644
+--- a/frontend/src/pages/Lead.vue
++++ b/frontend/src/pages/Lead.vue
+@@ -246,6 +246,7 @@ import EventIcon from '@/components/Icons/EventIcon.vue'
+ import PhoneIcon from '@/components/Icons/PhoneIcon.vue'
+ import TaskIcon from '@/components/Icons/TaskIcon.vue'
+ import NoteIcon from '@/components/Icons/NoteIcon.vue'
++import SolutionIcon from '@/components/Icons/SolutionIcon.vue'
+ import WhatsAppIcon from '@/components/Icons/WhatsAppIcon.vue'
+ import IndicatorIcon from '@/components/Icons/IndicatorIcon.vue'
+ import CameraIcon from '@/components/Icons/CameraIcon.vue'
+@@ -447,6 +448,11 @@ const tabs = computed(() => {
+       label: __('Notes'),
+       icon: NoteIcon,
+     },
++    {
++      name: 'Solutions',
++      label: __('Solutions'),
++      icon: SolutionIcon,
++    },
+     {
+       name: 'Attachments',
+       label: __('Attachments'),
