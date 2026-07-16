@@ -17,12 +17,14 @@ class CRMSolution(Document):
 		availability_for_discussion_call: DF.Data | None
 		availability_for_training: DF.Data | None
 		costing_for_training: DF.Currency
+		costing_type: DF.Literal["Per Day", "Per Hour"]
 		duration: DF.Data | None
 		lab_cost: DF.Currency
 		location: DF.Data | None
 		reference_docname: DF.DynamicLink | None
 		reference_doctype: DF.Link | None
 		sm: DF.Link | None
+		trainer: DF.Link | None
 		trainer_experience: DF.Data | None
 		trainer_name: DF.Data
 	# end: auto-generated types
