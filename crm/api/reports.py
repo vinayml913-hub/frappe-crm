@@ -34,6 +34,7 @@ from frappe.query_builder.functions import Sum, Count, IfNull, DateFormat
 from frappe.utils import getdate, get_first_day, get_last_day, add_months, add_days, nowdate, flt
 
 from crm.api.revenue import _resolve_scope, _is_admin, _bulk_user_names, _get_target_for_range, _revenue_expr
+from crm.api.revenue_target import get_financial_quarter_bounds, get_financial_quarter_for_date
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -41,21 +42,24 @@ from crm.api.revenue import _resolve_scope, _is_admin, _bulk_user_names, _get_ta
 # ─────────────────────────────────────────────────────────────────────────
 
 QUICK_RANGES = {
-    "last_7_days": 7,
     "last_30_days": 30,
-    "last_60_days": 60,
-    "last_90_days": 90,
-    "last_180_days": 180,
-    "last_360_days": 360,
 }
+
+# Quarter quick-filter keys map to the company's financial quarters
+# (Q1 = Mar-May, Q2 = Jun-Aug, Q3 = Sep-Nov, Q4 = Dec-Feb), resolved
+# against the fiscal year the *current date* belongs to for that quarter.
+QUARTER_KEYS = {"q1": "Q1", "q2": "Q2", "q3": "Q3", "q4": "Q4"}
 
 
 def _resolve_quick_range(range_key):
-    """Translate a quick-filter key into (from_date, to_date). 'ever' -> (None, None)."""
+    """Translate a quick-filter key into (from_date, to_date)."""
     today = getdate(nowdate())
 
-    if range_key == "ever":
-        return None, today
+    if range_key in QUARTER_KEYS:
+        quarter = QUARTER_KEYS[range_key]
+        _current_quarter, current_quarter_year = get_financial_quarter_for_date(today)
+        from_date, to_date = get_financial_quarter_bounds(quarter, current_quarter_year)
+        return from_date, to_date
 
     days = QUICK_RANGES.get(range_key)
     if not days:
