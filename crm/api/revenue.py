@@ -40,6 +40,11 @@ from frappe.utils import (
     flt,
 )
 
+from crm.api.revenue_target import (
+    get_financial_quarter_bounds,
+    get_financial_quarter_for_date,
+)
+
 
 # ─────────────────────────────────────────────────────────────────────────
 #  Access helpers
@@ -82,9 +87,7 @@ def _period_bounds(period_type, year, month=None, quarter=None):
         start = getdate(f"{year}-{month:02d}-01")
         end = get_last_day(start)
     elif period_type == "Quarterly":
-        q_start_month = {"Q1": 1, "Q2": 4, "Q3": 7, "Q4": 10}[quarter]
-        start = getdate(f"{year}-{q_start_month:02d}-01")
-        end = get_last_day(add_months(start, 2))
+        start, end = get_financial_quarter_bounds(quarter, year)
     else:  # Yearly
         start = getdate(f"{year}-01-01")
         end = getdate(f"{year}-12-31")
@@ -160,9 +163,8 @@ def get_revenue_summary(fromDate=None, toDate=None, userId=None):
     today = getdate(nowdate())
     month_start, month_end = get_first_day(today), get_last_day(today)
 
-    q_month = (today.month - 1) // 3 * 3 + 1
-    quarter_start = getdate(f"{today.year}-{q_month:02d}-01")
-    quarter_end = get_last_day(add_months(quarter_start, 2))
+    current_quarter, current_quarter_year = get_financial_quarter_for_date(today)
+    quarter_start, quarter_end = get_financial_quarter_bounds(current_quarter, current_quarter_year)
 
     year_start = getdate(f"{today.year}-01-01")
     year_end = getdate(f"{today.year}-12-31")
