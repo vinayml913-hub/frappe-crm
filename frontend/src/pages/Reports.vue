@@ -57,6 +57,7 @@ import RevenueTab from '@/components/Reports/RevenueTab.vue'
 import { Breadcrumbs, Button, Tabs } from 'frappe-ui'
 import LucideRefreshCcw from '~icons/lucide/refresh-ccw'
 import { ref, reactive, computed } from 'vue'
+import { getQuarterRange } from '@/utils/dashboard'
 
 const tabs = [{ label: 'Deal Reports' }, { label: 'Revenue Analytics' }]
 const tabIndex = ref(0)
@@ -75,16 +76,13 @@ const filters = reactive({
 
 // Resolve the active preset into concrete ISO dates here, once, so both
 // DealReportsTab (which also understands quickRange server-side) and
-// RevenueTab (whose API has no quickRange concept — it only takes
+// RevenueTab (whose API has no quickRange concept - it only takes
 // explicit dates) always render the exact same period.
-const QUICK_RANGE_DAYS = {
-  last_7_days: 7,
-  last_30_days: 30,
-  last_60_days: 60,
-  last_90_days: 90,
-  last_180_days: 180,
-  last_360_days: 360,
-}
+//
+// Presets are "Last 30 Days" plus the company's financial quarters
+// (Q1 = Mar-May, Q2 = Jun-Aug, Q3 = Sep-Nov, Q4 = Dec-Feb) - NOT calendar
+// quarters. See frontend/src/utils/dashboard.ts:getQuarterRange.
+const QUARTER_PRESET_KEYS = { q1: 'Q1', q2: 'Q2', q3: 'Q3', q4: 'Q4' }
 
 function isoDate(d) {
   return d.toISOString().slice(0, 10)
@@ -96,21 +94,22 @@ const resolvedRange = computed(() => {
   if (preset.value === 'custom') {
     return { from: filters.customFrom || null, to: filters.customTo || isoDate(today) }
   }
-  if (preset.value === 'ever') {
-    return { from: null, to: isoDate(today) }
+  if (QUARTER_PRESET_KEYS[preset.value]) {
+    const [from, to] = getQuarterRange(QUARTER_PRESET_KEYS[preset.value]).split(',')
+    return { from, to }
   }
-  const days = QUICK_RANGE_DAYS[preset.value] ?? 30
+  // Default / 'last_30_days'
   const from = new Date(today)
-  from.setDate(today.getDate() - days)
+  from.setDate(today.getDate() - 30)
   return { from: isoDate(from), to: isoDate(today) }
 })
 
 const fromDate = computed(() => resolvedRange.value.from)
 const toDate = computed(() => resolvedRange.value.to)
-// Still forwarded to DealReportsTab so its backend can use the exact same
-// "Ever" semantics as get_dashboard_kpis's own quickRange resolution when
-// no explicit from_date is supplied (kept for parity/back-compat with
-// crm/api/reports.py's _default_date_range signature).
+// Still forwarded to DealReportsTab so its backend can resolve the same
+// preset server-side (kept for parity with crm/api/reports.py's
+// _default_date_range / _resolve_quick_range, which understands
+// 'last_30_days', 'q1', 'q2', 'q3', 'q4').
 const quickRange = computed(() => (preset.value === 'custom' ? null : preset.value))
 
 function onPresetChange(value) {
