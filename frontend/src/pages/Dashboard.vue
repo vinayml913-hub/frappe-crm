@@ -43,7 +43,6 @@
 
     <div class="p-5 pb-2 flex items-center gap-4">
       <Dropdown
-        v-if="!showDatePicker"
         v-model="preset"
         :options="options"
         class="form-control"
@@ -57,31 +56,6 @@
           iconLeft: 'calendar',
         }"
       />
-      <DateRangePicker
-        v-else
-        ref="datePickerRef"
-        class="!w-48"
-        :value="filters.period"
-        variant="outline"
-        :placeholder="__('Period')"
-        :formatter="formatRange"
-        @change="
-          (v) =>
-            updateFilter('period', v, () => {
-              showDatePicker = false
-              if (!v && preset.value !== 'Ever') {
-                filters.period = getLastXDays()
-                preset = 'Last 30 Days'
-              } else {
-                preset = formatter(v)
-              }
-            })
-        "
-      >
-        <template #prefix>
-          <LucideCalendar class="size-4 text-ink-gray-5 mr-2" />
-        </template>
-      </DateRangePicker>
       <Link
         v-if="isAdmin() || isManager()"
         class="form-control w-48"
@@ -151,11 +125,10 @@ import LayoutHeader from '@/components/LayoutHeader.vue'
 import Link from '@/components/Controls/Link.vue'
 import { usersStore } from '@/stores/users'
 import { copy } from '@/utils'
-import { getLastXDays, formatter, formatRange } from '@/utils/dashboard'
+import { getLastXDays, getQuarterRange } from '@/utils/dashboard'
 import {
   usePageMeta,
   createResource,
-  DateRangePicker,
   Dropdown,
   Tooltip,
 } from 'frappe-ui'
@@ -168,8 +141,6 @@ const { users, getUser, isManager, isAdmin } = usersStore()
 
 const editing = ref(false)
 
-const showDatePicker = ref(false)
-const datePickerRef = ref(null)
 const preset = ref('Last 30 Days')
 const showAddChartModal = ref(false)
 
@@ -200,14 +171,6 @@ const options = computed(() => [
     hideLabel: true,
     items: [
       {
-        label: __('Last 7 Days'),
-        onClick: () => {
-          preset.value = 'Last 7 Days'
-          filters.period = getLastXDays(7)
-          dashboardItems.reload()
-        },
-      },
-      {
         label: __('Last 30 Days'),
         onClick: () => {
           preset.value = 'Last 30 Days'
@@ -216,55 +179,38 @@ const options = computed(() => [
         },
       },
       {
-        label: __('Last 60 Days'),
+        label: __('Q1'),
         onClick: () => {
-          preset.value = 'Last 60 Days'
-          filters.period = getLastXDays(60)
+          preset.value = 'Q1'
+          filters.period = getQuarterRange('Q1')
           dashboardItems.reload()
         },
       },
       {
-        label: __('Last 90 Days'),
+        label: __('Q2'),
         onClick: () => {
-          preset.value = 'Last 90 Days'
-          filters.period = getLastXDays(90)
+          preset.value = 'Q2'
+          filters.period = getQuarterRange('Q2')
           dashboardItems.reload()
         },
       },
       {
-        label: __('Last 180 Days'),
+        label: __('Q3'),
         onClick: () => {
-          preset.value = 'Last 180 Days'
-          filters.period = getLastXDays(180)
+          preset.value = 'Q3'
+          filters.period = getQuarterRange('Q3')
           dashboardItems.reload()
         },
       },
       {
-        label: __('Last 360 Days'),
+        label: __('Q4'),
         onClick: () => {
-          preset.value = 'Last 360 Days'
-          filters.period = getLastXDays(360)
-          dashboardItems.reload()
-        },
-      },
-      {
-        label: __('Ever'),
-        onClick: () => {
-          preset.value = 'Ever'
-          filters.period = null
+          preset.value = 'Q4'
+          filters.period = getQuarterRange('Q4')
           dashboardItems.reload()
         },
       },
     ],
-  },
-  {
-    label: __('Custom Range'),
-    onClick: () => {
-      showDatePicker.value = true
-      setTimeout(() => datePickerRef.value?.open(), 0)
-      preset.value = 'Custom Range'
-      filters.period = null
-    },
   },
 ])
 
