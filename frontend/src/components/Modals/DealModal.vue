@@ -135,7 +135,7 @@ import { showQuickEntryModal, quickEntryProps } from '@/composables/modals'
 import { useDocument } from '@/data/document'
 import { useTelemetry } from 'frappe-ui/frappe'
 import { Switch, createResource, call, toast, FeatherIcon } from 'frappe-ui'
-import { computed, ref, nextTick, watch } from 'vue'
+import { computed, ref, onMounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 const props = defineProps({
@@ -188,30 +188,24 @@ const chooseExistingContact = ref(false)
 const chooseExistingOrganization = ref(false)
 const { capture } = useTelemetry()
 
-// Shared so it can be triggered from multiple places (toggle change,
-// tabs.data finishing its async load, or deal.doc finishing its async
-// load) - whichever of tabs/deal resolves last is guaranteed to end up
-// with the correct section visibility instead of a stale/no-op run.
-function applySectionVisibility() {
-  if (!tabs.data?.length) return
-
-  tabs.data.forEach((tab) => {
-    tab.sections.forEach((section) => {
-      if (section.name === 'organization_section') {
-        section.hidden = !chooseExistingOrganization.value
-      } else if (section.name === 'organization_details_section') {
-        section.hidden = chooseExistingOrganization.value
-      } else if (section.name === 'contact_section') {
-        section.hidden = !chooseExistingContact.value
-      } else if (section.name === 'contact_details_section') {
-        section.hidden = chooseExistingContact.value
-      }
+watch(
+  [chooseExistingOrganization, chooseExistingContact],
+  ([organization, contact]) => {
+    tabs.data.forEach((tab) => {
+      tab.sections.forEach((section) => {
+        if (section.name === 'organization_section') {
+          section.hidden = !organization
+        } else if (section.name === 'organization_details_section') {
+          section.hidden = organization
+        } else if (section.name === 'contact_section') {
+          section.hidden = !contact
+        } else if (section.name === 'contact_details_section') {
+          section.hidden = contact
+        }
+      })
     })
-  })
-}
-
-watch([chooseExistingOrganization, chooseExistingContact], applySectionVisibility)
-watch(() => tabs.data, applySectionVisibility)
+  },
+)
 
 const tabs = createResource({
   url: 'crm.fcrm.doctype.crm_fields_layout.crm_fields_layout.get_fields_layout',
@@ -380,40 +374,17 @@ watch(show, (isOpen) => {
   if (isOpen) assignToOnCreate.value = []
 })
 
-// In edit mode, decide up front whether to show the "existing
-// organization/contact" Link section or the "type a new one" details
-// section, based on what the deal already has - instead of always
-// defaulting to the typed-entry section (which writes to
-// organization_name/first_name/etc, NOT the real organization/contact
-// Link fields the rest of the CRM reads from). Waiting on deal.doc.name
-// here because useDocument() loads the existing record asynchronously.
-// applySectionVisibility() is called explicitly here too, in case
-// deal.doc finishes loading AFTER tabs.data already has - the
-// watch(() => tabs.data, ...) above only fires once, on that initial
-// load, and won't re-run just because chooseExistingOrganization/
-// chooseExistingContact get set a moment later here.
-watch(
-  () => deal.doc?.name,
-  (name) => {
-    if (!name) return
+onMounted(() => {
+  if (isEditMode.value) return
 
-    if (isEditMode.value) {
-      chooseExistingOrganization.value = !!deal.doc.organization
-      chooseExistingContact.value = !!deal.doc.contact
-      applySectionVisibility()
-      return
-    }
+  deal.doc.no_of_employees = '1-10'
+  Object.assign(deal.doc, props.defaults)
 
-    deal.doc.no_of_employees = '1-10'
-    Object.assign(deal.doc, props.defaults)
-
-    if (!deal.doc.deal_owner) {
-      deal.doc.deal_owner = getUser().name
-    }
-    if (!deal.doc.status && dealStatuses.value[0].value) {
-      deal.doc.status = dealStatuses.value[0].value
-    }
-  },
-  { immediate: true },
-)
+  if (!deal.doc.deal_owner) {
+    deal.doc.deal_owner = getUser().name
+  }
+  if (!deal.doc.status && dealStatuses.value[0].value) {
+    deal.doc.status = dealStatuses.value[0].value
+  }
+})
 </script>
