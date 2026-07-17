@@ -10,9 +10,52 @@ MONTH_TO_NUM = {
 	"September": 9, "October": 10, "November": 11, "December": 12,
 }
 
+# ─────────────────────────────────────────────────────────────────────────
+#  Company financial quarters (NOT calendar quarters)
+#
+#    Q1 = March     1 - May      31  (start month 3,  end month 5,  same year)
+#    Q2 = June      1 - August   31  (start month 6,  end month 8,  same year)
+#    Q3 = September 1 - November 30  (start month 9,  end month 11, same year)
+#    Q4 = December  1 - February 28/29 (start month 12, same year;
+#                                        end month 2, following year)
+#
+#  A quarter's "year" always refers to the fiscal year it belongs to, i.e.
+#  the year of its *start* month. Q4 therefore spans a calendar year
+#  boundary: Q4 2025 runs from 1 Dec 2025 through 28/29 Feb 2026.
+# ─────────────────────────────────────────────────────────────────────────
 QUARTER_MONTHS = {
-	"Q1": (1, 3), "Q2": (4, 6), "Q3": (7, 9), "Q4": (10, 12),
+	"Q1": (3, 5, 0),
+	"Q2": (6, 8, 0),
+	"Q3": (9, 11, 0),
+	"Q4": (12, 2, 1),
 }
+
+
+def get_financial_quarter_for_date(date) -> tuple[str, int]:
+	"""Given any date, return (quarter, fiscal_year) using the company's
+	Mar-Feb financial quarters. Fiscal year is the year of the quarter's
+	start month (so Jan/Feb dates belong to Q4 of the *previous* year)."""
+	date = frappe.utils.getdate(date)
+	month, year = date.month, date.year
+	if month in (3, 4, 5):
+		return "Q1", year
+	if month in (6, 7, 8):
+		return "Q2", year
+	if month in (9, 10, 11):
+		return "Q3", year
+	# month in (12, 1, 2)
+	if month == 12:
+		return "Q4", year
+	return "Q4", year - 1
+
+
+def get_financial_quarter_bounds(quarter: str, year: int):
+	"""Return (from_date, to_date) as date objects for a given quarter/fiscal year."""
+	year = int(year)
+	start_month, end_month, end_year_offset = QUARTER_MONTHS[quarter]
+	from_date = frappe.utils.get_first_day(f"{year}-{start_month:02d}-01")
+	to_date = frappe.utils.get_last_day(f"{year + end_year_offset}-{end_month:02d}-01")
+	return from_date, to_date
 
 
 def _get_period_dates(target_type: str, year: int, month: str | None, quarter: str | None):
@@ -22,9 +65,7 @@ def _get_period_dates(target_type: str, year: int, month: str | None, quarter: s
 		from_date = frappe.utils.get_first_day(f"{year}-{month_num:02d}-01")
 		to_date = frappe.utils.get_last_day(from_date)
 	elif target_type == "Quarterly":
-		start_month, end_month = QUARTER_MONTHS[quarter]
-		from_date = frappe.utils.get_first_day(f"{year}-{start_month:02d}-01")
-		to_date = frappe.utils.get_last_day(f"{year}-{end_month:02d}-01")
+		from_date, to_date = get_financial_quarter_bounds(quarter, year)
 	else:  # Yearly
 		from_date = f"{year}-01-01"
 		to_date = f"{year}-12-31"
@@ -136,16 +177,17 @@ def get_current_target(employee: str | None = None) -> dict | None:
 
 	today_year = frappe.utils.getdate(today).year
 	current_month_name = frappe.utils.formatdate(today, "MMMM")
-	current_quarter = f"Q{(frappe.utils.getdate(today).month - 1) // 3 + 1}"
+	current_quarter, current_quarter_year = get_financial_quarter_for_date(today)
 
 	this_year_targets = [t for t in all_targets if t.year == today_year]
+	this_fiscal_year_targets = [t for t in all_targets if t.year == current_quarter_year]
 
 	monthly = next(
 		(t for t in this_year_targets if t.target_type == "Monthly" and t.month == current_month_name),
 		None,
 	)
 	quarterly = next(
-		(t for t in this_year_targets if t.target_type == "Quarterly" and t.quarter == current_quarter),
+		(t for t in this_fiscal_year_targets if t.target_type == "Quarterly" and t.quarter == current_quarter),
 		None,
 	)
 	yearly = next((t for t in this_year_targets if t.target_type == "Yearly"), None)
