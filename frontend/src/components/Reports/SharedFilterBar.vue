@@ -60,13 +60,11 @@ const emit = defineEmits(['update:preset', 'update:customRange', 'update:user'])
 const { users, getUser, isAdmin } = usersStore()
 
 const PRESETS = [
-  { key: 'last_7_days', label: 'Last 7 Days' },
   { key: 'last_30_days', label: 'Last 30 Days' },
-  { key: 'last_60_days', label: 'Last 60 Days' },
-  { key: 'last_90_days', label: 'Last 90 Days' },
-  { key: 'last_180_days', label: 'Last 180 Days' },
-  { key: 'last_360_days', label: 'Last 360 Days' },
-  { key: 'ever', label: 'Ever' },
+  { key: 'q1', label: 'Q1' },
+  { key: 'q2', label: 'Q2' },
+  { key: 'q3', label: 'Q3' },
+  { key: 'q4', label: 'Q4' },
   { key: 'custom', label: 'Custom Range' },
 ]
 
