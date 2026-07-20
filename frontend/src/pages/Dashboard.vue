@@ -93,7 +93,7 @@
 
     <div class="w-full overflow-y-scroll">
       <div class="mx-5 mb-4">
-        <RevenueTargetCard :employee="filters.user" />
+        <RevenueTargetCard :employee="filters.user" :period="targetPeriod" />
       </div>
       <DashboardGrid
         v-if="!dashboardItems.loading && dashboardItems.data"
@@ -142,6 +142,21 @@ const { users, getUser, isManager, isAdmin } = usersStore()
 const editing = ref(false)
 
 const preset = ref('Last 30 Days')
+
+// Maps the dropdown's display label to the key crm.api.revenue_target
+// .get_target_for_period expects, so the Revenue Target card shows only
+// the target for the currently selected quarter (not always "today's").
+const targetPeriod = computed(() => {
+  const map = {
+    'Last 30 Days': 'last_30_days',
+    Q1: 'q1',
+    Q2: 'q2',
+    Q3: 'q3',
+    Q4: 'q4',
+    Ever: 'ever',
+  }
+  return map[preset.value] || 'last_30_days'
+})
 const showAddChartModal = ref(false)
 
 const filters = reactive({
@@ -210,14 +225,14 @@ const options = computed(() => [
           dashboardItems.reload()
         },
       },
-      // {
-      //   label: __('Ever'),
-      //   onClick: () => {
-      //     preset.value = 'Ever'
-      //     filters.period = null
-      //     dashboardItems.reload()
-      //   },
-      // },
+      {
+        label: __('Ever'),
+        onClick: () => {
+          preset.value = 'Ever'
+          filters.period = null
+          dashboardItems.reload()
+        },
+      },
       {
         label: __('Ever'),
         onClick: () => {
