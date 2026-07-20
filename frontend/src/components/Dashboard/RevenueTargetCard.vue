@@ -77,24 +77,24 @@ import { ref, computed, watch } from 'vue'
 
 const props = defineProps({
   employee: { type: String, default: null },
+  period: { type: String, default: 'last_30_days' },
 })
 
 const { isAdmin } = usersStore()
 const showTargetModal = ref(false)
 
 const target = createResource({
-  url: 'crm.api.revenue_target.get_current_target',
+  url: 'crm.api.revenue_target.get_target_for_period',
   makeParams() {
-    return { employee: props.employee || undefined }
+    return { employee: props.employee || undefined, period: props.period }
   },
   auto: true,
 })
 
-// Refetch whenever the admin picks a different salesperson from the
-// dashboard's "Sales User" dropdown (Dashboard.vue passes it in as the
-// `employee` prop).
+// Refetch whenever the admin picks a different salesperson, or a different
+// quarter/date preset, from the dashboard's filter bar.
 watch(
-  () => props.employee,
+  () => [props.employee, props.period],
   () => target.reload(),
 )
 
@@ -102,6 +102,7 @@ const periodLabel = computed(() => {
   if (!target.data) return ''
   if (target.data.target_type === 'Monthly') return `${target.data.month} ${target.data.year}`
   if (target.data.target_type === 'Quarterly') return `${target.data.quarter} ${target.data.year}`
+  if (target.data.target_type === 'Overall') return __('All Time')
   return `${target.data.year}`
 })
 
