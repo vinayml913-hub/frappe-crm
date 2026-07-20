@@ -210,14 +210,14 @@ const options = computed(() => [
           dashboardItems.reload()
         },
       },
-      {
-        label: __('Ever'),
-        onClick: () => {
-          preset.value = 'Ever'
-          filters.period = null
-          dashboardItems.reload()
-        },
-      },
+      // {
+      //   label: __('Ever'),
+      //   onClick: () => {
+      //     preset.value = 'Ever'
+      //     filters.period = null
+      //     dashboardItems.reload()
+      //   },
+      // },
       {
         label: __('Ever'),
         onClick: () => {
