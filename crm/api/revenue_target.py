@@ -2,6 +2,7 @@ import frappe
 from frappe import _
 from frappe.query_builder import DocType
 from frappe.query_builder.functions import Coalesce, Sum
+from frappe.utils import flt
 from pypika import Case
 
 MONTH_TO_NUM = {
@@ -144,6 +145,89 @@ def _build_target_payload(target: dict) -> dict:
 
 def _is_admin() -> bool:
 	return "System Manager" in frappe.get_roles()
+
+
+@frappe.whitelist()
+def get_target_for_period(employee: str | None = None, period: str | None = None) -> dict | None:
+	"""
+	Returns the target relevant to the dashboard's *currently selected*
+	date filter, instead of always the target that covers today.
+
+	`period` (from the Dashboard filter dropdown) is one of:
+	  - None / "last_30_days"  -> same as get_current_target: whichever
+	    target (Monthly > Quarterly > Yearly) actually covers today.
+	  - "q1" / "q2" / "q3" / "q4" -> ONLY that quarter's Quarterly target,
+	    for the fiscal year the current date belongs to. Nothing from
+	    other quarters, months, or yearly targets is mixed in.
+	  - "ever" -> a combined, all-time view: every target ever set for
+	    the employee is summed for "Target", and achieved revenue is
+	    computed with no date bound.
+
+	Non-admins can only ever fetch their own target, regardless of what
+	`employee` is passed as.
+	"""
+	if not _is_admin():
+		employee = frappe.session.user
+	elif not employee:
+		employee = frappe.session.user
+
+	period = (period or "last_30_days").lower()
+	today = frappe.utils.nowdate()
+
+	QUARTER_KEYS = {"q1": "Q1", "q2": "Q2", "q3": "Q3", "q4": "Q4"}
+
+	if period in QUARTER_KEYS:
+		quarter = QUARTER_KEYS[period]
+		_current_quarter, current_quarter_year = get_financial_quarter_for_date(today)
+
+		match = frappe.get_all(
+			"CRM Revenue Target",
+			filters={
+				"employee": employee,
+				"target_type": "Quarterly",
+				"quarter": quarter,
+				"year": current_quarter_year,
+			},
+			fields=["name", "employee", "target_type", "year", "month", "quarter", "target_amount", "creation"],
+			limit_page_length=1,
+		)
+		if not match:
+			return None
+		return _build_target_payload(match[0])
+
+	if period == "ever":
+		all_targets = frappe.get_all(
+			"CRM Revenue Target",
+			filters={"employee": employee},
+			fields=["target_amount"],
+		)
+		if not all_targets:
+			return None
+
+		target_amount = sum(flt(t.target_amount) for t in all_targets)
+		achieved = _get_achieved_revenue(employee, "1900-01-01", frappe.utils.nowdate())
+		remaining = target_amount - achieved
+		achievement_percentage = (achieved / target_amount * 100) if target_amount else 0
+
+		return {
+			"name": None,
+			"employee": employee,
+			"target_type": "Overall",
+			"year": None,
+			"month": None,
+			"quarter": None,
+			"target_amount": target_amount,
+			"achieved_revenue": achieved,
+			"remaining_revenue": remaining,
+			"achievement_percentage": round(achievement_percentage, 1),
+			"status": _get_status(achievement_percentage),
+			"from_date": None,
+			"to_date": frappe.utils.nowdate(),
+		}
+
+	# "last_30_days" (default / fallback) -> same behaviour as before:
+	# whichever target actually covers today.
+	return get_current_target(employee=employee)
 
 
 @frappe.whitelist()
