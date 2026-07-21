@@ -322,6 +322,9 @@ function applyQuickFilterFromRoute() {
   if (route.query.from && route.query.to) {
     filters.creation = ['between', [route.query.from, route.query.to]]
   }
+  if (route.query.owner) {
+    filters.deal_owner = route.query.owner
+  }
 
   viewControls.value.updateFilter(filters)
 
