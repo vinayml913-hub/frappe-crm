@@ -100,6 +100,8 @@
         v-model="dashboardItems.data"
         class="pt-1"
         :editing="editing"
+        :dateRange="{ from: fromDate, to: toDate }"
+        :selectedUser="filters.user"
       />
        <div class="mx-5 mb-4">
         <TargetAchievementChart :employee="filters.user" />
