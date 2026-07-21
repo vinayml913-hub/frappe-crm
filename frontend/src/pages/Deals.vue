@@ -285,17 +285,56 @@ import { statusesStore } from '@/stores/statuses'
 import { callEnabled } from '@/composables/settings'
 import { formatDate, timeAgo, website, formatTime } from '@/utils'
 import { Tooltip, Avatar, Dropdown } from 'frappe-ui'
-import { useRoute } from 'vue-router'
-import { ref, reactive, computed, h } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ref, reactive, computed, h, watch } from 'vue'
 
 const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
   getMeta('CRM Deal')
 const { makeCall } = globalStore()
 const { getUser } = usersStore()
 const { getOrganization } = organizationsStore()
-const { getDealStatus } = statusesStore()
+const { getDealStatus, dealStatuses } = statusesStore()
 
 const route = useRoute()
+const router = useRouter()
+
+// Handles ?quick_filter=won|ongoing&from=...&to=... coming from Dashboard
+// card clicks (see components/Dashboard/DashboardItem.vue). Applied once
+// the underlying deal statuses are loaded and the view is mounted, then
+// the query params are cleared so the filter behaves like a normal,
+// user-editable view filter afterwards rather than being "stuck".
+function applyQuickFilterFromRoute() {
+  const quickFilter = route.query.quick_filter
+  if (!quickFilter || !viewControls.value) return
+
+  const statuses = dealStatuses.data || []
+  let statusNames = []
+  if (quickFilter === 'won') {
+    statusNames = statuses.filter((s) => s.type === 'Won').map((s) => s.name)
+  } else if (quickFilter === 'ongoing') {
+    statusNames = statuses
+      .filter((s) => !['Won', 'Lost'].includes(s.type))
+      .map((s) => s.name)
+  }
+  if (!statusNames.length) return
+
+  const filters = { status: ['in', statusNames] }
+  if (route.query.from && route.query.to) {
+    filters.creation = ['between', [route.query.from, route.query.to]]
+  }
+
+  viewControls.value.updateFilter(filters)
+
+  // Clean the query params so this doesn't keep re-applying on every
+  // subsequent visit / reload of this page.
+  router.replace({ name: 'Deals', query: {} })
+}
+
+watch(
+  () => [route.query.quick_filter, dealStatuses.data, viewControls.value],
+  () => applyQuickFilterFromRoute(),
+  { immediate: true },
+)
 
 const dealsListView = ref(null)
 const showDealModal = ref(false)
