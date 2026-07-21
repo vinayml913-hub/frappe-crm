@@ -308,8 +308,8 @@ import { callEnabled } from '@/composables/settings'
 import { useBroadcast } from '@/composables/useBroadcast'
 import { formatDate, timeAgo, website, formatTime } from '@/utils'
 import { Avatar, Tooltip, Dropdown } from 'frappe-ui'
-import { useRoute } from 'vue-router'
-import { ref, computed, reactive, h } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ref, computed, reactive, h, watch } from 'vue'
 
 const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
   getMeta('CRM Lead')
@@ -319,9 +319,27 @@ const { getLeadStatus } = statusesStore()
 const { on } = useBroadcast()
 
 const route = useRoute()
+const router = useRouter()
 
 const leadsListView = ref(null)
 const showLeadModal = ref(false)
+
+// Handles ?quick_filter=total&from=...&to=... coming from the Total Leads
+// Dashboard card (see components/Dashboard/DashboardItem.vue).
+function applyQuickFilterFromRoute() {
+  if (route.query.quick_filter !== 'total' || !viewControls.value) return
+  if (!route.query.from || !route.query.to) return
+
+  viewControls.value.updateFilter({
+    creation: ['between', [route.query.from, route.query.to]],
+  })
+
+  router.replace({ name: 'Leads', query: {} })
+}
+
+watch(() => [route.query.quick_filter, viewControls.value], applyQuickFilterFromRoute, {
+  immediate: true,
+})
 
 on('trigger_lead_create', (data) => {
   showLeadModal.value = Boolean(data)
