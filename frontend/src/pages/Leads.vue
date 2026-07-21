@@ -330,9 +330,14 @@ function applyQuickFilterFromRoute() {
   if (route.query.quick_filter !== 'total' || !viewControls.value) return
   if (!route.query.from || !route.query.to) return
 
-  viewControls.value.updateFilter({
+  const filters = {
     creation: ['between', [route.query.from, route.query.to]],
-  })
+  }
+  if (route.query.owner) {
+    filters.lead_owner = route.query.owner
+  }
+
+  viewControls.value.updateFilter(filters)
 
   router.replace({ name: 'Leads', query: {} })
 }
