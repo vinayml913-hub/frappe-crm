@@ -30,6 +30,8 @@
               :index="index"
               :item="items[index]"
               :editing="editing"
+              :dateRange="dateRange"
+              :selectedUser="selectedUser"
             />
           </div>
           <div
@@ -53,6 +55,8 @@ import { GridLayout } from 'frappe-ui'
 
 defineProps({
   editing: { type: Boolean, default: false },
+  dateRange: { type: Object, default: null },
+  selectedUser: { type: String, default: null },
 })
 
 const items = defineModel({ type: Array, default: () => [] })
