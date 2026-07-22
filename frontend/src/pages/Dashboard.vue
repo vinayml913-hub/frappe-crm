@@ -196,7 +196,7 @@ const options = computed(() => [
         },
       },
       {
-        label: __('Q1'),
+        label: __('Q1 (Mar, Apr, May)'),
         onClick: () => {
           preset.value = 'Q1'
           filters.period = getQuarterRange('Q1')
@@ -204,7 +204,7 @@ const options = computed(() => [
         },
       },
       {
-        label: __('Q2'),
+        label: __('Q2 (Jun, Jul, Aug)'),
         onClick: () => {
           preset.value = 'Q2'
           filters.period = getQuarterRange('Q2')
@@ -212,7 +212,7 @@ const options = computed(() => [
         },
       },
       {
-        label: __('Q3'),
+        label: __('Q3 (Sep, Oct, Nov)'),
         onClick: () => {
           preset.value = 'Q3'
           filters.period = getQuarterRange('Q3')
@@ -220,7 +220,7 @@ const options = computed(() => [
         },
       },
       {
-        label: __('Q4'),
+        label: __('Q4 (Dec, Jan, Feb)'),
         onClick: () => {
           preset.value = 'Q4'
           filters.period = getQuarterRange('Q4')
