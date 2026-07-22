@@ -1,627 +1,566 @@
 <template>
   <LayoutHeader>
     <template #left-header>
-      <ViewBreadcrumbs v-model="viewControls" routeName="Leads" />
+      <Breadcrumbs :items="breadcrumbs">
+        <template #prefix="{ item }">
+          <Icon v-if="item.icon" :icon="item.icon" class="mr-2 h-4" />
+        </template>
+      </Breadcrumbs>
     </template>
-    <template #right-header>
+    <template v-if="!errorTitle" #right-header>
       <CustomActions
-        v-if="leadsListView?.customListActions"
-        :actions="leadsListView.customListActions"
+        v-if="document._actions?.length"
+        :actions="document._actions"
       />
+      <CustomActions
+        v-if="document.actions?.length"
+        :actions="document.actions"
+      />
+      <AssignTo v-model="assignees.data" doctype="CRM Lead" :docname="leadId" />
+      <Dropdown
+        v-if="doc && document.statuses"
+        :options="statuses"
+        placement="right"
+      >
+        <template #default="{ open }">
+          <Button
+            v-if="doc.status"
+            :label="statusLabel(doc.status)"
+            :iconRight="open ? 'chevron-up' : 'chevron-down'"
+          >
+            <template #prefix>
+              <IndicatorIcon :class="getLeadStatus(doc.status).color" />
+            </template>
+          </Button>
+        </template>
+      </Dropdown>
       <Button
+        :label="__('Convert to Deal')"
         variant="solid"
-        :label="__('Create')"
-        iconLeft="plus"
-        @click="showLeadModal = true"
+        @click="showConvertToDealModal = true"
       />
     </template>
   </LayoutHeader>
-  <ViewControls
-    ref="viewControls"
-    v-model="leads"
-    v-model:loadMore="loadMore"
-    v-model:resizeColumn="triggerResize"
-    v-model:updatedPageCount="updatedPageCount"
-    doctype="CRM Lead"
-    :filters="{ converted: 0 }"
-    :options="{
-      allowedViews: ['list', 'group_by', 'kanban'],
-    }"
-  />
-  <KanbanView
-    v-if="route.params.viewType == 'kanban'"
-    v-model="leads"
-    :options="{
-      getRoute: (row) => ({
-        name: 'Lead',
-        params: { leadId: row.name },
-        query: { view: route.query.view, viewType: route.params.viewType },
-      }),
-      onNewClick: (column) => onNewClick(column),
-    }"
-    @update="(data) => viewControls.updateKanbanSettings(data)"
-    @loadMore="(columnName) => viewControls.loadMoreKanban(columnName)"
-  >
-    <template #title="{ titleField, itemName }">
-      <div class="flex items-center gap-2">
-        <div v-if="titleField === 'status'">
-          <IndicatorIcon :class="getRow(itemName, titleField).color" />
-        </div>
-        <div
-          v-else-if="
-            titleField === 'organization' && getRow(itemName, titleField).label
-          "
-        >
-          <Avatar
-            class="flex items-center"
-            :image="getRow(itemName, titleField).logo"
-            :label="getRow(itemName, titleField).label"
-            size="sm"
-          />
-        </div>
-        <div
-          v-else-if="
-            titleField === 'lead_name' && getRow(itemName, titleField).label
-          "
-        >
-          <Avatar
-            class="flex items-center"
-            :image="getRow(itemName, titleField).image"
-            :label="getRow(itemName, titleField).image_label"
-            size="sm"
-          />
-        </div>
-        <div
-          v-else-if="
-            titleField === 'lead_owner' &&
-            getRow(itemName, titleField).full_name
-          "
-        >
-          <Avatar
-            class="flex items-center"
-            :image="getRow(itemName, titleField).user_image"
-            :label="getRow(itemName, titleField).full_name"
-            size="sm"
-          />
-        </div>
-        <div v-else-if="titleField === 'mobile_no'">
-          <PhoneIcon class="h-4 w-4" />
-        </div>
-        <div
-          v-if="
-            [
-              'modified',
-              'creation',
-              'first_response_time',
-              'first_responded_on',
-              'response_by',
-            ].includes(titleField)
-          "
-          class="truncate text-base"
-        >
-          <Tooltip :text="getRow(itemName, titleField).label">
-            <div>{{ getRow(itemName, titleField).timeAgo }}</div>
-          </Tooltip>
-        </div>
-        <div v-else-if="titleField === 'sla_status'" class="truncate text-base">
-          <Badge
-            v-if="getRow(itemName, titleField).value"
-            :variant="'subtle'"
-            :theme="getRow(itemName, titleField).color"
-            size="md"
-            :label="getRow(itemName, titleField).value"
-          />
-        </div>
-        <div
-          v-else-if="getRow(itemName, titleField).label"
-          class="truncate text-base"
-        >
-          {{ getRow(itemName, titleField).label }}
-        </div>
-        <div v-else class="text-ink-gray-4">{{ __('No Title') }}</div>
-      </div>
-    </template>
-    <template #fields="{ fieldName, itemName }">
+  <div v-if="doc.name" class="flex h-full overflow-hidden">
+    <Tabs
+      v-model="tabIndex"
+      :tabs="tabs"
+      class="flex flex-1 overflow-hidden flex-col [&_[role='tab']]:px-0 [&_[role='tab']]:shrink-0 [&_[role='tablist']]:px-5 [&_[role='tablist']::-webkit-scrollbar]:h-0 [&_[role='tablist']]:min-h-[45px] [&_[role='tablist']]:gap-7.5 [&_[role='tabpanel']:not([hidden])]:flex [&_[role='tabpanel']:not([hidden])]:grow"
+    >
+      <template #tab-panel>
+        <Activities
+          ref="activities"
+          v-model:reload="reload"
+          v-model:tabIndex="tabIndex"
+          doctype="CRM Lead"
+          :docname="leadId"
+          :tabs="tabs"
+          @beforeSave="beforeStatusChange"
+          @afterSave="reloadResources"
+        />
+      </template>
+    </Tabs>
+    <Resizer class="flex flex-col justify-between border-l" side="right">
       <div
-        v-if="getRow(itemName, fieldName).label"
-        class="truncate flex items-center gap-2"
+        class="flex h-[45px] cursor-copy items-center border-b px-5 py-2.5 text-lg font-medium text-ink-gray-9"
+        @click="copyToClipboard(leadId)"
       >
-        <div v-if="fieldName === 'status'">
-          <IndicatorIcon :class="getRow(itemName, fieldName).color" />
-        </div>
-        <div
-          v-else-if="
-            fieldName === 'organization' && getRow(itemName, fieldName).label
-          "
-        >
-          <Avatar
-            class="flex items-center"
-            :image="getRow(itemName, fieldName).logo"
-            :label="getRow(itemName, fieldName).label"
-            size="xs"
-          />
-        </div>
-        <div v-else-if="fieldName === 'lead_name'">
-          <Avatar
-            v-if="getRow(itemName, fieldName).label"
-            class="flex items-center"
-            :image="getRow(itemName, fieldName).image"
-            :label="getRow(itemName, fieldName).image_label"
-            size="xs"
-          />
-        </div>
-        <div v-else-if="fieldName === 'lead_owner'">
-          <Avatar
-            v-if="getRow(itemName, fieldName).full_name"
-            class="flex items-center"
-            :image="getRow(itemName, fieldName).user_image"
-            :label="getRow(itemName, fieldName).full_name"
-            size="xs"
-          />
-        </div>
-        <div
-          v-if="
-            [
-              'modified',
-              'creation',
-              'first_response_time',
-              'first_responded_on',
-              'response_by',
-            ].includes(fieldName)
-          "
-          class="truncate text-base"
-        >
-          <Tooltip :text="getRow(itemName, fieldName).label">
-            <div>{{ getRow(itemName, fieldName).timeAgo }}</div>
-          </Tooltip>
-        </div>
-        <div v-else-if="fieldName === 'sla_status'" class="truncate text-base">
-          <Badge
-            v-if="getRow(itemName, fieldName).value"
-            :variant="'subtle'"
-            :theme="getRow(itemName, fieldName).color"
-            size="md"
-            :label="getRow(itemName, fieldName).value"
-          />
-        </div>
-        <div
-          v-else-if="fieldName === '_assign'"
-          class="flex items-center truncate"
-        >
-          <MultipleAvatar
-            :avatars="getRow(itemName, fieldName).label"
-            size="xs"
-          />
-        </div>
-        <div v-else class="truncate text-base">
-          {{ getRow(itemName, fieldName).label }}
-        </div>
+        {{ __(leadId) }}
       </div>
-    </template>
-    <template #actions="{ itemName }">
-      <div class="flex gap-2 items-center justify-between">
-        <div class="text-ink-gray-5 flex items-center gap-1.5">
-          <EmailAtIcon class="h-4 w-4" />
-          <span v-if="getRow(itemName, '_email_count').label">
-            {{ getRow(itemName, '_email_count').label }}
-          </span>
-          <span class="text-3xl leading-[0]"> &middot; </span>
-          <NoteIcon class="h-4 w-4" />
-          <span v-if="getRow(itemName, '_note_count').label">
-            {{ getRow(itemName, '_note_count').label }}
-          </span>
-          <span class="text-3xl leading-[0]"> &middot; </span>
-          <TaskIcon class="h-4 w-4" />
-          <span v-if="getRow(itemName, '_task_count').label">
-            {{ getRow(itemName, '_task_count').label }}
-          </span>
-          <span class="text-3xl leading-[0]"> &middot; </span>
-          <CommentIcon class="h-4 w-4" />
-          <span v-if="getRow(itemName, '_comment_count').label">
-            {{ getRow(itemName, '_comment_count').label }}
-          </span>
-        </div>
-        <Dropdown
-          class="flex items-center gap-2"
-          :options="actions(itemName)"
-          variant="ghost"
-          @click.stop.prevent
-        >
-          <Button icon="plus" variant="ghost" />
-        </Dropdown>
+      <FileUploader
+        :validateFile="validateIsImageFile"
+        @success="(file) => updateField('image', file.file_url)"
+      >
+        <template #default="{ openFileSelector }">
+          <div class="flex items-center justify-start gap-5 border-b p-5">
+            <div class="group relative size-12">
+              <Avatar
+                size="3xl"
+                class="size-12"
+                :label="title"
+                :image="doc.image"
+              />
+              <component
+                :is="doc.image ? Dropdown : 'div'"
+                v-bind="
+                  doc.image
+                    ? {
+                        options: [
+                          {
+                            icon: 'upload',
+                            label: doc.image
+                              ? __('Change Image')
+                              : __('Upload Image'),
+                            onClick: openFileSelector,
+                          },
+                          {
+                            icon: 'trash-2',
+                            label: __('Remove Image'),
+                            onClick: () => updateField('image', ''),
+                          },
+                        ],
+                      }
+                    : { onClick: openFileSelector }
+                "
+                class="!absolute bottom-0 left-0 right-0"
+              >
+                <div
+                  class="z-1 absolute bottom-0.5 left-0 right-0.5 flex h-9 cursor-pointer items-center justify-center rounded-b-full bg-black bg-opacity-40 pt-3 opacity-0 duration-300 ease-in-out group-hover:opacity-100"
+                  style="
+                    -webkit-clip-path: inset(12px 0 0 0);
+                    clip-path: inset(12px 0 0 0);
+                  "
+                >
+                  <CameraIcon class="size-4 cursor-pointer text-white" />
+                </div>
+              </component>
+            </div>
+            <div class="flex flex-col gap-2.5 truncate">
+              <Tooltip :text="doc.lead_name || __('Set First Name')">
+                <div class="truncate text-2xl font-medium text-ink-gray-9">
+                  {{ title }}
+                </div>
+              </Tooltip>
+              <div class="flex gap-1.5">
+                <Button
+                  v-if="callEnabled"
+                  :tooltip="__('Make a Call')"
+                  :icon="PhoneIcon"
+                  @click="
+                    () =>
+                      doc.mobile_no
+                        ? makeCall(doc.mobile_no)
+                        : toast.error(
+                            __('Please set a mobile number to make calls'),
+                          )
+                  "
+                />
+
+                <Button
+                  :tooltip="__('Send an Email')"
+                  :icon="Email2Icon"
+                  @click="
+                    doc.email
+                      ? openEmailBox()
+                      : toast.error(
+                          __('Please set an email address to send emails'),
+                        )
+                  "
+                />
+                <Button
+                  :tooltip="__('Go to Website')"
+                  :icon="LinkIcon"
+                  @click="
+                    doc.website
+                      ? openWebsite(doc.website)
+                      : toast.error(__('Please set a website to visit'))
+                  "
+                />
+
+                <Button
+                  :tooltip="__('Attach a File')"
+                  :icon="AttachmentIcon"
+                  @click="showFilesUploader = true"
+                />
+
+                <Button
+                  v-if="canDelete"
+                  :tooltip="__('Delete')"
+                  variant="subtle"
+                  theme="red"
+                  icon="trash-2"
+                  @click="deleteLead"
+                />
+              </div>
+              <ErrorMessage :message="__(error)" />
+            </div>
+          </div>
+        </template>
+      </FileUploader>
+      <SLASection
+        v-if="doc.sla_status"
+        v-model="doc"
+        @updateField="updateField"
+      />
+      <div
+        v-if="sections.data"
+        class="flex flex-1 flex-col justify-between overflow-hidden"
+      >
+        <SidePanelLayout
+          :sections="sections.data"
+          doctype="CRM Lead"
+          :docname="leadId"
+          @reload="sections.reload"
+          @beforeFieldChange="beforeStatusChange"
+          @afterFieldChange="reloadResources"
+        />
       </div>
-    </template>
-  </KanbanView>
-  <LeadsListView
-    v-else-if="leads.data && rows.length"
-    ref="leadsListView"
-    v-model="leads.data.page_length_count"
-    v-model:list="leads"
-    :rows="rows"
-    :columns="columns"
-    :options="{
-      showTooltip: false,
-      resizeColumn: true,
-      rowCount: leads.data.row_count,
-      totalCount: leads.data.total_count,
-    }"
-    @loadMore="() => loadMore++"
-    @columnWidthUpdated="() => triggerResize++"
-    @updatePageCount="(count) => (updatedPageCount = count)"
-    @applyFilter="(data) => viewControls.applyFilter(data)"
-    @applyLikeFilter="(data) => viewControls.applyLikeFilter(data)"
-    @likeDoc="(data) => viewControls.likeDoc(data)"
-    @selectionsChanged="
-      (selections) => viewControls.updateSelections(selections)
+    </Resizer>
+  </div>
+  <ErrorPage
+    v-else-if="errorTitle"
+    :errorTitle="errorTitle"
+    :errorMessage="errorMessage"
+  />
+  <ConvertToDealModal
+    v-if="showConvertToDealModal"
+    v-model="showConvertToDealModal"
+    :lead="doc"
+  />
+  <FilesUploader
+    v-model="showFilesUploader"
+    doctype="CRM Lead"
+    :docname="leadId"
+    @after="
+      () => {
+        activities?.all_activities?.reload()
+        changeTabTo('attachments')
+      }
     "
   />
-  <EmptyState
-    v-else-if="leads.data && !rows.length"
+  <DeleteLinkedDocModal
+    v-if="showDeleteLinkedDocModal"
+    v-model="showDeleteLinkedDocModal"
+    :doctype="'CRM Lead'"
+    :docname="leadId"
     name="Leads"
-    :icon="LeadsIcon"
   />
-  <LeadModal
-    v-if="showLeadModal"
-    v-model="showLeadModal"
-    :defaults="defaults"
-  />
-  <NoteModal
-    v-if="showNoteModal"
-    v-model="showNoteModal"
-    :note="note"
+  <LostReasonModal
+    v-if="showLostReasonModal"
+    v-model="showLostReasonModal"
     doctype="CRM Lead"
-    :doc="docname"
-  />
-  <TaskModal
-    v-if="showTaskModal"
-    v-model="showTaskModal"
-    :task="task"
-    doctype="CRM Lead"
-    :doc="docname"
+    :document="document"
   />
 </template>
-
 <script setup>
-import ViewBreadcrumbs from '@/components/ViewBreadcrumbs.vue'
-import MultipleAvatar from '@/components/MultipleAvatar.vue'
-import CustomActions from '@/components/CustomActions.vue'
-import EmailAtIcon from '@/components/Icons/EmailAtIcon.vue'
-import PhoneIcon from '@/components/Icons/PhoneIcon.vue'
-import NoteIcon from '@/components/Icons/NoteIcon.vue'
-import TaskIcon from '@/components/Icons/TaskIcon.vue'
+import DeleteLinkedDocModal from '@/components/DeleteLinkedDocModal.vue'
+import ErrorPage from '@/components/ErrorPage.vue'
+import Icon from '@/components/Icon.vue'
+import Resizer from '@/components/Resizer.vue'
+import ActivityIcon from '@/components/Icons/ActivityIcon.vue'
+import EmailIcon from '@/components/Icons/EmailIcon.vue'
+import Email2Icon from '@/components/Icons/Email2Icon.vue'
 import CommentIcon from '@/components/Icons/CommentIcon.vue'
+import DetailsIcon from '@/components/Icons/DetailsIcon.vue'
+import EventIcon from '@/components/Icons/EventIcon.vue'
+import PhoneIcon from '@/components/Icons/PhoneIcon.vue'
+import TaskIcon from '@/components/Icons/TaskIcon.vue'
+import NoteIcon from '@/components/Icons/NoteIcon.vue'
+import SolutionIcon from '@/components/Icons/SolutionIcon.vue'
+import WhatsAppIcon from '@/components/Icons/WhatsAppIcon.vue'
 import IndicatorIcon from '@/components/Icons/IndicatorIcon.vue'
-import LeadsIcon from '@/components/Icons/LeadsIcon.vue'
+import CameraIcon from '@/components/Icons/CameraIcon.vue'
+import LinkIcon from '@/components/Icons/LinkIcon.vue'
+import AttachmentIcon from '@/components/Icons/AttachmentIcon.vue'
+import LostReasonModal from '@/components/Modals/LostReasonModal.vue'
 import LayoutHeader from '@/components/LayoutHeader.vue'
-import LeadsListView from '@/components/ListViews/LeadsListView.vue'
-import EmptyState from '@/components/ListViews/EmptyState.vue'
-import KanbanView from '@/components/Kanban/KanbanView.vue'
-import LeadModal from '@/components/Modals/LeadModal.vue'
-import NoteModal from '@/components/Modals/NoteModal.vue'
-import TaskModal from '@/components/Modals/TaskModal.vue'
-import ViewControls from '@/components/ViewControls.vue'
-import { getMeta } from '@/stores/meta'
+import Activities from '@/components/Activities/Activities.vue'
+import AssignTo from '@/components/AssignTo.vue'
+import FilesUploader from '@/components/FilesUploader/FilesUploader.vue'
+import SidePanelLayout from '@/components/SidePanelLayout.vue'
+import SLASection from '@/components/SLASection.vue'
+import CustomActions from '@/components/CustomActions.vue'
+import ConvertToDealModal from '@/components/Modals/ConvertToDealModal.vue'
+import {
+  openWebsite,
+  setupCustomizations,
+  copyToClipboard,
+  validateIsImageFile,
+  isTranslatable,
+} from '@/utils'
+import { getView } from '@/utils/view'
+import { getSettings } from '@/stores/settings'
 import { globalStore } from '@/stores/global'
-import { usersStore } from '@/stores/users'
 import { statusesStore } from '@/stores/statuses'
-import { callEnabled } from '@/composables/settings'
-import { useBroadcast } from '@/composables/useBroadcast'
-import { formatDate, timeAgo, website, formatTime } from '@/utils'
-import { Avatar, Tooltip, Dropdown } from 'frappe-ui'
-import { useRoute, useRouter } from 'vue-router'
-import { ref, computed, reactive, h, watch } from 'vue'
+import { getMeta } from '@/stores/meta'
+import { useDocument } from '@/data/document'
+import { whatsappEnabled, callEnabled } from '@/composables/settings'
+import {
+  createResource,
+  FileUploader,
+  Dropdown,
+  Tooltip,
+  Avatar,
+  Tabs,
+  Breadcrumbs,
+  call,
+  usePageMeta,
+  toast,
+} from 'frappe-ui'
+import { ref, computed, watch, nextTick, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { useActiveTabManager } from '@/composables/useActiveTabManager'
 
-const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
-  getMeta('CRM Lead')
-const { makeCall } = globalStore()
-const { getUser } = usersStore()
-const { getLeadStatus } = statusesStore()
-const { on } = useBroadcast()
+const { brand } = getSettings()
+const { $dialog, $socket, makeCall } = globalStore()
+const { statusOptions, getLeadStatus } = statusesStore()
+const { doctypeMeta } = getMeta('CRM Lead')
 
 const route = useRoute()
 const router = useRouter()
 
-const leadsListView = ref(null)
-const showLeadModal = ref(false)
-
-// Handles ?quick_filter=total&from=...&to=... coming from the Total Leads
-// Dashboard card (see components/Dashboard/DashboardItem.vue).
-//
-// NOTE: see the matching comment in Deals.vue - ViewControls runs its own
-// debounced (100ms) default reload on mount which would wipe out a filter
-// set too early, so we delay past that window and don't clear the query
-// params afterwards (that would trigger another wipe via ViewControls'
-// route-change watcher).
-let quickFilterApplied = false
-function applyQuickFilterFromRoute() {
-  if (route.query.quick_filter !== 'total' || !viewControls.value || quickFilterApplied) return
-  if (!route.query.from || !route.query.to) return
-
-  const filters = {
-    creation: ['between', [route.query.from, route.query.to]],
-  }
-  if (route.query.owner) {
-    filters.lead_owner = route.query.owner
-  }
-
-  quickFilterApplied = true
-  setTimeout(() => {
-    viewControls.value.updateFilter(filters)
-  }, 300)
-}
-
-watch(() => [route.query.quick_filter, viewControls.value], applyQuickFilterFromRoute, {
-  immediate: true,
+const props = defineProps({
+  leadId: { type: String, required: true },
 })
 
-on('trigger_lead_create', (data) => {
-  showLeadModal.value = Boolean(data)
+const reload = ref(false)
+const activities = ref(null)
+const errorTitle = ref('')
+const errorMessage = ref('')
+const showDeleteLinkedDocModal = ref(false)
+const showConvertToDealModal = ref(false)
+const showFilesUploader = ref(false)
+
+const {
+  triggerOnChange,
+  triggerOnRender,
+  assignees,
+  permissions,
+  document,
+  scripts,
+  error,
+} = useDocument('CRM Lead', props.leadId)
+
+const canDelete = computed(() => permissions.data?.permissions?.delete || false)
+
+const doc = computed(() => document.doc || {})
+
+onMounted(async () => {
+  if (document.doc) await triggerOnRender()
 })
 
-const defaults = reactive({})
-
-// leads data is loaded in the ViewControls component
-const leads = ref({})
-const loadMore = ref(1)
-const triggerResize = ref(1)
-const updatedPageCount = ref(20)
-const viewControls = ref(null)
-
-function getRow(name, field) {
-  function getValue(value) {
-    if (value && typeof value === 'object' && !Array.isArray(value)) {
-      return value
-    }
-    return { label: value }
-  }
-  return getValue(rows.value?.find((row) => row.name == name)[field])
-}
-
-// Rows
-const rows = computed(() => {
-  if (!leads.value?.data?.data) return []
-  if (leads.value.data.view_type === 'group_by') {
-    if (!leads.value?.data.group_by_field?.fieldname) return []
-    return getGroupedByRows(
-      leads.value?.data.data,
-      leads.value?.data.group_by_field,
-      leads.value.data.columns,
+watch(error, (err) => {
+  if (err) {
+    errorTitle.value = __(
+      err.exc_type == 'DoesNotExistError'
+        ? 'Document not found'
+        : 'Error occurred',
     )
-  } else if (leads.value.data.view_type === 'kanban') {
-    return getKanbanRows(leads.value.data.data, leads.value.data.fields)
+    errorMessage.value = __(err.messages?.[0] || 'An error occurred')
   } else {
-    return parseRows(leads.value?.data.data, leads.value.data.columns)
+    errorTitle.value = ''
+    errorMessage.value = ''
   }
 })
 
-const columns = computed(() => {
-  let _columns = leads.value?.data?.columns || []
+watch(
+  () => document.doc,
+  async (_doc) => {
+    if (scripts.data?.length) {
+      let s = await setupCustomizations(scripts.data, {
+        doc: _doc,
+        $dialog,
+        $socket,
+        router,
+        toast,
+        updateField,
+        createToast: toast.create,
+        deleteDoc: deleteLead,
+        call,
+      })
+      document._actions = s.actions || []
+      document._statuses = s.statuses || []
+    }
+  },
+  { once: true },
+)
 
-  // Set align right for last column
-  if (_columns.length) {
-    _columns = _columns.map((col, index) => {
-      if (index === _columns.length - 1) {
-        return { ...col, align: 'right' }
-      }
-      return col
-    })
+const breadcrumbs = computed(() => {
+  let items = [{ label: __('Leads'), route: { name: 'Leads' } }]
+
+  if (route.query.view || route.query.viewType) {
+    let view = getView(route.query.view, route.query.viewType, 'CRM Lead')
+    if (view) {
+      items.push({
+        label: __(view.label),
+        icon: view.icon,
+        route: {
+          name: 'Leads',
+          params: { viewType: route.query.viewType },
+          query: { view: route.query.view },
+        },
+      })
+    }
   }
 
-  return _columns
+  items.push({
+    label: title.value,
+    route: { name: 'Lead', params: { leadId: props.leadId } },
+  })
+  return items
 })
 
-function getGroupedByRows(listRows, groupByField, columns) {
-  let groupedRows = []
+const title = computed(() => {
+  let t = doctypeMeta.value?.title_field || 'name'
+  return doc.value?.[t] || props.leadId
+})
 
-  groupByField.options?.forEach((option) => {
-    let filteredRows
+const statuses = computed(() => {
+  let customStatuses = document.statuses?.length
+    ? document.statuses
+    : document._statuses || []
+  return statusOptions('lead', customStatuses, triggerStatusChange)
+})
 
-    if (!option) {
-      filteredRows = listRows.filter((row) => !row[groupByField.fieldname])
-    } else {
-      filteredRows = listRows.filter(
-        (row) => row[groupByField.fieldname] == option,
-      )
-    }
+usePageMeta(() => {
+  return { title: title.value, icon: brand.favicon }
+})
 
-    let groupDetail = {
-      label: groupByField.label,
-      group: option || __(' '),
-      collapsed: false,
-      rows: parseRows(filteredRows, columns),
-    }
-    if (groupByField.fieldname == 'status') {
-      groupDetail.icon = () =>
-        h(IndicatorIcon, {
-          class: getLeadStatus(option)?.color,
-        })
-    }
-    groupedRows.push(groupDetail)
-  })
-
-  return groupedRows || listRows
-}
-
-function getKanbanRows(data, columns) {
-  let _rows = []
-  data.forEach((column) => {
-    column.data?.forEach((row) => {
-      _rows.push(row)
-    })
-  })
-  return parseRows(_rows, columns)
-}
-
-function parseRows(rows, columns = []) {
-  let view_type = leads.value.data.view_type
-  let key = view_type === 'kanban' ? 'fieldname' : 'key'
-  let type = view_type === 'kanban' ? 'fieldtype' : 'type'
-
-  return rows.map((lead) => {
-    let _rows = {}
-    leads.value?.data.rows.forEach((row) => {
-      _rows[row] = lead[row]
-
-      let fieldType = columns?.find((col) => (col[key] || col.value) == row)?.[
-        type
-      ]
-
-      if (
-        fieldType &&
-        ['Date', 'Datetime'].includes(fieldType) &&
-        !['modified', 'creation'].includes(row)
-      ) {
-        _rows[row] = formatDate(lead[row], '', true, fieldType == 'Datetime')
-      }
-
-      if (fieldType && fieldType == 'Currency') {
-        _rows[row] = getFormattedCurrency(row, lead)
-      }
-
-      if (fieldType && fieldType == 'Float') {
-        _rows[row] = getFormattedFloat(row, lead)
-      }
-
-      if (fieldType && fieldType == 'Percent') {
-        _rows[row] = getFormattedPercent(row, lead)
-      }
-
-      if (row == 'lead_name') {
-        _rows[row] = {
-          label: lead.lead_name,
-          image: lead.image,
-          image_label: lead.first_name,
-        }
-      } else if (row == 'organization') {
-        _rows[row] = lead.organization
-      } else if (row === 'website') {
-        _rows[row] = website(lead.website)
-      } else if (row == 'status') {
-        _rows[row] = {
-          label: lead.status,
-          color: getLeadStatus(lead.status)?.color,
-        }
-      } else if (row == 'sla_status') {
-        let value = lead.sla_status
-        let tooltipText = value
-        let color =
-          lead.sla_status == 'Failed'
-            ? 'red'
-            : lead.sla_status == 'Fulfilled'
-              ? 'green'
-              : 'orange'
-        if (value == 'First Response Due' || value == 'Rolling Response Due') {
-          value = __(timeAgo(lead.response_by))
-          tooltipText = formatDate(lead.response_by)
-          if (new Date(lead.response_by) < new Date()) {
-            color = 'red'
-          }
-        }
-        _rows[row] = {
-          label: tooltipText,
-          value: value,
-          color: color,
-        }
-      } else if (row == 'lead_owner') {
-        _rows[row] = {
-          label: lead.lead_owner && getUser(lead.lead_owner).full_name,
-          ...(lead.lead_owner && getUser(lead.lead_owner)),
-        }
-      } else if (row == '_assign') {
-        let assignees = JSON.parse(lead._assign || '[]')
-        _rows[row] = assignees.map((user) => ({
-          name: user,
-          image: getUser(user).user_image,
-          label: getUser(user).full_name,
-        }))
-      } else if (['modified', 'creation'].includes(row)) {
-        _rows[row] = {
-          label: formatDate(lead[row]),
-          timeAgo: __(timeAgo(lead[row])),
-        }
-      } else if (
-        ['first_response_time', 'first_responded_on', 'response_by'].includes(
-          row,
-        )
-      ) {
-        let field = row == 'response_by' ? 'response_by' : 'first_responded_on'
-        _rows[row] = {
-          label: lead[field] ? formatDate(lead[field]) : '',
-          timeAgo: lead[row]
-            ? row == 'first_response_time'
-              ? formatTime(lead[row])
-              : __(timeAgo(lead[row]))
-            : '',
-        }
-      }
-    })
-    _rows['_email_count'] = lead._email_count
-    _rows['_note_count'] = lead._note_count
-    _rows['_task_count'] = lead._task_count
-    _rows['_comment_count'] = lead._comment_count
-    return _rows
-  })
-}
-
-function onNewClick(column) {
-  let column_field = leads.value.params.column_field
-
-  if (column_field) {
-    defaults[column_field] = column.column.name
-  }
-
-  showLeadModal.value = true
-}
-
-function actions(itemName) {
-  let mobile_no = getRow(itemName, 'mobile_no')?.label || ''
-  let actions = [
+const tabs = computed(() => {
+  let tabOptions = [
     {
-      icon: h(PhoneIcon, { class: 'h-4 w-4' }),
-      label: __('Make a Call'),
-      onClick: () => makeCall(mobile_no),
-      condition: () => mobile_no && callEnabled.value,
+      name: 'Activity',
+      label: __('Activity'),
+      icon: ActivityIcon,
     },
     {
-      icon: h(NoteIcon, { class: 'h-4 w-4' }),
-      label: __('New Note'),
-      onClick: () => showNote(itemName),
+      name: 'Emails',
+      label: __('Emails'),
+      icon: EmailIcon,
     },
     {
-      icon: h(TaskIcon, { class: 'h-4 w-4' }),
-      label: __('New Task'),
-      onClick: () => showTask(itemName),
+      name: 'Comments',
+      label: __('Comments'),
+      icon: CommentIcon,
+    },
+    {
+      name: 'Data',
+      label: __('Data'),
+      icon: DetailsIcon,
+    },
+    {
+      name: 'Events',
+      label: __('Events'),
+      icon: EventIcon,
+    },
+    {
+      name: 'Calls',
+      label: __('Calls'),
+      icon: PhoneIcon,
+    },
+    {
+      name: 'Tasks',
+      label: __('Tasks'),
+      icon: TaskIcon,
+    },
+    {
+      name: 'Notes',
+      label: __('Notes'),
+      icon: NoteIcon,
+    },
+    {
+      name: 'Solutions',
+      label: __('Solutions'),
+      icon: SolutionIcon,
+    },
+    {
+      name: 'Attachments',
+      label: __('Attachments'),
+      icon: AttachmentIcon,
+    },
+    {
+      name: 'WhatsApp',
+      label: __('WhatsApp'),
+      icon: WhatsAppIcon,
+      condition: () => whatsappEnabled.value,
     },
   ]
-  return actions.filter((action) =>
-    action.condition ? action.condition() : true,
-  )
-}
-
-const docname = ref('')
-const showNoteModal = ref(false)
-const note = ref({
-  title: '',
-  content: '',
+  return tabOptions.filter((tab) => (tab.condition ? tab.condition() : true))
 })
 
-function showNote(name) {
-  docname.value = name
-  showNoteModal.value = true
-}
+const { tabIndex, changeTabTo } = useActiveTabManager(tabs, 'lastLeadTab')
 
-const showTaskModal = ref(false)
-const task = ref({
-  title: '',
-  description: '',
-  assigned_to: '',
-  due_date: '',
-  priority: 'Low',
-  status: 'Backlog',
+const sections = createResource({
+  url: 'crm.fcrm.doctype.crm_fields_layout.crm_fields_layout.get_sidepanel_sections',
+  cache: ['sidePanelSections', 'CRM Lead'],
+  params: { doctype: 'CRM Lead' },
+  auto: true,
 })
 
-function showTask(name) {
-  docname.value = name
-  showTaskModal.value = true
+async function triggerStatusChange(value) {
+  await triggerOnChange('status', value)
+  setLostReason()
+}
+
+function updateField(name, value) {
+  value = Array.isArray(name) ? '' : value
+  let oldValues = Array.isArray(name) ? {} : doc.value[name]
+
+  if (Array.isArray(name)) {
+    name.forEach((field) => (doc.value[field] = value))
+  } else {
+    doc.value[name] = value
+  }
+
+  document.save.submit(null, {
+    onSuccess: () => (reload.value = true),
+    onError: (err) => {
+      if (Array.isArray(name)) {
+        name.forEach((field) => (doc.value[field] = oldValues[field]))
+      } else {
+        doc.value[name] = oldValues
+      }
+      toast.error(err.messages?.[0] || __('Error updating field'))
+    },
+  })
+}
+
+function deleteLead() {
+  showDeleteLinkedDocModal.value = true
+}
+
+function openEmailBox() {
+  let currentTab = tabs.value[tabIndex.value]
+  if (!['Emails', 'Comments', 'Activities'].includes(currentTab.name)) {
+    activities.value.changeTabTo('emails')
+  }
+  nextTick(() => (activities.value.emailBox.show = true))
+}
+
+function statusLabel(status) {
+  if (isTranslatable('CRM Lead Status')) return __(status)
+  return status
+}
+
+const showLostReasonModal = ref(false)
+
+function setLostReason() {
+  if (
+    getLeadStatus(document.doc.status).type !== 'Lost' ||
+    (document.doc.lost_reason && document.doc.lost_reason !== 'Other') ||
+    (document.doc.lost_reason === 'Other' && document.doc.lost_notes)
+  ) {
+    document.save.submit(null, {
+      onSuccess: () => sections.reload(),
+    })
+    return
+  }
+
+  showLostReasonModal.value = true
+}
+
+function beforeStatusChange(data) {
+  if (
+    Object.hasOwn(data ?? {}, 'status') &&
+    getLeadStatus(data.status).type == 'Lost'
+  ) {
+    setLostReason()
+  } else {
+    document.save.submit(null, {
+      onSuccess: () => reloadResources(data),
+    })
+  }
+}
+
+function reloadResources(data) {
+  if (Object.hasOwn(data ?? {}, 'lead_owner')) {
+    assignees.reload()
+  }
+  if (
+    Object.hasOwn(data ?? {}, 'status') &&
+    getLeadStatus(data.status).type != 'Lost'
+  ) {
+    sections.reload()
+  }
 }
 </script>
