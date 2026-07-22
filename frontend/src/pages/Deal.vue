@@ -1,630 +1,844 @@
 <template>
   <LayoutHeader>
     <template #left-header>
-      <ViewBreadcrumbs v-model="viewControls" routeName="Deals" />
+      <Breadcrumbs :items="breadcrumbs">
+        <template #prefix="{ item }">
+          <Icon v-if="item.icon" :icon="item.icon" class="mr-2 h-4" />
+        </template>
+      </Breadcrumbs>
     </template>
-    <template #right-header>
+    <template v-if="!errorTitle" #right-header>
       <CustomActions
-        v-if="dealsListView?.customListActions"
-        :actions="dealsListView.customListActions"
+        v-if="document._actions?.length"
+        :actions="document._actions"
       />
-      <Button
-        variant="solid"
-        :label="__('Create')"
-        iconLeft="plus"
-        @click="openCreateDealModal"
+      <CustomActions
+        v-if="document.actions?.length"
+        :actions="document.actions"
       />
+      <AssignTo v-model="assignees.data" doctype="CRM Deal" :docname="dealId" />
+      <Dropdown
+        v-if="doc && document.statuses"
+        :options="statuses"
+        placement="right"
+      >
+        <template #default="{ open }">
+          <Button
+            v-if="doc.status"
+            :label="statusLabel(doc.status)"
+            :iconRight="open ? 'chevron-up' : 'chevron-down'"
+          >
+            <template #prefix>
+              <IndicatorIcon :class="getDealStatus(doc.status).color" />
+            </template>
+          </Button>
+        </template>
+      </Dropdown>
     </template>
   </LayoutHeader>
-  <ViewControls
-    ref="viewControls"
-    v-model="deals"
-    v-model:loadMore="loadMore"
-    v-model:resizeColumn="triggerResize"
-    v-model:updatedPageCount="updatedPageCount"
-    doctype="CRM Deal"
-    :options="{
-      allowedViews: ['list', 'group_by', 'kanban'],
-    }"
-  />
-  <KanbanView
-    v-if="route.params.viewType == 'kanban'"
-    v-model="deals"
-    :options="{
-      getRoute: (row) => ({
-        name: 'Deal',
-        params: { dealId: row.name },
-        query: { view: route.query.view, viewType: route.params.viewType },
-      }),
-      onNewClick: (column) => onNewClick(column),
-    }"
-    @update="(data) => viewControls.updateKanbanSettings(data)"
-    @loadMore="(columnName) => viewControls.loadMoreKanban(columnName)"
-  >
-    <template #title="{ titleField, itemName }">
-      <div class="flex gap-2 items-center">
-        <div v-if="titleField === 'status'">
-          <IndicatorIcon :class="getRow(itemName, titleField).color" />
-        </div>
-        <div
-          v-else-if="
-            titleField === 'organization' && getRow(itemName, titleField).label
-          "
-        >
-          <Avatar
-            class="flex items-center"
-            :image="getRow(itemName, titleField).logo"
-            :label="getRow(itemName, titleField).label"
-            size="sm"
-          />
-        </div>
-        <div
-          v-else-if="
-            titleField === 'deal_owner' &&
-            getRow(itemName, titleField).full_name
-          "
-        >
-          <Avatar
-            class="flex items-center"
-            :image="getRow(itemName, titleField).user_image"
-            :label="getRow(itemName, titleField).full_name"
-            size="sm"
-          />
-        </div>
-        <div
-          v-if="
-            [
-              'modified',
-              'creation',
-              'first_response_time',
-              'first_responded_on',
-              'response_by',
-            ].includes(titleField)
-          "
-          class="truncate text-base"
-        >
-          <Tooltip :text="getRow(itemName, titleField).label">
-            <div>{{ getRow(itemName, titleField).timeAgo }}</div>
-          </Tooltip>
-        </div>
-        <div v-else-if="titleField === 'sla_status'" class="truncate text-base">
-          <Badge
-            v-if="getRow(itemName, titleField).value"
-            :variant="'subtle'"
-            :theme="getRow(itemName, titleField).color"
-            size="md"
-            :label="getRow(itemName, titleField).value"
-          />
-        </div>
-        <div
-          v-else-if="getRow(itemName, titleField).label"
-          class="truncate text-base"
-        >
-          {{ getRow(itemName, titleField).label }}
-        </div>
-        <div v-else class="text-ink-gray-4">{{ __('No Title') }}</div>
-      </div>
-    </template>
-
-    <template #fields="{ fieldName, itemName }">
+  <div v-if="doc.name" class="flex h-full overflow-hidden">
+    <Tabs
+      v-model="tabIndex"
+      as="div"
+      :tabs="tabs"
+      class="flex flex-1 overflow-hidden flex-col [&_[role='tab']]:px-0 [&_[role='tab']]:shrink-0 [&_[role='tablist']]:px-5 [&_[role='tablist']::-webkit-scrollbar]:h-0 [&_[role='tablist']]:min-h-[45px] [&_[role='tablist']]:gap-7.5 [&_[role='tabpanel']:not([hidden])]:flex [&_[role='tabpanel']:not([hidden])]:grow"
+    >
+      <template #tab-panel>
+        <Activities
+          ref="activities"
+          v-model:reload="reload"
+          v-model:tabIndex="tabIndex"
+          doctype="CRM Deal"
+          :docname="dealId"
+          :tabs="tabs"
+          @beforeSave="beforeStatusChange"
+          @afterSave="reloadResources"
+        />
+      </template>
+    </Tabs>
+    <Resizer side="right" class="flex flex-col justify-between border-l">
       <div
-        v-if="getRow(itemName, fieldName).label"
-        class="truncate flex items-center gap-2"
+        class="flex h-[45px] cursor-copy items-center border-b px-5 py-2.5 text-lg font-medium text-ink-gray-9"
+        @click="copyToClipboard(dealId)"
       >
-        <div v-if="fieldName === 'status'">
-          <IndicatorIcon :class="getRow(itemName, fieldName).color" />
-        </div>
-        <div v-else-if="fieldName === 'organization'">
-          <Avatar
-            v-if="getRow(itemName, fieldName).label"
-            class="flex items-center"
-            :image="getRow(itemName, fieldName).logo"
-            :label="getRow(itemName, fieldName).label"
-            size="xs"
-          />
-        </div>
-        <div v-else-if="fieldName === 'deal_owner'">
-          <Avatar
-            v-if="getRow(itemName, fieldName).full_name"
-            class="flex items-center"
-            :image="getRow(itemName, fieldName).user_image"
-            :label="getRow(itemName, fieldName).full_name"
-            size="xs"
-          />
-        </div>
-        <div
-          v-if="
-            [
-              'modified',
-              'creation',
-              'first_response_time',
-              'first_responded_on',
-              'response_by',
-            ].includes(fieldName)
-          "
-          class="truncate text-base"
-        >
-          <Tooltip :text="getRow(itemName, fieldName).label">
-            <div>{{ getRow(itemName, fieldName).timeAgo }}</div>
+        {{ __(dealId) }}
+      </div>
+      <div class="flex items-center justify-start gap-5 border-b p-5">
+        <Tooltip :text="__('Organization Logo')">
+          <div class="group relative size-12">
+            <Avatar
+              size="3xl"
+              class="size-12"
+              :label="title"
+              :image="organization?.organization_logo"
+            />
+          </div>
+        </Tooltip>
+        <div class="flex flex-col gap-2.5 truncate text-ink-gray-9">
+          <Tooltip :text="organization?.name || __('Set an Organization')">
+            <div class="truncate text-2xl font-medium">
+              {{ title }}
+            </div>
           </Tooltip>
-        </div>
-        <div v-else-if="fieldName === 'sla_status'" class="truncate text-base">
-          <Badge
-            v-if="getRow(itemName, fieldName).value"
-            :variant="'subtle'"
-            :theme="getRow(itemName, fieldName).color"
-            size="md"
-            :label="getRow(itemName, fieldName).value"
-          />
-        </div>
-        <div
-          v-else-if="fieldName === '_assign'"
-          class="flex items-center truncate"
-        >
-          <MultipleAvatar
-            :avatars="getRow(itemName, fieldName).label"
-            size="xs"
-          />
-        </div>
-        <div v-else class="truncate text-base">
-          {{ getRow(itemName, fieldName).label }}
-        </div>
-      </div>
-    </template>
+          <div class="flex gap-1.5">
+            <Button
+              v-if="callEnabled"
+              :tooltip="__('Make a Call')"
+              :icon="PhoneIcon"
+              @click="triggerCall"
+            />
 
-    <template #actions="{ itemName }">
-      <div class="flex gap-2 items-center justify-between">
-        <div class="text-ink-gray-5 flex items-center gap-1.5">
-          <EmailAtIcon class="h-4 w-4" />
-          <span v-if="getRow(itemName, '_email_count').label">
-            {{ getRow(itemName, '_email_count').label }}
-          </span>
-          <span class="text-3xl leading-[0]"> &middot; </span>
-          <NoteIcon class="h-4 w-4" />
-          <span v-if="getRow(itemName, '_note_count').label">
-            {{ getRow(itemName, '_note_count').label }}
-          </span>
-          <span class="text-3xl leading-[0]"> &middot; </span>
-          <TaskIcon class="h-4 w-4" />
-          <span v-if="getRow(itemName, '_task_count').label">
-            {{ getRow(itemName, '_task_count').label }}
-          </span>
-          <span class="text-3xl leading-[0]"> &middot; </span>
-          <CommentIcon class="h-4 w-4" />
-          <span v-if="getRow(itemName, '_comment_count').label">
-            {{ getRow(itemName, '_comment_count').label }}
-          </span>
+            <Button
+              :tooltip="__('Send an Email')"
+              :icon="Email2Icon"
+              @click="
+                doc.email
+                  ? openEmailBox()
+                  : toast.error(
+                      __('Please set an email address to send emails'),
+                    )
+              "
+            />
+
+            <Button
+              :tooltip="__('Go to Website')"
+              :icon="LinkIcon"
+              @click="
+                doc.website
+                  ? openWebsite(doc.website)
+                  : toast.error(__('Please set a website to visit'))
+              "
+            />
+
+            <Button
+              :tooltip="__('Attach a File')"
+              :icon="AttachmentIcon"
+              @click="showFilesUploader = true"
+            />
+
+            <Button
+              v-if="canDelete"
+              :tooltip="__('Delete')"
+              variant="subtle"
+              icon="trash-2"
+              theme="red"
+              @click="deleteDeal"
+            />
+          </div>
         </div>
-        <Dropdown
-          class="flex items-center gap-2"
-          :options="actions(itemName)"
-          variant="ghost"
-          @click.stop.prevent
-        >
-          <Button icon="plus" variant="ghost" />
-        </Dropdown>
       </div>
-    </template>
-  </KanbanView>
-  <DealsListView
-    v-else-if="deals.data && rows.length"
-    ref="dealsListView"
-    v-model="deals.data.page_length_count"
-    v-model:list="deals"
-    :rows="rows"
-    :columns="columns"
+      <SLASection
+        v-if="doc.sla_status"
+        v-model="doc"
+        @updateField="updateField"
+      />
+      <div
+        v-if="sections.data"
+        class="flex flex-1 flex-col justify-between overflow-hidden"
+      >
+        <SidePanelLayout
+          :sections="sections.data"
+          :addContact="addContact"
+          doctype="CRM Deal"
+          :docname="dealId"
+          @reload="sections.reload"
+          @beforeFieldChange="beforeStatusChange"
+          @afterFieldChange="reloadResources"
+        >
+          <template #actions="{ section }">
+            <div v-if="section.name == 'contacts_section'" class="pr-2">
+              <Link
+                value=""
+                doctype="Contact"
+                :onCreate="
+                  (value, close) => {
+                    _contact = {
+                      first_name: value,
+                      company_name: doc.organization,
+                    }
+                    showContactModal = true
+                    close()
+                  }
+                "
+                @change="(e) => addContact(e)"
+              >
+                <template #target="{ togglePopover }">
+                  <Button
+                    class="h-7 px-3"
+                    variant="ghost"
+                    icon="plus"
+                    @click="togglePopover()"
+                  />
+                </template>
+              </Link>
+            </div>
+          </template>
+          <template #default="{ section }">
+            <div
+              v-if="section.name == 'assigned_team_section'"
+            >
+              <AssignedTeamSection :dealName="dealId" />
+            </div>
+            <div
+              v-if="section.name == 'contacts_section'"
+              class="contacts-area"
+            >
+              <div
+                v-if="dealContacts?.loading && dealContacts?.data?.length == 0"
+                class="flex min-h-20 flex-1 items-center justify-center gap-3 text-base text-ink-gray-4"
+              >
+                <LoadingIndicator class="h-4 w-4" />
+                <span>{{ __('Loading...') }}</span>
+              </div>
+              <div
+                v-for="(contact, i) in dealContacts.data"
+                v-else-if="dealContacts?.data?.length"
+                :key="contact.name"
+              >
+                <div class="px-2 pb-2.5" :class="[i == 0 ? 'pt-5' : 'pt-2.5']">
+                  <CollapsibleSection :opened="contact.opened">
+                    <template #header="{ opened, toggle }">
+                      <div
+                        class="flex cursor-pointer items-center justify-between gap-2 pr-1 text-base leading-5 text-ink-gray-7"
+                      >
+                        <div
+                          class="flex h-7 items-center gap-2 truncate"
+                          @click="toggle()"
+                        >
+                          <Avatar
+                            :label="contact.full_name"
+                            :image="contact.image"
+                            size="md"
+                          />
+                          <div class="truncate">
+                            {{ contact.full_name }}
+                          </div>
+                          <Badge
+                            v-if="contact.is_primary"
+                            class="ml-2"
+                            variant="outline"
+                            :label="__('Primary')"
+                            theme="green"
+                          />
+                        </div>
+                        <div class="flex items-center">
+                          <Dropdown :options="contactOptions(contact)">
+                            <Button
+                              icon="more-horizontal"
+                              class="text-ink-gray-5"
+                              variant="ghost"
+                            />
+                          </Dropdown>
+                          <Button
+                            variant="ghost"
+                            :tooltip="__('View Contact')"
+                            :icon="ArrowUpRightIcon"
+                            @click="
+                              router.push({
+                                name: 'Contact',
+                                params: { contactId: contact.name },
+                              })
+                            "
+                          />
+                          <Button
+                            variant="ghost"
+                            class="transition-all duration-300 ease-in-out"
+                            :class="{ 'rotate-90': opened }"
+                            icon="chevron-right"
+                            @click="toggle()"
+                          />
+                        </div>
+                      </div>
+                    </template>
+                    <div class="flex flex-col gap-1.5 text-base">
+                      <div
+                        v-if="contact.email"
+                        class="flex items-center gap-3 pb-1.5 pl-1 pt-4 text-ink-gray-8"
+                      >
+                        <Email2Icon class="h-4 w-4" />
+                        {{ contact.email }}
+                      </div>
+                      <div
+                        v-if="contact.mobile_no"
+                        class="flex items-center gap-3 p-1 py-1.5 text-ink-gray-8"
+                      >
+                        <PhoneIcon class="h-4 w-4" />
+                        {{ contact.mobile_no }}
+                      </div>
+                      <div
+                        v-if="!contact.email && !contact.mobile_no"
+                        class="flex items-center justify-center py-4 text-sm text-ink-gray-4"
+                      >
+                        {{ __('No Details Added') }}
+                      </div>
+                    </div>
+                  </CollapsibleSection>
+                </div>
+                <div
+                  v-if="i != dealContacts.data.length - 1"
+                  class="mx-2 h-px border-t border-outline-gray-modals"
+                />
+              </div>
+              <div
+                v-else
+                class="flex h-20 items-center justify-center text-base text-ink-gray-5"
+              >
+                {{ __('No Contacts Added') }}
+              </div>
+            </div>
+          </template>
+        </SidePanelLayout>
+      </div>
+    </Resizer>
+  </div>
+  <ErrorPage
+    v-else-if="errorTitle"
+    :errorTitle="errorTitle"
+    :errorMessage="errorMessage"
+  />
+  <OrganizationModal
+    v-if="showOrganizationModal"
+    v-model="showOrganizationModal"
+    :data="_organization"
     :options="{
-      showTooltip: false,
-      resizeColumn: true,
-      rowCount: deals.data.row_count,
-      totalCount: deals.data.total_count,
+      redirect: false,
+      afterInsert: (_doc) => updateField('organization', _doc.name),
     }"
-    @loadMore="() => loadMore++"
-    @columnWidthUpdated="() => triggerResize++"
-    @updatePageCount="(count) => (updatedPageCount = count)"
-    @applyFilter="(data) => viewControls.applyFilter(data)"
-    @applyLikeFilter="(data) => viewControls.applyLikeFilter(data)"
-    @likeDoc="(data) => viewControls.likeDoc(data)"
-    @selectionsChanged="
-      (selections) => viewControls.updateSelections(selections)
+  />
+  <ContactModal
+    v-if="showContactModal"
+    v-model="showContactModal"
+    :contact="_contact"
+    :options="{
+      redirect: false,
+      afterInsert: (_doc) => addContact(_doc.name),
+    }"
+  />
+  <FilesUploader
+    v-model="showFilesUploader"
+    doctype="CRM Deal"
+    :docname="dealId"
+    @after="
+      () => {
+        activities?.all_activities?.reload()
+        changeTabTo('attachments')
+      }
     "
-    @editDeal="openEditDealModal"
   />
-  <EmptyState
-    v-else-if="deals.data && !rows.length"
+  <DeleteLinkedDocModal
+    v-if="showDeleteLinkedDocModal"
+    v-model="showDeleteLinkedDocModal"
+    :doctype="'CRM Deal'"
+    :docname="dealId"
     name="Deals"
-    :icon="DealsIcon"
   />
-  <DealModal
-    v-if="showDealModal"
-    v-model="showDealModal"
-    :defaults="defaults"
-    :dealName="editDealName"
-    @updated="onDealUpdated"
-  />
-  <NoteModal
-    v-if="showNoteModal"
-    v-model="showNoteModal"
-    :note="note"
+  <LostReasonModal
+    v-if="showLostReasonModal"
+    v-model="showLostReasonModal"
     doctype="CRM Deal"
-    :doc="docname"
-  />
-  <TaskModal
-    v-if="showTaskModal"
-    v-model="showTaskModal"
-    :task="task"
-    doctype="CRM Deal"
-    :doc="docname"
+    :document="document"
   />
 </template>
-
 <script setup>
-import ViewBreadcrumbs from '@/components/ViewBreadcrumbs.vue'
-import MultipleAvatar from '@/components/MultipleAvatar.vue'
-import CustomActions from '@/components/CustomActions.vue'
-import EmailAtIcon from '@/components/Icons/EmailAtIcon.vue'
-import PhoneIcon from '@/components/Icons/PhoneIcon.vue'
-import NoteIcon from '@/components/Icons/NoteIcon.vue'
-import TaskIcon from '@/components/Icons/TaskIcon.vue'
+import DeleteLinkedDocModal from '@/components/DeleteLinkedDocModal.vue'
+import ErrorPage from '@/components/ErrorPage.vue'
+import Icon from '@/components/Icon.vue'
+import Resizer from '@/components/Resizer.vue'
+import LoadingIndicator from '@/components/Icons/LoadingIndicator.vue'
+import ActivityIcon from '@/components/Icons/ActivityIcon.vue'
+import EmailIcon from '@/components/Icons/EmailIcon.vue'
+import Email2Icon from '@/components/Icons/Email2Icon.vue'
 import CommentIcon from '@/components/Icons/CommentIcon.vue'
+import DetailsIcon from '@/components/Icons/DetailsIcon.vue'
+import EventIcon from '@/components/Icons/EventIcon.vue'
+import PhoneIcon from '@/components/Icons/PhoneIcon.vue'
+import TaskIcon from '@/components/Icons/TaskIcon.vue'
+import NoteIcon from '@/components/Icons/NoteIcon.vue'
+import SolutionIcon from '@/components/Icons/SolutionIcon.vue'
+import WhatsAppIcon from '@/components/Icons/WhatsAppIcon.vue'
 import IndicatorIcon from '@/components/Icons/IndicatorIcon.vue'
-import DealsIcon from '@/components/Icons/DealsIcon.vue'
+import LinkIcon from '@/components/Icons/LinkIcon.vue'
+import ArrowUpRightIcon from '@/components/Icons/ArrowUpRightIcon.vue'
+import SuccessIcon from '@/components/Icons/SuccessIcon.vue'
+import AttachmentIcon from '@/components/Icons/AttachmentIcon.vue'
 import LayoutHeader from '@/components/LayoutHeader.vue'
-import DealsListView from '@/components/ListViews/DealsListView.vue'
-import EmptyState from '@/components/ListViews/EmptyState.vue'
-import KanbanView from '@/components/Kanban/KanbanView.vue'
-import DealModal from '@/components/Modals/DealModal.vue'
-import NoteModal from '@/components/Modals/NoteModal.vue'
-import TaskModal from '@/components/Modals/TaskModal.vue'
-import ViewControls from '@/components/ViewControls.vue'
-import { getMeta } from '@/stores/meta'
+import Activities from '@/components/Activities/Activities.vue'
+import OrganizationModal from '@/components/Modals/OrganizationModal.vue'
+import LostReasonModal from '@/components/Modals/LostReasonModal.vue'
+import AssignTo from '@/components/AssignTo.vue'
+import FilesUploader from '@/components/FilesUploader/FilesUploader.vue'
+import ContactModal from '@/components/Modals/ContactModal.vue'
+import Link from '@/components/Controls/Link.vue'
+import CollapsibleSection from '@/components/CollapsibleSection.vue'
+import SidePanelLayout from '@/components/SidePanelLayout.vue'
+import SLASection from '@/components/SLASection.vue'
+import AssignedTeamSection from '@/components/AssignedTeamSection.vue'
+import CustomActions from '@/components/CustomActions.vue'
+import {
+  openWebsite,
+  setupCustomizations,
+  copyToClipboard,
+  isTranslatable,
+} from '@/utils'
+import { getView } from '@/utils/view'
+import { getSettings } from '@/stores/settings'
 import { globalStore } from '@/stores/global'
-import { usersStore } from '@/stores/users'
-import { organizationsStore } from '@/stores/organizations'
 import { statusesStore } from '@/stores/statuses'
-import { callEnabled } from '@/composables/settings'
-import { formatDate, timeAgo, website, formatTime } from '@/utils'
-import { Tooltip, Avatar, Dropdown } from 'frappe-ui'
+import { getMeta } from '@/stores/meta'
+import { useDocument } from '@/data/document'
+import { whatsappEnabled, callEnabled } from '@/composables/settings'
+import { useBroadcast } from '@/composables/useBroadcast'
+import {
+  createResource,
+  Dropdown,
+  Tooltip,
+  Avatar,
+  Tabs,
+  Breadcrumbs,
+  call,
+  usePageMeta,
+  toast,
+} from 'frappe-ui'
+import { useOnboarding } from 'frappe-ui/frappe'
+import {
+  ref,
+  computed,
+  h,
+  onMounted,
+  onBeforeUnmount,
+  nextTick,
+  watch,
+} from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ref, reactive, computed, h, watch } from 'vue'
+import { useActiveTabManager } from '@/composables/useActiveTabManager'
 
-const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
-  getMeta('CRM Deal')
-const { makeCall } = globalStore()
-const { getUser } = usersStore()
-const { getOrganization } = organizationsStore()
-const { getDealStatus, dealStatuses } = statusesStore()
+const { on } = useBroadcast()
+const { brand } = getSettings()
+const { $dialog, $socket, makeCall } = globalStore()
+const { statusOptions, getDealStatus } = statusesStore()
+const { doctypeMeta } = getMeta('CRM Deal')
+
+const { updateOnboardingStep, isOnboardingStepsCompleted } =
+  useOnboarding('frappecrm')
 
 const route = useRoute()
 const router = useRouter()
 
-// Handles ?quick_filter=won|ongoing&from=...&to=... coming from Dashboard
-// card clicks (see components/Dashboard/DashboardItem.vue).
-//
-// NOTE: ViewControls.vue runs its own debounced (100ms) default reload on
-// mount, which rebuilds list params from scratch and would silently wipe
-// out any filter we set before that fires. We deliberately delay our
-// call past that window. We also intentionally do NOT clear the query
-// params afterwards - ViewControls separately reloads with default
-// params whenever the route object changes, which would wipe the filter
-// again. Leaving the params in the URL is harmless (a refresh just
-// re-applies the same filter).
-let quickFilterApplied = false
-function applyQuickFilterFromRoute() {
-  const quickFilter = route.query.quick_filter
-  if (!quickFilter || !viewControls.value || quickFilterApplied) return
+const props = defineProps({
+  dealId: { type: String, required: true },
+})
 
-  const statuses = dealStatuses.data || []
-  let statusNames = []
-  if (quickFilter === 'won') {
-    statusNames = statuses.filter((s) => s.type === 'Won').map((s) => s.name)
-  } else if (quickFilter === 'ongoing') {
-    statusNames = statuses
-      .filter((s) => !['Won', 'Lost'].includes(s.type))
-      .map((s) => s.name)
-  }
-  if (!statusNames.length) return
+const errorTitle = ref('')
+const errorMessage = ref('')
+const showDeleteLinkedDocModal = ref(false)
 
-  const filters = { status: ['in', statusNames] }
-  if (route.query.from && route.query.to) {
-    filters.creation = ['between', [route.query.from, route.query.to]]
-  }
-  if (route.query.owner) {
-    filters.deal_owner = route.query.owner
-  }
+const {
+  triggerOnChange,
+  triggerOnRender,
+  assignees,
+  permissions,
+  document,
+  scripts,
+  error,
+} = useDocument('CRM Deal', props.dealId)
 
-  quickFilterApplied = true
-  setTimeout(() => {
-    viewControls.value.updateFilter(filters)
-  }, 300)
-}
+const canDelete = computed(() => permissions.data?.permissions?.delete || false)
+
+const doc = computed(() => document.doc || {})
+
+watch(error, (err) => {
+  if (err) {
+    errorTitle.value = __(
+      err.exc_type == 'DoesNotExistError'
+        ? 'Document Not Found'
+        : 'Error Occurred',
+    )
+    errorMessage.value = __(err.messages?.[0] || 'An Error Occurred')
+  } else {
+    errorTitle.value = ''
+    errorMessage.value = ''
+  }
+})
 
 watch(
-  () => [route.query.quick_filter, dealStatuses.data, viewControls.value],
-  () => applyQuickFilterFromRoute(),
+  () => document.doc,
+  async (_doc) => {
+    if (scripts.data?.length) {
+      let s = await setupCustomizations(scripts.data, {
+        doc: _doc,
+        $dialog,
+        $socket,
+        router,
+        toast,
+        updateField,
+        createToast: toast.create,
+        deleteDoc: deleteDeal,
+        call,
+      })
+      document._actions = s.actions || []
+      document._statuses = s.statuses || []
+    }
+  },
+  { once: true },
+)
+
+const organizationDocument = ref(null)
+
+watch(
+  () => doc.value.organization,
+  (org) => {
+    if (org && !organizationDocument.value?.doc) {
+      let { document: _organizationDocument } = useDocument(
+        'CRM Organization',
+        org,
+      )
+      organizationDocument.value = _organizationDocument
+    }
+  },
   { immediate: true },
 )
 
-const dealsListView = ref(null)
-const showDealModal = ref(false)
-const editDealName = ref(null)
+const organization = computed(() => organizationDocument.value?.doc || {})
 
-const defaults = reactive({})
+onMounted(async () => {
+  $socket.on('crm_customer_created', () => {
+    toast.success(__('Customer Created Successfully'))
+  })
+  if (document.doc) await triggerOnRender()
+})
 
-// deals data is loaded in the ViewControls component
-const deals = ref({})
-const loadMore = ref(1)
-const triggerResize = ref(1)
-const updatedPageCount = ref(20)
-const viewControls = ref(null)
+onBeforeUnmount(() => {
+  $socket.off('crm_customer_created')
+})
 
-function openCreateDealModal() {
-  editDealName.value = null
-  showDealModal.value = true
-}
+const reload = ref(false)
+const showOrganizationModal = ref(false)
+const showFilesUploader = ref(false)
+const _organization = ref({})
 
-function openEditDealModal(dealName) {
-  editDealName.value = dealName
-  showDealModal.value = true
-}
+const breadcrumbs = computed(() => {
+  let items = [{ label: __('Deals'), route: { name: 'Deals' } }]
 
-function onDealUpdated() {
-  editDealName.value = null
-  viewControls.value?.reload?.()
-}
-
-function getRow(name, field) {
-  function getValue(value) {
-    if (value && typeof value === 'object' && !Array.isArray(value)) {
-      return value
+  if (route.query.view || route.query.viewType) {
+    let view = getView(route.query.view, route.query.viewType, 'CRM Deal')
+    if (view) {
+      items.push({
+        label: __(view.label),
+        icon: view.icon,
+        route: {
+          name: 'Deals',
+          params: { viewType: route.query.viewType },
+          query: { view: route.query.view },
+        },
+      })
     }
-    return { label: value }
   }
-  return getValue(rows.value?.find((row) => row.name == name)[field])
-}
 
-// Rows
-const rows = computed(() => {
-  if (!deals.value?.data?.data) return []
-  if (deals.value.data.view_type === 'group_by') {
-    if (!deals.value?.data.group_by_field?.fieldname) return []
-    return getGroupedByRows(
-      deals.value?.data.data,
-      deals.value?.data.group_by_field,
-      deals.value.data.columns,
-    )
-  } else if (deals.value.data.view_type === 'kanban') {
-    return getKanbanRows(deals.value.data.data, deals.value.data.fields)
-  } else {
-    return parseRows(deals.value?.data.data, deals.value.data.columns)
+  items.push({
+    label: title.value,
+    route: { name: 'Deal', params: { dealId: props.dealId } },
+  })
+  return items
+})
+
+const title = computed(() => {
+  let t = doctypeMeta.value?.title_field || 'name'
+  return doc.value?.[t] || props.dealId
+})
+
+const statuses = computed(() => {
+  let customStatuses = document.statuses?.length
+    ? document.statuses
+    : document._statuses || []
+  return statusOptions('deal', customStatuses, triggerStatusChange)
+})
+
+usePageMeta(() => {
+  return {
+    title: title.value,
+    icon: brand.favicon,
   }
 })
 
-const columns = computed(() => {
-  let _columns = deals.value?.data?.columns || []
-
-  if (_columns.length) {
-    _columns = _columns.map((col, index) => {
-      if (index === _columns.length - 1) {
-        return { ...col, align: 'right' }
-      }
-      return col
-    })
-  }
-
-  return _columns
-})
-
-function getGroupedByRows(listRows, groupByField, columns) {
-  let groupedRows = []
-
-  groupByField.options?.forEach((option) => {
-    let filteredRows
-
-    if (!option) {
-      filteredRows = listRows.filter((row) => !row[groupByField.fieldname])
-    } else {
-      filteredRows = listRows.filter(
-        (row) => row[groupByField.fieldname] == option,
-      )
-    }
-
-    let groupDetail = {
-      label: groupByField.label,
-      group: option || __(' '),
-      collapsed: false,
-      rows: parseRows(filteredRows, columns),
-    }
-    if (groupByField.fieldname == 'status') {
-      groupDetail.icon = () =>
-        h(IndicatorIcon, {
-          class: getDealStatus(option)?.color,
-        })
-    }
-    groupedRows.push(groupDetail)
-  })
-
-  return groupedRows || listRows
-}
-
-function getKanbanRows(data, columns) {
-  let _rows = []
-  data.forEach((column) => {
-    column.data?.forEach((row) => {
-      _rows.push(row)
-    })
-  })
-  return parseRows(_rows, columns)
-}
-
-function parseRows(rows, columns = []) {
-  let view_type = deals.value.data.view_type
-  let key = view_type === 'kanban' ? 'fieldname' : 'key'
-  let type = view_type === 'kanban' ? 'fieldtype' : 'type'
-
-  return rows.map((deal) => {
-    let _rows = {}
-    deals.value.data.rows.forEach((row) => {
-      _rows[row] = deal[row]
-
-      let fieldType = columns?.find((col) => (col[key] || col.value) == row)?.[
-        type
-      ]
-
-      if (
-        fieldType &&
-        ['Date', 'Datetime'].includes(fieldType) &&
-        !['modified', 'creation'].includes(row)
-      ) {
-        _rows[row] = formatDate(deal[row], '', true, fieldType == 'Datetime')
-      }
-
-      if (fieldType && fieldType == 'Currency') {
-        _rows[row] = getFormattedCurrency(row, deal)
-      }
-
-      if (fieldType && fieldType == 'Float') {
-        _rows[row] = getFormattedFloat(row, deal)
-      }
-
-      if (fieldType && fieldType == 'Percent') {
-        _rows[row] = getFormattedPercent(row, deal)
-      }
-
-      if (row == 'organization') {
-        _rows[row] = {
-          label: deal.organization,
-          logo: getOrganization(deal.organization)?.organization_logo,
-        }
-      } else if (row === 'website') {
-        _rows[row] = website(deal.website)
-      } else if (row == 'status') {
-        _rows[row] = {
-          label: deal.status,
-          color: getDealStatus(deal.status)?.color,
-        }
-      } else if (row == 'sla_status') {
-        let value = deal.sla_status
-        let tooltipText = value
-        let color =
-          deal.sla_status == 'Failed'
-            ? 'red'
-            : deal.sla_status == 'Fulfilled'
-              ? 'green'
-              : 'orange'
-        if (value == 'First Response Due' || value == 'Rolling Response Due') {
-          value = __(timeAgo(deal.response_by))
-          tooltipText = formatDate(deal.response_by)
-          if (new Date(deal.response_by) < new Date()) {
-            color = 'red'
-          }
-        }
-        _rows[row] = {
-          label: tooltipText,
-          value: value,
-          color: color,
-        }
-      } else if (row == 'deal_owner') {
-        _rows[row] = {
-          label: deal.deal_owner && getUser(deal.deal_owner).full_name,
-          ...(deal.deal_owner && getUser(deal.deal_owner)),
-        }
-      } else if (row == '_assign') {
-        let assignees = JSON.parse(deal._assign || '[]')
-        _rows[row] = assignees.map((user) => ({
-          name: user,
-          image: getUser(user).user_image,
-          label: getUser(user).full_name,
-        }))
-      } else if (['modified', 'creation'].includes(row)) {
-        _rows[row] = {
-          label: formatDate(deal[row]),
-          timeAgo: __(timeAgo(deal[row])),
-        }
-      } else if (
-        ['first_response_time', 'first_responded_on', 'response_by'].includes(
-          row,
-        )
-      ) {
-        let field = row == 'response_by' ? 'response_by' : 'first_responded_on'
-        _rows[row] = {
-          label: deal[field] ? formatDate(deal[field]) : '',
-          timeAgo: deal[row]
-            ? row == 'first_response_time'
-              ? formatTime(deal[row])
-              : __(timeAgo(deal[row]))
-            : '',
-        }
-      }
-    })
-    _rows['_email_count'] = deal._email_count
-    _rows['_note_count'] = deal._note_count
-    _rows['_task_count'] = deal._task_count
-    _rows['_comment_count'] = deal._comment_count
-    return _rows
-  })
-}
-
-function onNewClick(column) {
-  let column_field = deals.value.params.column_field
-
-  if (column_field) {
-    defaults[column_field] = column.column.name
-  }
-
-  editDealName.value = null
-  showDealModal.value = true
-}
-
-function actions(itemName) {
-  let mobile_no = getRow(itemName, 'mobile_no')?.label || ''
-  let actions = [
+const tabs = computed(() => {
+  let tabOptions = [
     {
-      icon: h(PhoneIcon, { class: 'h-4 w-4' }),
-      label: __('Make a Call'),
-      onClick: () => makeCall(mobile_no),
-      condition: () => mobile_no && callEnabled.value,
+      name: 'Activity',
+      label: __('Activity'),
+      icon: ActivityIcon,
     },
     {
-      icon: h(NoteIcon, { class: 'h-4 w-4' }),
-      label: __('New Note'),
-      onClick: () => showNote(itemName),
+      name: 'Emails',
+      label: __('Emails'),
+      icon: EmailIcon,
     },
     {
-      icon: h(TaskIcon, { class: 'h-4 w-4' }),
-      label: __('New Task'),
-      onClick: () => showTask(itemName),
+      name: 'Comments',
+      label: __('Comments'),
+      icon: CommentIcon,
+    },
+    {
+      name: 'Data',
+      label: __('Data'),
+      icon: DetailsIcon,
+    },
+    {
+      name: 'Events',
+      label: __('Events'),
+      icon: EventIcon,
+    },
+    {
+      name: 'Calls',
+      label: __('Calls'),
+      icon: PhoneIcon,
+    },
+    {
+      name: 'Tasks',
+      label: __('Tasks'),
+      icon: TaskIcon,
+    },
+    {
+      name: 'Notes',
+      label: __('Notes'),
+      icon: NoteIcon,
+    },
+    {
+      name: 'Solutions',
+      label: __('Solutions'),
+      icon: SolutionIcon,
+    },
+    {
+      name: 'Attachments',
+      label: __('Attachments'),
+      icon: AttachmentIcon,
+    },
+    {
+      name: 'WhatsApp',
+      label: __('WhatsApp'),
+      icon: WhatsAppIcon,
+      condition: () => whatsappEnabled.value,
     },
   ]
-  return actions.filter((action) =>
-    action.condition ? action.condition() : true,
-  )
-}
-
-const docname = ref('')
-const showNoteModal = ref(false)
-const note = ref({
-  title: '',
-  content: '',
+  return tabOptions.filter((tab) => (tab.condition ? tab.condition() : true))
 })
 
-function showNote(name) {
-  docname.value = name
-  showNoteModal.value = true
-}
+const { tabIndex } = useActiveTabManager(tabs, 'lastDealTab')
 
-const showTaskModal = ref(false)
-const task = ref({
-  title: '',
-  description: '',
-  assigned_to: '',
-  due_date: '',
-  priority: 'Low',
-  status: 'Backlog',
+const sections = createResource({
+  url: 'crm.fcrm.doctype.crm_fields_layout.crm_fields_layout.get_sidepanel_sections',
+  params: { doctype: 'CRM Deal' },
+  transform: (data) => getParsedSections(data),
 })
 
-function showTask(name) {
-  docname.value = name
-  showTaskModal.value = true
+on('reload-deal-sections', () => sections.reload())
+
+if (!sections.data) sections.fetch()
+
+function getParsedSections(_sections) {
+  _sections.forEach((section) => {
+    if (section.name == 'contacts_section') return
+    if (section.name == 'assigned_team_section') return
+    if (!section.columns || !section.columns.length) return
+    section.columns[0].fields.forEach((field) => {
+      if (field.fieldname == 'organization') {
+        field.create = (value, close) => {
+          _organization.value.organization_name = value
+          showOrganizationModal.value = true
+          close()
+        }
+        field.link = (org) =>
+          router.push({
+            name: 'Organization',
+            params: { organizationId: org },
+          })
+      }
+    })
+  })
+  return _sections
+}
+
+const showContactModal = ref(false)
+const _contact = ref({})
+
+function contactOptions(contact) {
+  let options = [
+    {
+      label: __('Remove'),
+      icon: 'trash-2',
+      onClick: () => removeContact(contact.name),
+    },
+  ]
+
+  if (!contact.is_primary) {
+    options.push({
+      label: __('Set as Primary Contact'),
+      icon: h(SuccessIcon, { class: 'h-4 w-4' }),
+      onClick: () => setPrimaryContact(contact.name),
+    })
+  }
+
+  return options
+}
+
+async function addContact(contact) {
+  if (dealContacts.data?.find((c) => c.name === contact)) {
+    toast.error(__('Contact Already Added'))
+    return
+  }
+
+  let d = await call('crm.fcrm.doctype.crm_deal.crm_deal.add_contact', {
+    deal: props.dealId,
+    contact,
+  })
+  if (d) {
+    dealContacts.reload()
+    toast.success(__('Contact Added'))
+  }
+}
+
+async function removeContact(contact) {
+  let d = await call('crm.fcrm.doctype.crm_deal.crm_deal.remove_contact', {
+    deal: props.dealId,
+    contact,
+  })
+  if (d) {
+    dealContacts.reload()
+    toast.success(__('Contact Removed'))
+  }
+}
+
+async function setPrimaryContact(contact) {
+  let d = await call('crm.fcrm.doctype.crm_deal.crm_deal.set_primary_contact', {
+    deal: props.dealId,
+    contact,
+  })
+  if (d) {
+    dealContacts.reload()
+    toast.success(__('Primary Contact Set'))
+  }
+}
+
+const dealContacts = createResource({
+  url: 'crm.fcrm.doctype.crm_deal.api.get_deal_contacts',
+  params: { name: props.dealId },
+  cache: ['deal_contacts', props.dealId],
+  transform: (data) => {
+    data.forEach((contact) => {
+      contact.opened = false
+    })
+    return data
+  },
+})
+
+if (!dealContacts.data) dealContacts.fetch()
+
+function triggerCall() {
+  let primaryContact = dealContacts.data?.find((c) => c.is_primary)
+  let mobile_no = primaryContact.mobile_no || null
+
+  if (!primaryContact) {
+    toast.error(__('No Primary Contact Set'))
+    return
+  }
+
+  if (!mobile_no) {
+    toast.error(__('No Mobile Number Set'))
+    return
+  }
+
+  makeCall(mobile_no)
+}
+
+async function triggerStatusChange(value) {
+  await triggerOnChange('status', value)
+  setLostReason()
+}
+
+function updateField(name, value) {
+  if (name == 'status' && !isOnboardingStepsCompleted.value) {
+    updateOnboardingStep('change_deal_status')
+  }
+
+  value = Array.isArray(name) ? '' : value
+  let oldValues = Array.isArray(name) ? {} : doc.value[name]
+
+  if (Array.isArray(name)) {
+    name.forEach((field) => (doc.value[field] = value))
+  } else {
+    doc.value[name] = value
+  }
+
+  document.save.submit(null, {
+    onSuccess: () => (reload.value = true),
+    onError: (err) => {
+      if (Array.isArray(name)) {
+        name.forEach((field) => (doc.value[field] = oldValues[field]))
+      } else {
+        doc.value[name] = oldValues
+      }
+      toast.error(err.messages?.[0] || __('Error updating field'))
+    },
+  })
+}
+
+function deleteDeal() {
+  showDeleteLinkedDocModal.value = true
+}
+
+const activities = ref(null)
+
+function openEmailBox() {
+  let currentTab = tabs.value[tabIndex.value]
+  if (!['Emails', 'Comments', 'Activities'].includes(currentTab.name)) {
+    activities.value.changeTabTo('emails')
+  }
+  nextTick(() => (activities.value.emailBox.show = true))
+}
+
+function statusLabel(status) {
+  if (isTranslatable('CRM Deal Status')) return __(status)
+  return status
+}
+
+const showLostReasonModal = ref(false)
+
+function setLostReason() {
+  if (
+    getDealStatus(document.doc.status).type !== 'Lost' ||
+    (document.doc.lost_reason && document.doc.lost_reason !== 'Other') ||
+    (document.doc.lost_reason === 'Other' && document.doc.lost_notes)
+  ) {
+    document.save.submit(null, {
+      onSuccess: () => sections.reload(),
+    })
+    return
+  }
+
+  showLostReasonModal.value = true
+}
+
+function beforeStatusChange(data) {
+  if (
+    Object.hasOwn(data ?? {}, 'status') &&
+    getDealStatus(data.status).type == 'Lost'
+  ) {
+    setLostReason()
+  } else {
+    document.save.submit(null, {
+      onSuccess: () => reloadResources(data),
+    })
+  }
+}
+
+function reloadResources(data) {
+  if (Object.hasOwn(data ?? {}, 'deal_owner')) {
+    assignees.reload()
+  }
+  if (
+    Object.hasOwn(data ?? {}, 'status') &&
+    getDealStatus(data.status).type != 'Lost'
+  ) {
+    sections.reload()
+  }
 }
 </script>
