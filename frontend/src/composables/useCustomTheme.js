@@ -7,17 +7,21 @@ import { ref } from 'vue'
 // We don't modify that package — instead we layer a 4th mode ('custom')
 // on top of it at the app level:
 //
-//  - `setTheme('custom')` (still called from ThemeSwitcher.vue via
-//     frappe-ui's own setTheme) sets `data-theme="custom"` on <html>.
-//     Nothing in frappe-ui's CSS targets that attribute value, so the
-//     light-mode CSS variables remain in effect as the base palette.
-//  - We then override just the accent variables used for primary/solid
-//     buttons (--surface-gray-7/6/5) with the user's chosen color, plus
-//     derived hover/active shades.
+//  - Selecting "Custom" calls frappe-ui's own `setTheme('dark')` so the
+//    WHOLE page (backgrounds, text, sidebar, everything) switches to the
+//    dark-mode base, exactly like the Dark option.
+//  - We separately remember that the *user's* selection is "custom" (in
+//    its own localStorage key, since frappe-ui's own 'theme' key now
+//    holds 'dark').
+//  - On top of that dark base we override the accent CSS variables used
+//    for buttons, links, selected/active states, and focus rings with
+//    the user's chosen color. Inline styles set via `element.style` beat
+//    any stylesheet rule (including `[data-theme="dark"]` ones), so this
+//    works regardless of the underlying base theme.
 // -----------------------------------------------------------------------
 
-const STORAGE_KEY = 'crm-custom-accent-color'
-const THEME_KEY = 'theme'
+const MODE_KEY = 'crm-theme-mode' // 'light' | 'dark' | 'system' | 'custom'
+const COLOR_KEY = 'crm-custom-accent-color'
 const DEFAULT_COLOR = '#2490EF' // Frappe blue
 
 export const PRESET_COLORS = [
@@ -32,55 +36,115 @@ export const PRESET_COLORS = [
 ]
 
 export const customAccentColor = ref(
-  localStorage.getItem(STORAGE_KEY) || DEFAULT_COLOR,
+  localStorage.getItem(COLOR_KEY) || DEFAULT_COLOR,
 )
 
-// Reactive flag so any component (ThemeSwitcher, PreferencesSettings, ...)
-// can show/hide UI based on whether 'custom' is the active theme, without
-// each one re-reading localStorage independently (which Vue can't track).
-export const isCustomThemeActive = ref(localStorage.getItem(THEME_KEY) === 'custom')
+// Reactive flag so any component can show/hide UI based on whether
+// 'custom' is the active mode, without re-reading localStorage (which
+// Vue can't track reactively).
+export const isCustomThemeActive = ref(localStorage.getItem(MODE_KEY) === 'custom')
 
 function clamp(n) {
   return Math.max(0, Math.min(255, n))
 }
 
+function hexToRgb(hex) {
+  const num = parseInt(hex.replace('#', ''), 16)
+  return { r: (num >> 16) & 0xff, g: (num >> 8) & 0xff, b: num & 0xff }
+}
+
 // Lighten (positive percent) or darken (negative percent) a hex color.
 function shade(hex, percent) {
-  const num = parseInt(hex.replace('#', ''), 16)
-  const r = clamp((num >> 16) + Math.round(255 * percent))
-  const g = clamp(((num >> 8) & 0x00ff) + Math.round(255 * percent))
-  const b = clamp((num & 0x0000ff) + Math.round(255 * percent))
-  return '#' + (0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1)
+  const { r, g, b } = hexToRgb(hex)
+  const nr = clamp(r + Math.round(255 * percent))
+  const ng = clamp(g + Math.round(255 * percent))
+  const nb = clamp(b + Math.round(255 * percent))
+  return '#' + (0x1000000 + nr * 0x10000 + ng * 0x100 + nb).toString(16).slice(1)
+}
+
+function rgba(hex, alpha) {
+  const { r, g, b } = hexToRgb(hex)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
 export function applyCustomAccentColor(color) {
-  const root = document.documentElement
-  root.style.setProperty('--surface-gray-7', color) // default/solid button bg
-  root.style.setProperty('--surface-gray-6', shade(color, -0.08)) // hover
-  root.style.setProperty('--surface-gray-5', shade(color, -0.16)) // active
+  const root = document.documentElement.style
+
+  // Solid/primary buttons
+  root.setProperty('--surface-gray-7', color)
+  root.setProperty('--surface-gray-6', shade(color, -0.08)) // hover
+  root.setProperty('--surface-gray-5', shade(color, -0.16)) // active
+
+  // Links
+  root.setProperty('--ink-blue-3', color)
+  root.setProperty('--blue-link', color)
+
+  // Selected / active states (e.g. active sidebar item, selected row)
+  root.setProperty('--surface-blue-1', rgba(color, 0.08))
+  root.setProperty('--surface-blue-2', rgba(color, 0.16))
+  root.setProperty('--surface-blue-3', color)
+  root.setProperty('--ink-blue-2', color)
+
+  // Focus rings / outlines
+  root.setProperty('--outline-blue-1', color)
+
   isCustomThemeActive.value = true
 }
 
 export function clearCustomAccentColor() {
-  const root = document.documentElement
-  root.style.removeProperty('--surface-gray-7')
-  root.style.removeProperty('--surface-gray-6')
-  root.style.removeProperty('--surface-gray-5')
+  const root = document.documentElement.style
+  ;[
+    '--surface-gray-7',
+    '--surface-gray-6',
+    '--surface-gray-5',
+    '--ink-blue-3',
+    '--blue-link',
+    '--surface-blue-1',
+    '--surface-blue-2',
+    '--surface-blue-3',
+    '--ink-blue-2',
+    '--outline-blue-1',
+  ].forEach((prop) => root.removeProperty(prop))
+
   isCustomThemeActive.value = false
 }
 
 export function setCustomAccentColor(color) {
   customAccentColor.value = color
-  localStorage.setItem(STORAGE_KEY, color)
-  if (localStorage.getItem(THEME_KEY) === 'custom') {
+  localStorage.setItem(COLOR_KEY, color)
+  if (localStorage.getItem(MODE_KEY) === 'custom') {
     applyCustomAccentColor(color)
   }
 }
 
-// Call this once on app start (App.vue) so a saved custom color survives
-// a page reload, the same way frappe-ui restores light/dark/system.
-export function initializeCustomTheme() {
-  if (localStorage.getItem(THEME_KEY) === 'custom') {
+// Central place to change the theme mode. `setTheme` is frappe-ui's own
+// setter, passed in from the component so this file has no direct
+// dependency on frappe-ui.
+export function setThemeMode(mode, setTheme) {
+  if (mode === 'custom') {
+    setTheme('dark') // whole page switches to the dark base
+    localStorage.setItem(MODE_KEY, 'custom')
+    applyCustomAccentColor(customAccentColor.value)
+  } else {
+    clearCustomAccentColor()
+    localStorage.setItem(MODE_KEY, mode)
+    setTheme(mode)
+  }
+}
+
+// What tile should show as selected. Falls back to frappe-ui's own
+// currentTheme if we've never explicitly picked "custom".
+export function getThemeMode(currentTheme) {
+  const stored = localStorage.getItem(MODE_KEY)
+  if (stored === 'custom') return 'custom'
+  return currentTheme
+}
+
+// Call this once on app start (App.vue) so a saved custom color/mode
+// survives a page reload, the same way frappe-ui restores light/dark/system.
+export function initializeCustomTheme(setTheme) {
+  if (localStorage.getItem(MODE_KEY) === 'custom') {
+    setTheme('dark')
     applyCustomAccentColor(customAccentColor.value)
   } else {
     clearCustomAccentColor()
