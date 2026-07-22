@@ -15,6 +15,7 @@ import EventNotificationPopup from '@/components/EventNotificationPopup.vue'
 import { Dialogs } from '@/utils/dialogs'
 import { sessionStore } from '@/stores/session'
 import { FrappeUIProvider, setConfig, useTheme } from 'frappe-ui'
+import { initializeCustomTheme } from '@/composables/useCustomTheme'
 import { computed, defineAsyncComponent, provide } from 'vue'
 
 const session = sessionStore()
@@ -24,6 +25,9 @@ const { setTheme } = useTheme()
 if (!localStorage.getItem('theme')) {
   setTheme('light')
 }
+// Re-apply the saved custom accent color on reload/app start. Must run
+// after setTheme() above so it isn't wiped if theme was 'light' default.
+initializeCustomTheme()
 
 const MobileLayout = defineAsyncComponent(
   () => import('./components/Layouts/MobileLayout.vue'),
