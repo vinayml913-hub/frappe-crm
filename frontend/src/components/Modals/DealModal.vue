@@ -49,8 +49,15 @@
             v-if="!isEditMode && (hasOrganizationSections || hasContactSections)"
             class="h-px w-full border-t my-5"
           />
+          <div
+            v-if="isEditMode && deal.get?.loading"
+            class="flex flex-col items-center justify-center gap-3 py-16 text-ink-gray-6"
+          >
+            <LoadingIndicator class="h-6 w-6" />
+            <span>{{ __('Loading...') }}</span>
+          </div>
           <FieldLayout
-            v-if="tabs.data?.length"
+            v-else-if="tabs.data?.length"
             :tabs="tabs.data"
             :data="deal.doc"
             doctype="CRM Deal"
@@ -134,7 +141,7 @@ import { isMobileView } from '@/composables/settings'
 import { showQuickEntryModal, quickEntryProps } from '@/composables/modals'
 import { useDocument } from '@/data/document'
 import { useTelemetry } from 'frappe-ui/frappe'
-import { Switch, createResource, call, toast, FeatherIcon } from 'frappe-ui'
+import { Switch, createResource, call, toast, FeatherIcon, LoadingIndicator } from 'frappe-ui'
 import { computed, ref, onMounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
