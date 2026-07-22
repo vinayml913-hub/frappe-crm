@@ -23,13 +23,26 @@
               {{ __('Theme') }}
             </span>
             <span class="text-p-sm text-ink-gray-6">
-              {{ __('Switch between light, dark, or system theme') }}
+              {{
+                __(
+                  'Switch between light, dark, system, or a custom accent color',
+                )
+              }}
             </span>
           </div>
           <ThemeSwitcher
             :logo="brand.logo || CRMLogo"
             :name="brand.name || 'CRM'"
           />
+          <div v-if="isCustomTheme" class="flex flex-col gap-1">
+            <span class="text-base font-medium text-ink-gray-8">
+              {{ __('Accent color') }}
+            </span>
+            <span class="text-p-sm text-ink-gray-6 mb-1">
+              {{ __('Pick a preset or choose your own color') }}
+            </span>
+            <CustomThemeColorPicker />
+          </div>
         </div>
         <div class="flex items-center justify-between">
           <div class="flex gap-2 items-center h-7">
@@ -85,6 +98,7 @@
 <script setup>
 import CRMLogo from '@/components/Icons/CRMLogo.vue'
 import ThemeSwitcher from '@/components/Settings/ThemeSwitcher.vue'
+import CustomThemeColorPicker from '@/components/Settings/CustomThemeColorPicker.vue'
 import SettingsLayoutBase from '@/components/Layouts/SettingsLayoutBase.vue'
 import Link from '@/components/Controls/Link.vue'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
@@ -97,6 +111,7 @@ import {
   createDocumentResource,
 } from 'frappe-ui'
 import { ref, computed, inject } from 'vue'
+import { isCustomThemeActive } from '@/composables/useCustomTheme'
 
 const refreshRequired = ref(false)
 
@@ -104,6 +119,8 @@ const { user: sessionUser } = inject('session')
 
 const { brand } = getSettings()
 const user = createDocumentResource({ doctype: 'User', name: sessionUser })
+
+const isCustomTheme = isCustomThemeActive
 
 function save() {
   refreshRequired.value =
