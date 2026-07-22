@@ -25,9 +25,10 @@ const { setTheme } = useTheme()
 if (!localStorage.getItem('theme')) {
   setTheme('light')
 }
-// Re-apply the saved custom accent color on reload/app start. Must run
-// after setTheme() above so it isn't wiped if theme was 'light' default.
-initializeCustomTheme()
+// Re-apply the saved custom accent color (and dark base) on reload/app
+// start. Must run after the default setTheme('light') above so it isn't
+// overridden when mode is 'custom'.
+initializeCustomTheme(setTheme)
 
 const MobileLayout = defineAsyncComponent(
   () => import('./components/Layouts/MobileLayout.vue'),
