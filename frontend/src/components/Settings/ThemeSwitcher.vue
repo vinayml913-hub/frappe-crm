@@ -172,7 +172,8 @@
       </div>
     </div>
 
-    <!-- Custom theme tile -->
+    <!-- Custom theme tile: dark base + accent color, since selecting
+         Custom flips the whole page to dark and layers the accent on top -->
     <div
       class="flex-1 rounded-lg border cursor-pointer"
       :class="
@@ -183,8 +184,8 @@
       @click="theme = 'custom'"
     >
       <div class="pl-5 pt-3.5 bg-surface-gray-2 rounded-t-[10.5px]">
-        <div class="bg-white rounded-tl-sm">
-          <div class="flex gap-[3px] py-[3px] px-1 border-b border-gray-100">
+        <div class="bg-gray-900 rounded-tl-sm">
+          <div class="flex gap-[3px] py-[3px] px-1 border-b border-gray-800">
             <div class="size-1.5 bg-[#FF5F57] rounded-full"></div>
             <div class="size-1.5 bg-[#FEBC2D] rounded-full"></div>
             <div class="size-1.5 bg-[#28C840] rounded-full"></div>
@@ -201,14 +202,14 @@
               <component :is="logo" v-else class="size-5 shrink-0 rounded" />
               <div>{{ __(name) }}</div>
             </div>
-            <!-- accent-colored bars instead of plain gray, hints at "custom" -->
+            <!-- accent-colored bar hints at the custom accent on a dark base -->
             <div class="flex flex-col flex-1 gap-[5px]">
               <div
                 class="w-full h-1.5 rounded-full"
                 :style="{ backgroundColor: customAccentColor }"
               ></div>
-              <div class="bg-gray-100 w-full h-1.5"></div>
-              <div class="bg-gray-100 w-full h-1.5"></div>
+              <div class="bg-gray-800 w-full h-1.5"></div>
+              <div class="bg-gray-800 w-full h-1.5"></div>
             </div>
           </div>
         </div>
@@ -235,9 +236,8 @@ import { useTheme } from 'frappe-ui'
 import { computed } from 'vue'
 import {
   customAccentColor,
-  isCustomThemeActive,
-  applyCustomAccentColor,
-  clearCustomAccentColor,
+  setThemeMode,
+  getThemeMode,
 } from '@/composables/useCustomTheme'
 
 defineProps({
@@ -249,24 +249,10 @@ const { currentTheme, setTheme } = useTheme()
 
 const theme = computed({
   get() {
-    // frappe-ui's currentTheme only ever holds 'light' | 'dark' | 'system',
-    // so we track 'custom' separately via the shared isCustomThemeActive ref.
-    if (isCustomThemeActive.value) return 'custom'
-    if (currentTheme.value === 'light') return 'light'
-    if (currentTheme.value === 'dark') return 'dark'
-    return 'system'
+    return getThemeMode(currentTheme.value)
   },
   set(value) {
-    if (value === 'custom') {
-      // 'custom' isn't a theme frappe-ui knows about; setting it still
-      // sets data-theme="custom" on <html>, which falls back to the
-      // light-mode palette since nothing targets that selector.
-      setTheme('custom')
-      applyCustomAccentColor(customAccentColor.value)
-    } else {
-      clearCustomAccentColor()
-      setTheme(value)
-    }
+    setThemeMode(value, setTheme)
   },
 })
 </script>
