@@ -132,11 +132,15 @@ const DARK_OUTLINE_LADDER = {
   '--outline-gray-modals': '#343434', // darkMode/gray/600
 }
 
-// Tint one neutral gray step toward `hue` at a given saturation, keeping
-// that step's original lightness so text contrast is unaffected.
-function tintStep(baseHex, hue, saturationPercent) {
+// Tint one neutral gray step toward `hue` at a given saturation. Near-black
+// steps (L close to 0) barely show any hue no matter the saturation, so we
+// also nudge the lightness up slightly and enforce a floor — this keeps the
+// tint clearly visible on the darkest surfaces without making the app look
+// "light mode dark". Text/ink variables are untouched, so contrast is fine.
+function tintStep(baseHex, hue, saturationPercent, lightnessBoost = 5, minLightness = 10) {
   const { l } = hexToHsl(baseHex)
-  return hslToHex(hue, saturationPercent, l)
+  const boostedL = Math.max(l + lightnessBoost, minLightness)
+  return hslToHex(hue, saturationPercent, boostedL)
 }
 
 function applyTintedBackground(color) {
@@ -144,10 +148,10 @@ function applyTintedBackground(color) {
   const root = document.documentElement.style
 
   Object.entries(DARK_SURFACE_LADDER).forEach(([varName, baseHex]) => {
-    root.setProperty(varName, tintStep(baseHex, h, 22))
+    root.setProperty(varName, tintStep(baseHex, h, 55))
   })
   Object.entries(DARK_OUTLINE_LADDER).forEach(([varName, baseHex]) => {
-    root.setProperty(varName, tintStep(baseHex, h, 26))
+    root.setProperty(varName, tintStep(baseHex, h, 60, 6, 14))
   })
 }
 
