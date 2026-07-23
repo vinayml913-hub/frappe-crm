@@ -33,6 +33,7 @@ export const PRESET_COLORS = [
   '#DB2777', // pink
   '#0D9488', // teal
   '#334155', // slate
+  '#F4C2C2', // baby pink
 ]
 
 export const customAccentColor = ref(
@@ -134,10 +135,10 @@ const DARK_OUTLINE_LADDER = {
 
 // Tint one neutral gray step toward `hue` at a given saturation. Near-black
 // steps (L close to 0) barely show any hue no matter the saturation, so we
-// also nudge the lightness up slightly and enforce a floor — this keeps the
-// tint clearly visible on the darkest surfaces without making the app look
-// "light mode dark". Text/ink variables are untouched, so contrast is fine.
-function tintStep(baseHex, hue, saturationPercent, lightnessBoost = 5, minLightness = 10) {
+// also nudge the lightness up and enforce a floor — this makes the color
+// clearly recognizable (not just a dark maroon/navy blur) while still
+// keeping it dark enough that white text stays comfortably readable.
+function tintStep(baseHex, hue, saturationPercent, lightnessBoost = 14, minLightness = 22) {
   const { l } = hexToHsl(baseHex)
   const boostedL = Math.max(l + lightnessBoost, minLightness)
   return hslToHex(hue, saturationPercent, boostedL)
@@ -148,10 +149,10 @@ function applyTintedBackground(color) {
   const root = document.documentElement.style
 
   Object.entries(DARK_SURFACE_LADDER).forEach(([varName, baseHex]) => {
-    root.setProperty(varName, tintStep(baseHex, h, 55))
+    root.setProperty(varName, tintStep(baseHex, h, 65))
   })
   Object.entries(DARK_OUTLINE_LADDER).forEach(([varName, baseHex]) => {
-    root.setProperty(varName, tintStep(baseHex, h, 60, 6, 14))
+    root.setProperty(varName, tintStep(baseHex, h, 65, 18, 28))
   })
 }
 
