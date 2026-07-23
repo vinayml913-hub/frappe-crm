@@ -2,7 +2,7 @@
   <div class="flex flex-col h-full overflow-hidden">
     <LayoutHeader>
       <template #left-header>
-        <ViewBreadcrumbs routeName="Dashboard" />
+       <ViewBreadcrumbs routeName="Dashboard" :label="__('Report')" />
       </template>
       <template #right-header>
         <Button
@@ -43,7 +43,6 @@
 
     <div class="p-5 pb-2 flex items-center gap-4">
       <Dropdown
-        v-if="!showDatePicker"
         v-model="preset"
         :options="options"
         class="form-control"
@@ -57,31 +56,6 @@
           iconLeft: 'calendar',
         }"
       />
-      <DateRangePicker
-        v-else
-        ref="datePickerRef"
-        class="!w-48"
-        :value="filters.period"
-        variant="outline"
-        :placeholder="__('Period')"
-        :formatter="formatRange"
-        @change="
-          (v) =>
-            updateFilter('period', v, () => {
-              showDatePicker = false
-              if (!v) {
-                filters.period = getLastXDays()
-                preset = 'Last 30 Days'
-              } else {
-                preset = formatter(v)
-              }
-            })
-        "
-      >
-        <template #prefix>
-          <LucideCalendar class="size-4 text-ink-gray-5 mr-2" />
-        </template>
-      </DateRangePicker>
       <Link
         v-if="isAdmin() || isManager()"
         class="form-control w-48"
@@ -118,12 +92,20 @@
     </div>
 
     <div class="w-full overflow-y-scroll">
+      <div class="mx-5 mb-4">
+        <RevenueTargetCard :employee="filters.user" :period="targetPeriod" />
+      </div>
       <DashboardGrid
         v-if="!dashboardItems.loading && dashboardItems.data"
         v-model="dashboardItems.data"
         class="pt-1"
         :editing="editing"
+        :dateRange="{ from: fromDate, to: toDate }"
+        :selectedUser="filters.user"
       />
+       <div class="mx-5 mb-4">
+        <TargetAchievementChart :employee="filters.user" />
+      </div>
     </div>
   </div>
   <AddChartModal
@@ -145,23 +127,42 @@ import LayoutHeader from '@/components/LayoutHeader.vue'
 import Link from '@/components/Controls/Link.vue'
 import { usersStore } from '@/stores/users'
 import { copy } from '@/utils'
-import { getLastXDays, formatter, formatRange } from '@/utils/dashboard'
+import { getLastXDays, getQuarterRange } from '@/utils/dashboard'
 import {
   usePageMeta,
   createResource,
-  DateRangePicker,
   Dropdown,
   Tooltip,
 } from 'frappe-ui'
 import { ref, reactive, computed, provide } from 'vue'
+import RevenueTargetCard from '@/components/Dashboard/RevenueTargetCard.vue'
+import TargetAchievementChart from '@/components/Dashboard/TargetAchievementChart.vue'
+
 
 const { users, getUser, isManager, isAdmin } = usersStore()
 
 const editing = ref(false)
 
-const showDatePicker = ref(false)
-const datePickerRef = ref(null)
 const preset = ref('Last 30 Days')
+
+// Maps the dropdown's display label to the key crm.api.revenue_target
+// .get_target_for_period expects, so the Revenue Target card shows only
+// the target for the currently selected quarter (not always "today's").
+//
+// Company financial quarters (Apr-Mar fiscal year):
+//   Q1 = Apr, May, Jun   Q2 = Jul, Aug, Sep
+//   Q3 = Oct, Nov, Dec   Q4 = Jan, Feb, Mar
+const targetPeriod = computed(() => {
+  const map = {
+    'Last 30 Days': 'last_30_days',
+    'Q1 (Apr, May, Jun)': 'q1',
+    'Q2 (Jul, Aug, Sep)': 'q2',
+    'Q3 (Oct, Nov, Dec)': 'q3',
+    'Q4 (Jan, Feb, Mar)': 'q4',
+    Ever: 'ever',
+  }
+  return map[preset.value] || 'last_30_days'
+})
 const showAddChartModal = ref(false)
 
 const filters = reactive({
@@ -191,14 +192,6 @@ const options = computed(() => [
     hideLabel: true,
     items: [
       {
-        label: __('Last 7 Days'),
-        onClick: () => {
-          preset.value = 'Last 7 Days'
-          filters.period = getLastXDays(7)
-          dashboardItems.reload()
-        },
-      },
-      {
         label: __('Last 30 Days'),
         onClick: () => {
           preset.value = 'Last 30 Days'
@@ -207,31 +200,46 @@ const options = computed(() => [
         },
       },
       {
-        label: __('Last 60 Days'),
+        label: __('Q1 (Apr, May, Jun)'),
         onClick: () => {
-          preset.value = 'Last 60 Days'
-          filters.period = getLastXDays(60)
+          preset.value = 'Q1 (Apr, May, Jun)'
+          filters.period = getQuarterRange('Q1')
           dashboardItems.reload()
         },
       },
       {
-        label: __('Last 90 Days'),
+        label: __('Q2 (Jul, Aug, Sep)'),
         onClick: () => {
-          preset.value = 'Last 90 Days'
-          filters.period = getLastXDays(90)
+          preset.value = 'Q2 (Jul, Aug, Sep)'
+          filters.period = getQuarterRange('Q2')
+          dashboardItems.reload()
+        },
+      },
+      {
+        label: __('Q3 (Oct, Nov, Dec)'),
+        onClick: () => {
+          preset.value = 'Q3 (Oct, Nov, Dec)'
+          filters.period = getQuarterRange('Q3')
+          dashboardItems.reload()
+        },
+      },
+      {
+        label: __('Q4 (Jan, Feb, Mar)'),
+        onClick: () => {
+          preset.value = 'Q4 (Jan, Feb, Mar)'
+          filters.period = getQuarterRange('Q4')
+          dashboardItems.reload()
+        },
+      },
+      {
+        label: __('Ever'),
+        onClick: () => {
+          preset.value = 'Ever'
+          filters.period = null
           dashboardItems.reload()
         },
       },
     ],
-  },
-  {
-    label: __('Custom Range'),
-    onClick: () => {
-      showDatePicker.value = true
-      setTimeout(() => datePickerRef.value?.open(), 0)
-      preset.value = 'Custom Range'
-      filters.period = null // Reset period to allow custom date selection
-    },
   },
 ])
 
@@ -304,8 +312,7 @@ function resetToDefault() {
 }
 
 usePageMeta(() => {
-  return { title: __('CRM Dashboard') }
+  return { title: __('Report') }
 })
 </script>
-
           
