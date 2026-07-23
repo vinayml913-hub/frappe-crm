@@ -14,39 +14,38 @@ MONTH_TO_NUM = {
 # ─────────────────────────────────────────────────────────────────────────
 #  Company financial quarters (NOT calendar quarters)
 #
-#    Q1 = March     1 - May      31  (start month 3,  end month 5,  same year)
-#    Q2 = June      1 - August   31  (start month 6,  end month 8,  same year)
-#    Q3 = September 1 - November 30  (start month 9,  end month 11, same year)
-#    Q4 = December  1 - February 28/29 (start month 12, same year;
-#                                        end month 2, following year)
+#    Q1 = April   1 - June     30  (start month 4,  end month 6,  same year)
+#    Q2 = July    1 - September 30 (start month 7,  end month 9,  same year)
+#    Q3 = October 1 - December 31  (start month 10, end month 12, same year)
+#    Q4 = January 1 - March    31  (start month 1, following year;
+#                                    end month 3, following year)
 #
 #  A quarter's "year" always refers to the fiscal year it belongs to, i.e.
-#  the year of its *start* month. Q4 therefore spans a calendar year
-#  boundary: Q4 2025 runs from 1 Dec 2025 through 28/29 Feb 2026.
+#  the year of its *start* month (Apr-Dec). Q4 therefore spans a calendar
+#  year boundary: Q4 2025 runs from 1 Jan 2026 through 31 Mar 2026.
 # ─────────────────────────────────────────────────────────────────────────
 QUARTER_MONTHS = {
-	"Q1": (3, 5, 0),
-	"Q2": (6, 8, 0),
-	"Q3": (9, 11, 0),
-	"Q4": (12, 2, 1),
+	"Q1": (4, 6, 0),
+	"Q2": (7, 9, 0),
+	"Q3": (10, 12, 0),
+	"Q4": (1, 3, 1),
 }
 
 
 def get_financial_quarter_for_date(date) -> tuple[str, int]:
 	"""Given any date, return (quarter, fiscal_year) using the company's
-	Mar-Feb financial quarters. Fiscal year is the year of the quarter's
-	start month (so Jan/Feb dates belong to Q4 of the *previous* year)."""
+	Apr-Mar financial quarters. Fiscal year is the year of the quarter's
+	start month (so Jan/Feb/Mar dates belong to Q4 of the *previous*
+	fiscal year, i.e. the fiscal year that started the previous April)."""
 	date = frappe.utils.getdate(date)
 	month, year = date.month, date.year
-	if month in (3, 4, 5):
+	if month in (4, 5, 6):
 		return "Q1", year
-	if month in (6, 7, 8):
+	if month in (7, 8, 9):
 		return "Q2", year
-	if month in (9, 10, 11):
+	if month in (10, 11, 12):
 		return "Q3", year
-	# month in (12, 1, 2)
-	if month == 12:
-		return "Q4", year
+	# month in (1, 2, 3)
 	return "Q4", year - 1
 
 
