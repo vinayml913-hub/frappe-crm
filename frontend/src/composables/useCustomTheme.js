@@ -67,8 +67,107 @@ function rgba(hex, alpha) {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
+function hexToHsl(hex) {
+  const { r, g, b } = hexToRgb(hex)
+  const rn = r / 255,
+    gn = g / 255,
+    bn = b / 255
+  const max = Math.max(rn, gn, bn)
+  const min = Math.min(rn, gn, bn)
+  let h = 0,
+    s = 0
+  const l = (max + min) / 2
+  if (max !== min) {
+    const d = max - min
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+    switch (max) {
+      case rn:
+        h = (gn - bn) / d + (gn < bn ? 6 : 0)
+        break
+      case gn:
+        h = (bn - rn) / d + 2
+        break
+      default:
+        h = (rn - gn) / d + 4
+    }
+    h /= 6
+  }
+  return { h: h * 360, s: s * 100, l: l * 100 }
+}
+
+function hslToHex(h, s, l) {
+  s /= 100
+  l /= 100
+  const k = (n) => (n + h / 30) % 12
+  const a = s * Math.min(l, 1 - l)
+  const f = (n) =>
+    l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)))
+  const toHex = (n) =>
+    Math.round(255 * f(n))
+      .toString(16)
+      .padStart(2, '0')
+  return `#${toHex(0)}${toHex(8)}${toHex(4)}`
+}
+
+// The neutral dark-mode gray ladder used for the app's big background
+// surfaces (frappe-ui's darkMode/gray/*), so we can re-tint each step
+// toward the custom color while keeping the same lightness (and
+// therefore the same contrast against the untouched white/gray text).
+const DARK_SURFACE_LADDER = {
+  '--surface-white': '#0F0F0F', // darkMode/gray/900 - main page background
+  '--surface-gray-1': '#232323', // darkMode/gray/700
+  '--surface-gray-2': '#2B2B2B', // darkMode/gray/650
+  '--surface-gray-3': '#343434', // darkMode/gray/600
+  '--surface-gray-4': '#424242', // darkMode/gray/500
+  '--surface-menu-bar': '#0F0F0F', // sidebar background
+  '--surface-cards': '#1C1C1C', // darkMode/gray/800
+  '--surface-modal': '#232323', // darkMode/gray/700
+}
+
+const DARK_OUTLINE_LADDER = {
+  '--outline-gray-1': '#232323', // darkMode/gray/700
+  '--outline-gray-2': '#343434', // darkMode/gray/600
+  '--outline-gray-3': '#424242', // darkMode/gray/500
+  '--outline-gray-4': '#808080', // darkMode/gray/300
+  '--outline-gray-modals': '#343434', // darkMode/gray/600
+}
+
+// Tint one neutral gray step toward `hue` at a given saturation, keeping
+// that step's original lightness so text contrast is unaffected.
+function tintStep(baseHex, hue, saturationPercent) {
+  const { l } = hexToHsl(baseHex)
+  return hslToHex(hue, saturationPercent, l)
+}
+
+function applyTintedBackground(color) {
+  const { h } = hexToHsl(color)
+  const root = document.documentElement.style
+
+  Object.entries(DARK_SURFACE_LADDER).forEach(([varName, baseHex]) => {
+    root.setProperty(varName, tintStep(baseHex, h, 22))
+  })
+  Object.entries(DARK_OUTLINE_LADDER).forEach(([varName, baseHex]) => {
+    root.setProperty(varName, tintStep(baseHex, h, 26))
+  })
+}
+
+function clearTintedBackground() {
+  const root = document.documentElement.style
+  Object.keys(DARK_SURFACE_LADDER).forEach((varName) =>
+    root.removeProperty(varName),
+  )
+  Object.keys(DARK_OUTLINE_LADDER).forEach((varName) =>
+    root.removeProperty(varName),
+  )
+}
+
 export function applyCustomAccentColor(color) {
   const root = document.documentElement.style
+
+  // Whole-page background: tint the dark-mode surface/border ladder
+  // toward the custom color. Text/ink variables are left untouched, so
+  // white/light text stays exactly as it is in normal dark mode.
+  applyTintedBackground(color)
 
   // Solid/primary buttons
   root.setProperty('--surface-gray-7', color)
@@ -93,6 +192,7 @@ export function applyCustomAccentColor(color) {
 
 export function clearCustomAccentColor() {
   const root = document.documentElement.style
+  clearTintedBackground()
   ;[
     '--surface-gray-7',
     '--surface-gray-6',
