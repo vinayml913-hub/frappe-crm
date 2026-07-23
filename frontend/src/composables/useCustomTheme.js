@@ -173,6 +173,12 @@ function clearTintedBackground() {
 // behind it with that black scrim, which is what makes a tinted page look
 // like "color painted over black". We inject a small stylesheet to
 // override just that class with a tinted version instead.
+//
+// Separately, `.bg-surface-base` — used all over the CRM app itself
+// (Dashboard cards, Kanban, Calendar, dropdowns, dialogs, etc.) — doesn't
+// resolve to any color/CSS variable in this frappe-ui version either, so
+// it renders as flat black no matter the theme. We override it the same
+// way, reusing the already-tinted --surface-cards variable.
 const OVERLAY_STYLE_ID = 'crm-custom-theme-overlay-style'
 
 function applyOverlayTint(color) {
@@ -182,7 +188,10 @@ function applyOverlayTint(color) {
     styleEl.id = OVERLAY_STYLE_ID
     document.head.appendChild(styleEl)
   }
-  styleEl.textContent = `.dialog-overlay { background-color: ${rgba(color, 0.72)} !important; }`
+  styleEl.textContent = `
+    .dialog-overlay { background-color: ${rgba(color, 0.72)} !important; }
+    .bg-surface-base { background-color: var(--surface-cards) !important; }
+  `
 }
 
 function clearOverlayTint() {
