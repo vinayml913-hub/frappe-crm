@@ -165,6 +165,31 @@ function clearTintedBackground() {
   )
 }
 
+// frappe-ui's dialog backdrop (`.dialog-overlay`, using its
+// `bg-black-overlay-200` / `dark:bg-black-overlay-700` classes) is a flat,
+// literal black color baked in at build time — NOT a CSS variable — so it
+// can't be reached with `element.style.setProperty` like everything else
+// here. Any open dialog (including this Settings panel) dims whatever is
+// behind it with that black scrim, which is what makes a tinted page look
+// like "color painted over black". We inject a small stylesheet to
+// override just that class with a tinted version instead.
+const OVERLAY_STYLE_ID = 'crm-custom-theme-overlay-style'
+
+function applyOverlayTint(color) {
+  let styleEl = document.getElementById(OVERLAY_STYLE_ID)
+  if (!styleEl) {
+    styleEl = document.createElement('style')
+    styleEl.id = OVERLAY_STYLE_ID
+    document.head.appendChild(styleEl)
+  }
+  styleEl.textContent = `.dialog-overlay { background-color: ${rgba(color, 0.72)} !important; }`
+}
+
+function clearOverlayTint() {
+  const styleEl = document.getElementById(OVERLAY_STYLE_ID)
+  if (styleEl) styleEl.textContent = ''
+}
+
 export function applyCustomAccentColor(color) {
   const root = document.documentElement.style
 
@@ -172,6 +197,10 @@ export function applyCustomAccentColor(color) {
   // toward the custom color. Text/ink variables are left untouched, so
   // white/light text stays exactly as it is in normal dark mode.
   applyTintedBackground(color)
+
+  // Tint the dialog backdrop scrim too, so an open panel (like this
+  // Settings page) doesn't look like it's floating on plain black.
+  applyOverlayTint(color)
 
   // Solid/primary buttons
   root.setProperty('--surface-gray-7', color)
@@ -197,6 +226,7 @@ export function applyCustomAccentColor(color) {
 export function clearCustomAccentColor() {
   const root = document.documentElement.style
   clearTintedBackground()
+  clearOverlayTint()
   ;[
     '--surface-gray-7',
     '--surface-gray-6',
