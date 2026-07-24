@@ -6,7 +6,7 @@
         field.fieldtype != 'Button' &&
         field.fieldtype != 'HTML'
       "
-      class="mb-2 text-sm text-ink-gray-5"
+      class="mb-2 text-sm font-semibold text-ink-gray-8"
     >
       {{ __(field.label) }}
       <span
@@ -75,7 +75,7 @@
         @change="(e) => fieldChange(e.target.checked, field)"
       />
       <label
-        class="text-sm text-ink-gray-5"
+        class="text-sm font-semibold text-ink-gray-8"
         @click="
           () => {
             if (!Boolean(field.read_only)) {
