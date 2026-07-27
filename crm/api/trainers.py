@@ -50,6 +50,27 @@ def _attach_audit_info(row: dict, user_cache: dict | None = None) -> dict:
 
 
 @frappe.whitelist()
+def get_trainer_locations() -> list:
+	"""Distinct, non-empty `location` values already used by trainers.
+
+	Powers the autocomplete suggestions on the Trainers list Location
+	filter. Deliberately not a hard-restricted dropdown - location has no
+	fixed option list on the doctype, so this only nudges toward existing
+	values (e.g. avoiding "Bangalore" vs "bangalore" duplicates) without
+	blocking a genuinely new location from being typed and searched.
+	"""
+	rows = frappe.get_all(
+		"CRM Trainer",
+		filters={"location": ["not in", ["", None]]},
+		fields=["location"],
+		distinct=True,
+		order_by="location asc",
+		ignore_permissions=True,
+	)
+	return [r["location"] for r in rows if r.get("location")]
+
+
+@frappe.whitelist()
 def get_trainers(
 	filters: str | None = None,
 	order_by: str = "modified desc",
