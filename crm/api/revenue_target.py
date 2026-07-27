@@ -3,7 +3,6 @@ from frappe import _
 from frappe.query_builder import DocType
 from frappe.query_builder.functions import Coalesce, Sum
 from frappe.utils import flt
-from pypika import Case
 
 MONTH_TO_NUM = {
 	"January": 1, "February": 2, "March": 3, "April": 4,
@@ -74,31 +73,29 @@ def _get_period_dates(target_type: str, year: int, month: str | None, quarter: s
 
 def _get_achieved_revenue(employee: str, from_date: str, to_date: str) -> float:
 	"""
-	Achieved Revenue = existing employee revenue calculation.
+	Achieved Revenue = sum of Gross Profit (Deal.gross_profit) on Won deals,
+	for any deal where `employee` is EITHER the Deal Owner OR the Solution
+	Manager (Deal.account_manager).
 
-	PBS Deal's actual client-facing amount is NOT the stock `deal_value`
-	field - it's `training_commercial` when the sales rep fills it in
-	directly, or the auto-calculated `final_amount` (from
-	CRMDeal.calculate_financials: Trainer Cost + Margin% + GST) when
-	left blank.
+	A deal's GP counts in FULL toward both people independently when both
+	roles are filled by different users - e.g. a deal owner and a solution
+	manager on the same Won deal each get their own target's "achieved"
+	increased by the full GP amount (not split between them). This is
+	intentional: it is not a company-wide revenue total, it's a per-person
+	contribution credit.
 	"""
 	Deal = DocType("CRM Deal")
 	Status = DocType("CRM Deal Status")
 
 	to_date_plus_one = frappe.utils.add_days(to_date, 1)
 
-	revenue_amount = Case().when(
-		Coalesce(Deal.training_commercial, 0) > 0,
-		Deal.training_commercial,
-	).else_(Coalesce(Deal.final_amount, 0))
-
 	result = (
 		frappe.qb.from_(Deal)
 		.join(Status)
 		.on(Deal.status == Status.name)
-		.select(Sum(revenue_amount).as_("total"))
+		.select(Sum(Coalesce(Deal.gross_profit, 0)).as_("total"))
 		.where(
-			(Deal.deal_owner == employee)
+			((Deal.deal_owner == employee) | (Deal.account_manager == employee))
 			& (Deal.closed_date >= from_date)
 			& (Deal.closed_date < to_date_plus_one)
 			& (Status.type == "Won")
