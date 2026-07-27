@@ -13,18 +13,34 @@
 
   <!-- Filters -->
   <div class="flex items-center gap-3 px-5 py-3 border-b border-outline-gray-1 flex-wrap">
-    <div class="relative">
-      <input
-        v-model="searchQuery"
-        type="text"
-        :placeholder="__('Search by name, phone, email, technology, experience...')"
-        class="w-80 rounded-md border border-outline-gray-2 bg-surface-gray-1 py-1.5 pl-8 pr-3 text-sm text-ink-gray-8 placeholder-ink-gray-4 focus:border-outline-gray-4 focus:bg-surface-white focus:outline-none"
-        @input="onSearch"
-      />
-      <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink-gray-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-      </svg>
-    </div>
+    <input
+      v-model="nameFilter"
+      type="text"
+      :placeholder="__('Trainer name...')"
+      class="w-48 rounded-md border border-outline-gray-2 bg-surface-gray-1 py-1.5 px-3 text-sm text-ink-gray-8 placeholder-ink-gray-4 focus:border-outline-gray-4 focus:bg-surface-white focus:outline-none"
+      @input="onFilterInput"
+    />
+    <input
+      v-model="locationFilter"
+      type="text"
+      list="trainer-location-suggestions"
+      :placeholder="__('Location...')"
+      class="w-48 rounded-md border border-outline-gray-2 bg-surface-gray-1 py-1.5 px-3 text-sm text-ink-gray-8 placeholder-ink-gray-4 focus:border-outline-gray-4 focus:bg-surface-white focus:outline-none"
+      @input="onFilterInput"
+    />
+    <!-- Populated from distinct locations already in the data, so typing
+         nudges toward existing values without forcing an exact-match
+         dropdown (location has no fixed option list in the doctype). -->
+    <datalist id="trainer-location-suggestions">
+      <option v-for="loc in locationSuggestions" :key="loc" :value="loc" />
+    </datalist>
+    <input
+      v-model="technologyFilter"
+      type="text"
+      :placeholder="__('Technology (e.g. AWS, Python)...')"
+      class="w-56 rounded-md border border-outline-gray-2 bg-surface-gray-1 py-1.5 px-3 text-sm text-ink-gray-8 placeholder-ink-gray-4 focus:border-outline-gray-4 focus:bg-surface-white focus:outline-none"
+      @input="onFilterInput"
+    />
     <select v-model="statusFilter" class="rounded-md border border-outline-gray-2 bg-surface-gray-1 py-1.5 px-3 text-sm text-ink-gray-7 focus:outline-none" @change="loadTrainers">
       <option value="">{{ __('All Status') }}</option>
       <option>Active</option>
@@ -319,7 +335,10 @@ const loading = ref(true)
 const total = ref(0)
 const page = ref(1)
 const pageLength = ref(20)
-const searchQuery = ref('')
+const nameFilter = ref('')
+const locationFilter = ref('')
+const technologyFilter = ref('')
+const locationSuggestions = ref([])
 const statusFilter = ref('')
 const availabilityFilter = ref('')
 const sortKey = ref('modified')
@@ -337,10 +356,15 @@ const deleting = ref(false)
 const showColumnManager = ref(false)
 const importExportRef = ref(null)
 
-// Mirrors exactly what loadTrainers() sends as filters, so "Export
-// Current Filtered View" matches what's on screen right now.
+// Single source of truth for the current filter state - used by both
+// loadTrainers() and "Export Current Filtered View" so they always match.
+// Name/Location/Technology are independent "contains" filters, ANDed
+// together with Status/Availability (Frappe combines dict filters as AND).
 const activeFilters = computed(() => {
   const f = {}
+  if (nameFilter.value) f.trainer_name = ['like', `%${nameFilter.value}%`]
+  if (locationFilter.value) f.location = ['like', `%${locationFilter.value}%`]
+  if (technologyFilter.value) f.technology_expert_in = ['like', `%${technologyFilter.value}%`]
   if (statusFilter.value) f.status = statusFilter.value
   if (availabilityFilter.value) f.availability = availabilityFilter.value
   return f
@@ -382,16 +406,11 @@ const visibleColumns = computed(() => allColumns.value.filter(c => c.visible))
 async function loadTrainers() {
   loading.value = true
   try {
-    const filters = {}
-    if (statusFilter.value) filters.status = statusFilter.value
-    if (availabilityFilter.value) filters.availability = availabilityFilter.value
-
     const result = await call('crm.api.trainers.get_trainers', {
-      filters: JSON.stringify(filters),
+      filters: JSON.stringify(activeFilters.value),
       order_by: `${SORT_KEY_MAP[sortKey.value] || sortKey.value} ${sortOrder.value}`,
       page_length: pageLength.value,
       page: page.value,
-      search: searchQuery.value || null,
     })
     trainers.value = result?.data || []
     total.value = result?.total || 0
@@ -403,9 +422,17 @@ async function loadTrainers() {
   }
 }
 
-function onSearch() {
+function onFilterInput() {
   if (searchTimeout.value) clearTimeout(searchTimeout.value)
   searchTimeout.value = setTimeout(() => { page.value = 1; loadTrainers() }, 300)
+}
+
+async function loadLocationSuggestions() {
+  try {
+    locationSuggestions.value = await call('crm.api.trainers.get_trainer_locations') || []
+  } catch {
+    locationSuggestions.value = []
+  }
 }
 
 // owner_name / modified_by_name are enriched display fields, not real
@@ -511,5 +538,8 @@ function formatAuditUser(name, email) {
   return email && email !== name ? `${name} (${email})` : name
 }
 
-onMounted(() => loadTrainers())
+onMounted(() => {
+  loadTrainers()
+  loadLocationSuggestions()
+})
 </script>
