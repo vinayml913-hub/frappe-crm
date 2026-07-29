@@ -324,6 +324,15 @@ const router = useRouter()
 const leadsListView = ref(null)
 const showLeadModal = ref(false)
 
+const defaults = reactive({})
+
+// leads data is loaded in the ViewControls component
+const leads = ref({})
+const loadMore = ref(1)
+const triggerResize = ref(1)
+const updatedPageCount = ref(20)
+const viewControls = ref(null)
+
 // Handles ?quick_filter=total&from=...&to=... coming from the Total Leads
 // Dashboard card (see components/Dashboard/DashboardItem.vue).
 function applyQuickFilterFromRoute() {
@@ -349,15 +358,6 @@ watch(() => [route.query.quick_filter, viewControls.value], applyQuickFilterFrom
 on('trigger_lead_create', (data) => {
   showLeadModal.value = Boolean(data)
 })
-
-const defaults = reactive({})
-
-// leads data is loaded in the ViewControls component
-const leads = ref({})
-const loadMore = ref(1)
-const triggerResize = ref(1)
-const updatedPageCount = ref(20)
-const viewControls = ref(null)
 
 function getRow(name, field) {
   function getValue(value) {
