@@ -12,6 +12,7 @@ from crm.api.exchange_rate import get_exchange_rate
 from crm.fcrm.doctype.crm_service_level_agreement.utils import get_sla
 from crm.fcrm.doctype.crm_status_change_log.crm_status_change_log import add_status_change_log
 from crm.fcrm.doctype.utils import add_or_remove_lost_reason_section_in_sidepanel
+from crm.utils.auto_create_links import auto_create_missing_links
 
 # Users who can always see every deal, regardless of whether they're
 # personally tied to it.
@@ -185,6 +186,10 @@ class CRMDeal(Document):
 
 	def before_validate(self):
 		self.set_sla()
+		# Lets Data Import/manual entry use any Territory or Lead Source
+		# name freely - auto-creates the master record the first time
+		# it's seen, instead of blocking with "Value does not exist".
+		auto_create_missing_links(self, ["territory", "source", "lead_source"])
 
 	def validate(self):
 		self.validate_status()
