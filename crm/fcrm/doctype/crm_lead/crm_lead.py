@@ -14,6 +14,7 @@ from crm.fcrm.doctype.crm_status_change_log.crm_status_change_log import (
 	add_status_change_log,
 )
 from crm.fcrm.doctype.utils import add_or_remove_lost_reason_section_in_sidepanel
+from crm.utils.auto_create_links import auto_create_missing_links
 from crm.utils.permissions import owner_only_has_permission, owner_only_query_conditions
 
 # Record-level access to CRM Lead is strict "creator only", same rule as
@@ -92,6 +93,10 @@ class CRMLead(Document):
 
 	def before_validate(self):
 		self.set_sla()
+		# Lets Data Import/manual entry use any Territory or Lead Source
+		# name freely - auto-creates the master record the first time
+		# it's seen, instead of blocking with "Value does not exist".
+		auto_create_missing_links(self, ["territory", "source"])
 
 	def validate(self):
 		self.validate_status()
