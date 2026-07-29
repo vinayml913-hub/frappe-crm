@@ -298,6 +298,19 @@ const { getDealStatus, dealStatuses } = statusesStore()
 const route = useRoute()
 const router = useRouter()
 
+const dealsListView = ref(null)
+const showDealModal = ref(false)
+const editDealName = ref(null)
+
+const defaults = reactive({})
+
+// deals data is loaded in the ViewControls component
+const deals = ref({})
+const loadMore = ref(1)
+const triggerResize = ref(1)
+const updatedPageCount = ref(20)
+const viewControls = ref(null)
+
 // Handles ?quick_filter=won|ongoing&from=...&to=... coming from Dashboard
 // card clicks (see components/Dashboard/DashboardItem.vue). Applied once
 // the underlying deal statuses are loaded and the view is mounted, then
@@ -338,19 +351,6 @@ watch(
   () => applyQuickFilterFromRoute(),
   { immediate: true },
 )
-
-const dealsListView = ref(null)
-const showDealModal = ref(false)
-const editDealName = ref(null)
-
-const defaults = reactive({})
-
-// deals data is loaded in the ViewControls component
-const deals = ref({})
-const loadMore = ref(1)
-const triggerResize = ref(1)
-const updatedPageCount = ref(20)
-const viewControls = ref(null)
 
 function openCreateDealModal() {
   editDealName.value = null
