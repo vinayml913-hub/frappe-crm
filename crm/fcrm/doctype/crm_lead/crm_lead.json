@@ -293,7 +293,7 @@
   },
   {
    "fieldname": "territory",
-   "fieldtype": "Link",
+   "fieldtype": "Data",
    "label": "Territory",
    "options": "CRM Territory"
   },
