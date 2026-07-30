@@ -110,12 +110,26 @@ class CRMLead(Document):
 			self.assign_agent(self.lead_owner)
 		if self.has_value_changed("status"):
 			add_status_change_log(self)
+		# Once this Lead already has its own Organization/Contact (created on
+		# first insert - see after_insert), later edits to the org/POC fields
+		# on the Lead should push forward into those SAME records rather than
+		# spawning new ones. Only runs after the initial creation, and only
+		# for fields that were actually touched.
+		if not self.is_new():
+			self.sync_linked_organization()
+			self.sync_linked_contact()
 
 	def after_insert(self):
 		if self.lead_owner:
 			if self.lead_owner != frappe.session.user:
 				self.share_with_agent(self.lead_owner)
 			self.assign_agent(self.lead_owner)
+		# Every new Lead gets its OWN fresh Organization and Contact record in
+		# the backend "master" tables - even if a same-named Organization or
+		# same-email/phone Contact already exists elsewhere. This is
+		# deliberate (confirmed with the business): no dedup, always create.
+		self.always_create_organization()
+		self.always_create_contact()
 
 	def before_save(self):
 		self.apply_sla()
@@ -227,12 +241,119 @@ class CRMLead(Document):
 					flags={"ignore_share_permission": True, "ignore_permissions": True},
 				)
 
+	def always_create_organization(self):
+		"""Create a brand-new CRM Organization for this Lead on first insert -
+		no dedup by name, always a fresh record (per business decision).
+		Links it back via linked_organization so later edits can sync
+		forward, and so conversion can reuse it instead of creating a
+		third copy - see create_organization()."""
+		if not self.organization:
+			return
+
+		organization = frappe.new_doc("CRM Organization")
+		organization.update(
+			{
+				"organization_name": self.organization,
+				"website": self.website,
+				"territory": self.territory,
+				"industry": self.industry,
+				"annual_revenue": self.annual_revenue,
+			}
+		)
+		organization.insert(ignore_permissions=True)
+		self.db_set("linked_organization", organization.name, update_modified=False)
+
+	def always_create_contact(self):
+		"""Create a brand-new Contact for this Lead's POC on first insert -
+		no dedup by email/phone, always a fresh record (per business
+		decision). Links it back via linked_contact so later edits can
+		sync forward, and so conversion can reuse it - see create_contact()."""
+		if not (self.first_name or self.last_name or self.email or self.mobile_no):
+			return
+
+		contact = frappe.new_doc("Contact")
+		contact.update(
+			{
+				"first_name": self.first_name or self.lead_name or "Unnamed",
+				"last_name": self.last_name,
+				"salutation": self.salutation,
+				"gender": self.gender,
+				"designation": self.job_title,
+				"company_name": self.organization,
+				"image": self.image or "",
+			}
+		)
+		if self.email:
+			contact.append("email_ids", {"email_id": self.email, "is_primary": 1})
+		if self.phone:
+			contact.append("phone_nos", {"phone": self.phone, "is_primary_phone": 1})
+		if self.mobile_no:
+			contact.append("phone_nos", {"phone": self.mobile_no, "is_primary_mobile_no": 1})
+		contact.insert(ignore_permissions=True)
+		self.db_set("linked_contact", contact.name, update_modified=False)
+
+	def sync_linked_organization(self):
+		"""If org-related fields were edited on an existing Lead that already
+		has its own linked Organization, push those edits into that same
+		record instead of creating another one."""
+		if not self.linked_organization:
+			return
+		org_fields = ("organization", "website", "territory", "industry", "annual_revenue")
+		if not any(self.has_value_changed(f) for f in org_fields):
+			return
+		if not frappe.db.exists("CRM Organization", self.linked_organization):
+			return
+		frappe.db.set_value(
+			"CRM Organization",
+			self.linked_organization,
+			{
+				"organization_name": self.organization,
+				"website": self.website,
+				"territory": self.territory,
+				"industry": self.industry,
+				"annual_revenue": self.annual_revenue,
+			},
+		)
+
+	def sync_linked_contact(self):
+		"""If POC fields were edited on an existing Lead that already has its
+		own linked Contact, push those edits into that same Contact record
+		instead of creating another one."""
+		if not self.linked_contact:
+			return
+		poc_fields = ("first_name", "last_name", "salutation", "gender", "job_title", "email", "phone", "mobile_no")
+		if not any(self.has_value_changed(f) for f in poc_fields):
+			return
+		contact = frappe.db.exists("Contact", self.linked_contact)
+		if not contact:
+			return
+		contact = frappe.get_doc("Contact", self.linked_contact)
+		contact.first_name = self.first_name or contact.first_name
+		contact.last_name = self.last_name
+		contact.salutation = self.salutation
+		contact.gender = self.gender
+		contact.designation = self.job_title
+		contact.company_name = self.organization
+		if self.email and self.has_value_changed("email"):
+			contact.set("email_ids", [])
+			contact.append("email_ids", {"email_id": self.email, "is_primary": 1})
+		if self.mobile_no and self.has_value_changed("mobile_no"):
+			contact.set(
+				"phone_nos",
+				[p for p in contact.phone_nos if not p.is_primary_mobile_no],
+			)
+			contact.append("phone_nos", {"phone": self.mobile_no, "is_primary_mobile_no": 1})
+		contact.save(ignore_permissions=True)
+
 	def create_contact(self, existing_contact=None, throw=True):
 		if not self.lead_name:
 			self.set_full_name()
 			self.set_lead_name()
 
-		existing_contact = existing_contact or self.contact_exists(throw)
+		# At conversion time, prefer the Contact that was already created for
+		# this Lead when it was first inserted (see always_create_contact),
+		# rather than spawning yet another one for the same Lead.
+		existing_contact = existing_contact or self.linked_contact or self.contact_exists(throw)
 		if existing_contact:
 			self.update_lead_contact(existing_contact)
 			return existing_contact
@@ -268,8 +389,13 @@ class CRMLead(Document):
 		if not self.organization and not existing_organization:
 			return
 
-		existing_organization = existing_organization or frappe.db.exists(
-			"CRM Organization", {"organization_name": self.organization}
+		# At conversion time, prefer the Organization already created for this
+		# Lead on insert (see always_create_organization) over matching by
+		# name or creating a fresh one - avoids a third duplicate record.
+		existing_organization = (
+			existing_organization
+			or self.linked_organization
+			or frappe.db.exists("CRM Organization", {"organization_name": self.organization})
 		)
 		if existing_organization:
 			self.db_set("organization", existing_organization)
