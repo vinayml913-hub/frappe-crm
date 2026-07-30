@@ -667,3 +667,70 @@ def convert_to_deal(
 	organization = lead.create_organization(existing_organization)
 	_deal = lead.create_deal(contact, organization, deal)
 	return _deal
+
+
+@frappe.whitelist()
+def backfill_organization_and_contact_for_existing_leads(dry_run: bool = True, limit: int = 0):
+	"""One-time backfill for Leads created BEFORE the always_create_organization/
+	always_create_contact feature existed. Runs the same "always create, no
+	dedup" logic on every Lead that doesn't yet have a linked_organization or
+	linked_contact.
+
+	Call with dry_run=True first (default) to see how many leads would be
+	affected before actually creating anything. Then call again with
+	dry_run=False to run it for real.
+
+	Trigger via:
+	  /api/method/crm.fcrm.doctype.crm_lead.crm_lead.backfill_organization_and_contact_for_existing_leads?dry_run=1
+	  /api/method/crm.fcrm.doctype.crm_lead.crm_lead.backfill_organization_and_contact_for_existing_leads?dry_run=0&limit=500
+	"""
+	if not frappe.has_permission("CRM Lead", "write"):
+		frappe.throw(_("Not allowed to run this"), frappe.PermissionError)
+
+	dry_run = frappe.parse_json(dry_run) if isinstance(dry_run, str) else dry_run
+	limit = int(limit) if limit else 0
+
+	filters = [
+		["linked_organization", "in", ["", None]],
+		["linked_contact", "in", ["", None]],
+	]
+	lead_names = frappe.get_all(
+		"CRM Lead",
+		filters=filters,
+		pluck="name",
+		limit_page_length=limit or 0,
+		order_by="creation asc",
+	)
+
+	if dry_run:
+		return {
+			"dry_run": True,
+			"leads_that_would_be_processed": len(lead_names),
+			"note": "Call again with dry_run=0 (and optionally limit=N to batch it) to actually create records.",
+		}
+
+	created, skipped, failed = 0, 0, []
+	for lead_name in lead_names:
+		try:
+			lead = frappe.get_doc("CRM Lead", lead_name)
+			if not lead.linked_organization:
+				lead.always_create_organization()
+			if not lead.linked_contact:
+				lead.always_create_contact()
+			if lead.linked_organization or lead.linked_contact:
+				created += 1
+			else:
+				skipped += 1  # lead had no org/POC info at all to create from
+			frappe.db.commit()
+		except Exception:
+			frappe.db.rollback()
+			failed.append(lead_name)
+			frappe.log_error(title=f"Backfill failed for Lead {lead_name}")
+
+	return {
+		"dry_run": False,
+		"total_attempted": len(lead_names),
+		"created": created,
+		"skipped_no_data": skipped,
+		"failed": failed,
+	}
