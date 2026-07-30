@@ -38,6 +38,8 @@
   "annual_revenue",
   "image",
   "converted",
+  "linked_organization",
+  "linked_contact",
   "products_tab",
   "products",
   "section_break_ggwh",
@@ -219,6 +221,22 @@
    "label": "Converted"
   },
   {
+   "fieldname": "linked_organization",
+   "fieldtype": "Link",
+   "label": "Linked Organization",
+   "options": "CRM Organization",
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "linked_contact",
+   "fieldtype": "Link",
+   "label": "Linked Contact",
+   "options": "Contact",
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
    "fieldname": "person_tab",
    "fieldtype": "Tab Break",
    "label": "Person"
@@ -293,7 +311,7 @@
   },
   {
    "fieldname": "territory",
-   "fieldtype": "Data",
+   "fieldtype": "Link",
    "label": "Territory",
    "options": "CRM Territory"
   },
