@@ -126,8 +126,7 @@
    "label": "Email",
    "options": "Email",
    "in_standard_filter": 1,
-   "search_index": 1,
-   "reqd": 1 
+   "search_index": 1
   },
   {
    "fieldname": "website",
@@ -137,8 +136,7 @@
   { "fieldname": "mobile_no",
     "fieldtype": "Data", 
     "label": "Mobile No.", 
-    "options": "Phone", 
-    "reqd": 1 },
+    "options": "Phone" },
   {
    "fieldname": "phone",
    "fieldtype": "Data",
