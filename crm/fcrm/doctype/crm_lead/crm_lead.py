@@ -260,6 +260,22 @@ class CRMLead(Document):
 				"annual_revenue": self.annual_revenue,
 			}
 		)
+		# Same reason this exists for Lead/Deal: a Territory value from a CSV
+		# import (e.g. "Bangalore", "Wayanad") that doesn't exist yet as a
+		# CRM Territory record should be auto-created, not throw and block
+		# the whole Organization from being created.
+		auto_create_missing_links(organization, ["territory"])
+
+		# CRM Organization is named directly from organization_name
+		# (autoname: field:organization_name) - so its name IS its primary
+		# key, and two orgs literally cannot share one. Since we're
+		# deliberately always creating fresh records (no dedup), give it a
+		# unique name when a same-named Organization already exists, instead
+		# of letting the insert fail with "already exists".
+		base_name = self.organization
+		if frappe.db.exists("CRM Organization", base_name):
+			organization.name = f"{base_name}-{self.name}"
+
 		organization.insert(ignore_permissions=True)
 		self.db_set("linked_organization", organization.name, update_modified=False)
 
@@ -303,13 +319,18 @@ class CRMLead(Document):
 			return
 		if not frappe.db.exists("CRM Organization", self.linked_organization):
 			return
+		territory = self.territory
+		if territory and not frappe.db.exists("CRM Territory", territory):
+			from crm.utils.auto_create_links import get_or_create_link
+
+			territory = get_or_create_link("CRM Territory", territory)
 		frappe.db.set_value(
 			"CRM Organization",
 			self.linked_organization,
 			{
 				"organization_name": self.organization,
 				"website": self.website,
-				"territory": self.territory,
+				"territory": territory,
 				"industry": self.industry,
 				"annual_revenue": self.annual_revenue,
 			},
