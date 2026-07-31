@@ -690,15 +690,17 @@ def backfill_organization_and_contact_for_existing_leads(dry_run: bool = True, l
 	dry_run = frappe.parse_json(dry_run) if isinstance(dry_run, str) else dry_run
 	limit = int(limit) if limit else 0
 
-	filters = [
+	# OR, not AND - a lead that already has ONE of the two links (e.g. from a
+	# partial/failed previous run) should still be retried for the other.
+	or_filters = [
 		["linked_organization", "in", ["", None]],
 		["linked_contact", "in", ["", None]],
 	]
 	lead_names = frappe.get_all(
 		"CRM Lead",
-		filters=filters,
+		or_filters=or_filters,
 		pluck="name",
-		limit_page_length=limit or 0,
+		limit_page_length=limit if limit else 1_000_000,
 		order_by="creation asc",
 	)
 
@@ -709,28 +711,34 @@ def backfill_organization_and_contact_for_existing_leads(dry_run: bool = True, l
 			"note": "Call again with dry_run=0 (and optionally limit=N to batch it) to actually create records.",
 		}
 
-	created, skipped, failed = 0, 0, []
+	created_org, created_contact, skipped_no_org_data, skipped_no_contact_data, failed = 0, 0, 0, 0, []
 	for lead_name in lead_names:
 		try:
 			lead = frappe.get_doc("CRM Lead", lead_name)
 			if not lead.linked_organization:
 				lead.always_create_organization()
+				if lead.linked_organization:
+					created_org += 1
+				else:
+					skipped_no_org_data += 1  # lead.organization was blank
 			if not lead.linked_contact:
 				lead.always_create_contact()
-			if lead.linked_organization or lead.linked_contact:
-				created += 1
-			else:
-				skipped += 1  # lead had no org/POC info at all to create from
+				if lead.linked_contact:
+					created_contact += 1
+				else:
+					skipped_no_contact_data += 1  # no first/last name, email, or mobile
 			frappe.db.commit()
-		except Exception:
+		except Exception as e:
 			frappe.db.rollback()
-			failed.append(lead_name)
+			failed.append({"lead": lead_name, "error": str(e)})
 			frappe.log_error(title=f"Backfill failed for Lead {lead_name}")
 
 	return {
 		"dry_run": False,
-		"total_attempted": len(lead_names),
-		"created": created,
-		"skipped_no_data": skipped,
+		"total_leads_matched": len(lead_names),
+		"organizations_created": created_org,
+		"contacts_created": created_contact,
+		"skipped_leads_with_no_organization_text": skipped_no_org_data,
+		"skipped_leads_with_no_poc_fields": skipped_no_contact_data,
 		"failed": failed,
 	}
