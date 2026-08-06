@@ -125,6 +125,57 @@ def update_sales_order(name, data):
 
 
 # ─────────────────────────────────────────────
+#  DELETE SALES ORDER
+# ─────────────────────────────────────────────
+
+@frappe.whitelist()
+def delete_sales_order(name):
+    """
+    Delete a PBS Sales Order (and its child Delivery Order rows, which
+    are removed automatically by Frappe since they're a child table).
+
+    Only System Manager, Sales Manager, or the order's own
+    sales_manager / account_manager / delivery_manager may delete it -
+    mirrors the visibility rule already used in get_sales_orders().
+    """
+    session_roles = frappe.get_roles()
+    is_admin   = "System Manager" in session_roles
+    is_manager = "Sales Manager"  in session_roles
+
+    if not (is_admin or is_manager):
+        current_user = frappe.session.user
+        owner_fields = frappe.db.get_value(
+            "PBS Sales Order",
+            name,
+            ["sales_manager", "account_manager", "delivery_manager"],
+            as_dict=True,
+        )
+        if not owner_fields or current_user not in (
+            owner_fields.sales_manager,
+            owner_fields.account_manager,
+            owner_fields.delivery_manager,
+        ):
+            frappe.throw(
+                _("You are not allowed to delete this Sales Order"),
+                frappe.PermissionError,
+            )
+
+    try:
+        frappe.delete_doc(
+            "PBS Sales Order", name, ignore_permissions=True, force=True
+        )
+        frappe.db.commit()
+    except Exception:
+        frappe.log_error(
+            title="delete_sales_order Error",
+            message=frappe.get_traceback(),
+        )
+        frappe.throw(_("Could not delete Sales Order {0}").format(name))
+
+    return {"deleted": name}
+
+
+# ─────────────────────────────────────────────
 #  CREATE DELIVERY ORDER
 # ─────────────────────────────────────────────
 
