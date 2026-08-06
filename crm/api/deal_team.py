@@ -297,7 +297,7 @@ def assign_team_on_create(deal_name, users):
 		frappe.throw(_("You do not have permission to modify this Deal."), frappe.PermissionError)
 
 	# `current` would incorrectly include deal_owner/sales_manager/
-	# account_manager/training_engagement_manager here - those fields
+	# solution_managers/training_engagement_manager here - those fields
 	# already auto-assign (and notify) whoever they're set to, as part
 	# of the same insert() that just created this Deal, which happens
 	# BEFORE this separate follow-up request runs. Excluding them from
@@ -305,15 +305,25 @@ def assign_team_on_create(deal_name, users):
 	# goes through on a freshly created Deal; the guard still correctly
 	# blocks a second, later call (e.g. someone genuinely added via this
 	# same endpoint before) since those users aren't excluded.
+	# Solution Manager is now a multi-select child table (solution_managers),
+	# not a plain field, so it's pulled separately rather than via the
+	# single get_value() call below.
 	auto_assigned_via_fields = {
 		value
 		for value in frappe.db.get_value(
 			"CRM Deal", deal_name,
-			["deal_owner", "sales_manager", "account_manager", "training_engagement_manager"],
+			["deal_owner", "sales_manager", "training_engagement_manager"],
 			as_dict=True,
 		).values()
 		if value
 	}
+	auto_assigned_via_fields.update(
+		frappe.db.get_all(
+			"CRM Deal Solution Manager",
+			filters={"parent": deal_name, "parenttype": "CRM Deal"},
+			pluck="user",
+		)
+	)
 	current = [u for u in _get_assigned_users(deal_name) if u not in auto_assigned_via_fields]
 	if current:
 		frappe.throw(
