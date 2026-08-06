@@ -98,6 +98,11 @@
                   icon="link"
                   @click="openWebsite"
                 />
+                <AssignTo
+                  v-model="assignees.data"
+                  doctype="CRM Organization"
+                  :docname="props.organizationId"
+                />
               </div>
             </div>
           </template>
@@ -116,6 +121,7 @@
         />
       </div>
     </Resizer>
+    <div class="relative flex flex-1 overflow-hidden">
     <Tabs
       v-model="tabIndex"
       as="div"
@@ -162,6 +168,20 @@
         />
       </template>
     </Tabs>
+    <Dropdown
+      v-if="tabIndex === 1"
+      :options="contactOptions"
+      placement="right"
+      class="absolute right-5 top-2.5"
+    >
+      <template #default="{ open }">
+        <Button
+          :label="__('Options')"
+          :iconRight="open ? 'chevron-up' : 'chevron-down'"
+        />
+      </template>
+    </Dropdown>
+    </div>
   </div>
   <ErrorPage
     v-else-if="errorTitle"
@@ -174,6 +194,21 @@
     :doctype="'CRM Organization'"
     :docname="props.organizationId"
     name="Organizations"
+  />
+  <ContactModal
+    v-if="showContactModal"
+    v-model="showContactModal"
+    :contact="{ company_name: organization.doc.name }"
+    :options="{
+      redirect: false,
+      afterInsert: () => contacts.reload(),
+    }"
+  />
+  <LinkContactModal
+    v-if="showLinkContactModal"
+    v-model="showLinkContactModal"
+    :organization="organization.doc.name"
+    :options="{ afterLink: () => contacts.reload() }"
   />
 </template>
 
@@ -191,6 +226,9 @@ import DealsIcon from '@/components/Icons/DealsIcon.vue'
 import ContactsIcon from '@/components/Icons/ContactsIcon.vue'
 import DeleteLinkedDocModal from '@/components/DeleteLinkedDocModal.vue'
 import CustomActions from '@/components/CustomActions.vue'
+import AssignTo from '@/components/AssignTo.vue'
+import ContactModal from '@/components/Modals/ContactModal.vue'
+import LinkContactModal from '@/components/Modals/LinkContactModal.vue'
 import { showAddressModal, addressProps } from '@/composables/modals'
 import { useDocument } from '@/data/document'
 import { getSettings } from '@/stores/settings'
@@ -238,15 +276,31 @@ const errorTitle = ref('')
 const errorMessage = ref('')
 
 const showDeleteLinkedDocModal = ref(false)
+const showContactModal = ref(false)
+const showLinkContactModal = ref(false)
 
 const {
   document: organization,
   permissions,
   scripts,
+  assignees,
   triggerOnRender,
 } = useDocument('CRM Organization', props.organizationId)
 
 const canDelete = computed(() => permissions.data?.permissions?.delete || false)
+
+const contactOptions = computed(() => [
+  {
+    label: __('Add New Contact'),
+    icon: 'plus',
+    onClick: () => (showContactModal.value = true),
+  },
+  {
+    label: __('Link Existing Contact'),
+    icon: 'link',
+    onClick: () => (showLinkContactModal.value = true),
+  },
+])
 
 onMounted(async () => {
   if (organization.doc) await triggerOnRender()
