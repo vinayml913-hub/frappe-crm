@@ -54,6 +54,7 @@
             <span class="px-3 py-1 text-xs font-semibold rounded-full" :class="statusClass(order.status)">{{ order.status || 'Open' }}</span>
             <span v-if="order.payment_status" class="px-2 py-1 text-xs rounded-full" :class="paymentStatusClass(order.payment_status)">{{ order.payment_status }}</span>
             <Button size="sm" variant="outline" icon="edit-2" :label="__('Edit')" @click.stop="openEditModal(order)" />
+            <Button size="sm" variant="outline" theme="red" icon="trash-2" :label="__('Delete')" @click.stop="confirmDeleteOrder(order)" />
             <FeatherIcon
               :name="expandedOrders.has(order.name) ? 'chevron-up' : 'chevron-down'"
               class="h-4 w-4 text-ink-gray-4 cursor-pointer"
@@ -426,7 +427,10 @@ import LayoutHeader from '@/components/LayoutHeader.vue'
 import SalesOrderIcon from '@/components/Icons/SalesOrderIcon.vue'
 import { Breadcrumbs, Button, Dialog, FeatherIcon, call, toast } from 'frappe-ui'
 import { formatDate } from '@/utils'
+import { globalStore } from '@/stores/global'
 import { ref, reactive, onMounted } from 'vue'
+
+const { $dialog } = globalStore()
 
 // ── State ────────────────────────────────────────────────────────────
 const salesOrders    = ref([])
@@ -634,6 +638,38 @@ async function submitDeliveryOrder() {
     toast.error(doFormError.value)
   } finally {
     savingDO.value = false
+  }
+}
+
+function confirmDeleteOrder(order) {
+  $dialog({
+    title: __('Delete Sales Order'),
+    message: __(
+      'Are you sure you want to delete {0}? This will also delete all of its Delivery Orders. This action cannot be undone.',
+      [order.name],
+    ),
+    variant: 'solid',
+    theme: 'red',
+    actions: [
+      {
+        label: __('Delete'),
+        variant: 'solid',
+        theme: 'red',
+        onClick: (close) => deleteOrder(order, close),
+      },
+    ],
+  })
+}
+
+async function deleteOrder(order, close) {
+  try {
+    await call('crm.api.sales_order.delete_sales_order', { name: order.name })
+    salesOrders.value = salesOrders.value.filter((o) => o.name !== order.name)
+    expandedOrders.value.delete(order.name)
+    toast.success(__('Sales Order deleted'))
+    close?.()
+  } catch (err) {
+    toast.error(_extractError(err, __('Could not delete Sales Order')))
   }
 }
 
