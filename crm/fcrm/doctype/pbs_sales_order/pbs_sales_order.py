@@ -88,9 +88,11 @@ def create_sales_order_from_deal(doc, method):
 		so.phone = doc.mobile_no or doc.phone or ""
 		so.company = doc.organization_name or ""
 
-		# Financial Info — from Deal final calculation
-		so.amount = doc.get("final_amount") or doc.get("base_amount") or 0
-		so.total_expense = doc.get("total_expense") or 0
+		# Financial Info — from Deal's Proposed/Landing commercial model.
+		# "amount" (what's billed to the client) = Proposed Total, GST as
+		# selected on the Deal; "total_expense" (actual cost) = Landing Total.
+		so.amount = doc.get("proposed_total_with_gst") or doc.get("proposed_total") or 0
+		so.total_expense = doc.get("landing_total") or 0
 		so.tax = 0
 		so.discount = 0
 
@@ -106,16 +108,25 @@ def create_sales_order_from_deal(doc, method):
 		so.trainer_assigned = doc.get("trainer") or None
 
 		# Team Info
-		# account_manager = "Solution Manager" on Deal
+		# solution_managers = "Solution Manager" on Deal - now a multi-select
+		# child table; PBS Sales Order still only carries a single Solution
+		# Manager, so we take the first row (the rest remain visible on the
+		# Deal itself for reporting/target purposes).
 		# delivery_manager = "Training Engagement Co-ordinator" on Deal
+		first_solution_manager = None
+		for row in doc.get("solution_managers") or []:
+			if row.get("user"):
+				first_solution_manager = row.get("user")
+				break
+
 		so.sales_manager = doc.get("sales_manager") or doc.deal_owner or frappe.session.user
-		so.account_manager = doc.get("account_manager") or doc.deal_owner or frappe.session.user
+		so.account_manager = first_solution_manager or doc.deal_owner or frappe.session.user
 		so.delivery_manager = doc.get("training_engagement_manager") or None
 
 		# Other
-		so.lab_required = doc.get("lab_required") or 0
-		so.training_required = doc.get("training_required") or 0
-		so.notes = doc.get("accounting_notes") or ""
+		# Lab Required / Training Required were removed from Deal - leave
+		# unset here (they can still be set manually on the Sales Order).
+		so.notes = doc.get("notes") or ""
 		so.status = "Open"
 		so.payment_status = "Pending"
 
