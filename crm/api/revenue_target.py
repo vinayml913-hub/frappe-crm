@@ -74,8 +74,8 @@ def _get_period_dates(target_type: str, year: int, month: str | None, quarter: s
 def _get_achieved_revenue(employee: str, from_date: str, to_date: str) -> float:
 	"""
 	Achieved Revenue = sum of Gross Profit (Deal.gross_profit) on Won deals,
-	for any deal where `employee` is EITHER the Deal Owner OR the Solution
-	Manager (Deal.account_manager).
+	for any deal where `employee` is EITHER the Deal Owner OR one of the
+	(now multi-select) Solution Managers (Deal.solution_managers).
 
 	A deal's GP counts in FULL toward both people independently when both
 	roles are filled by different users - e.g. a deal owner and a solution
@@ -83,26 +83,39 @@ def _get_achieved_revenue(employee: str, from_date: str, to_date: str) -> float:
 	increased by the full GP amount (not split between them). This is
 	intentional: it is not a company-wide revenue total, it's a per-person
 	contribution credit.
-	"""
-	Deal = DocType("CRM Deal")
-	Status = DocType("CRM Deal Status")
 
+	NOTE: deliberately using EXISTS (not a JOIN) against the
+	CRM Deal Solution Manager child table - a JOIN would duplicate the
+	parent Deal row once per Solution Manager row and inflate the SUM
+	whenever a deal has more than one Solution Manager, even for rows
+	that don't match `employee`.
+	"""
 	to_date_plus_one = frappe.utils.add_days(to_date, 1)
 
-	result = (
-		frappe.qb.from_(Deal)
-		.join(Status)
-		.on(Deal.status == Status.name)
-		.select(Sum(Coalesce(Deal.gross_profit, 0)).as_("total"))
-		.where(
-			((Deal.deal_owner == employee) | (Deal.account_manager == employee))
-			& (Deal.closed_date >= from_date)
-			& (Deal.closed_date < to_date_plus_one)
-			& (Status.type == "Won")
+	result = frappe.db.sql(
+		"""
+		SELECT SUM(COALESCE(d.gross_profit, 0)) AS total
+		FROM `tabCRM Deal` d
+		INNER JOIN `tabCRM Deal Status` s ON d.status = s.name
+		WHERE (
+			d.deal_owner = %(employee)s
+			OR EXISTS (
+				SELECT 1 FROM `tabCRM Deal Solution Manager` sm
+				WHERE sm.parent = d.name AND sm.user = %(employee)s
+			)
 		)
-		.run(as_dict=True)
+		AND d.closed_date >= %(from_date)s
+		AND d.closed_date < %(to_date_plus_one)s
+		AND s.type = 'Won'
+		""",
+		{
+			"employee": employee,
+			"from_date": from_date,
+			"to_date_plus_one": to_date_plus_one,
+		},
+		as_dict=True,
 	)
-	return float(result[0].total or 0) if result else 0.0
+	return float(result[0].total or 0) if result and result[0].total else 0.0
 
 
 def _get_status(achievement_percentage: float) -> str:
