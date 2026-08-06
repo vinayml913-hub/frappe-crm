@@ -18,10 +18,15 @@ from crm.utils.auto_create_links import auto_create_missing_links
 # personally tied to it.
 DEAL_ADMIN_ROLES = ("System Manager",)
 
-# Fields on CRM Deal that name a specific person tied to that deal. Anyone
-# named in one of these fields (on that particular deal) can see it, in
-# addition to the deal's creator and whoever it's assigned to.
-DEAL_PERSON_FIELDS = ("deal_owner", "sales_manager", "account_manager", "training_engagement_manager")
+# Plain (single-value) fields on CRM Deal that name a specific person tied
+# to that deal. Anyone named in one of these fields (on that particular
+# deal) can see it, in addition to the deal's creator and whoever it's
+# assigned to.
+# NOTE: Solution Manager is deliberately NOT in this tuple - it's now a
+# multi-select child table (solution_managers, via CRM Deal Solution
+# Manager), not a plain column, so it needs its own membership check
+# below rather than a simple `doc.get(fieldname) == user` / `col = user`.
+DEAL_PERSON_FIELDS = ("deal_owner", "sales_manager", "training_engagement_manager")
 
 
 def _is_deal_admin(user):
@@ -30,9 +35,9 @@ def _is_deal_admin(user):
 
 def has_permission(doc, ptype=None, user=None):
 	"""Restrict direct access to a single CRM Deal to: the deal's creator,
-	its deal_owner/sales_manager/account_manager(Solution Manager)/
-	training_engagement_manager, anyone it's assigned to, anyone it's been
-	explicitly shared with, or a System Manager/Administrator."""
+	its deal_owner/sales_manager/training_engagement_manager, any of its
+	(multi-select) Solution Managers, anyone it's assigned to, anyone it's
+	been explicitly shared with, or a System Manager/Administrator."""
 	user = user or frappe.session.user
 	if _is_deal_admin(user):
 		return True
@@ -41,6 +46,9 @@ def has_permission(doc, ptype=None, user=None):
 		return True
 
 	if any(doc.get(fieldname) == user for fieldname in DEAL_PERSON_FIELDS):
+		return True
+
+	if any(row.get("user") == user for row in (doc.get("solution_managers") or [])):
 		return True
 
 	assigned = doc.get("_assign")
@@ -74,6 +82,10 @@ def get_permission_query_conditions(user=None):
 	return f"""(
 		`tabCRM Deal`.`owner` = {user_e}
 		OR {person_conditions}
+		OR EXISTS (
+			SELECT 1 FROM `tabCRM Deal Solution Manager` sm
+			WHERE sm.parent = `tabCRM Deal`.`name` AND sm.user = {user_e}
+		)
 		OR `tabCRM Deal`.`_assign` LIKE {assign_match_e}
 		OR `tabCRM Deal`.`name` IN (
 			SELECT share_name FROM `tabDocShare`
@@ -210,9 +222,13 @@ class CRMDeal(Document):
 		# unnecessary: view access for these fields is already granted
 		# independently via has_permission()'s DEAL_PERSON_FIELDS check.
 		if not self.is_new():
-			for fieldname in ("sales_manager", "account_manager", "training_engagement_manager"):
+			for fieldname in ("sales_manager", "training_engagement_manager"):
 				if self.has_value_changed(fieldname) and self.get(fieldname):
 					self.assign_agent(self.get(fieldname))
+			if self.has_value_changed("solution_managers"):
+				for row in self.solution_managers or []:
+					if row.user:
+						self.assign_agent(row.user)
 		if self.has_value_changed("status"):
 			add_status_change_log(self)
 			if frappe.db.get_value("CRM Deal Status", self.status, "type") == "Won":
@@ -232,74 +248,118 @@ class CRMDeal(Document):
 		# (e.g. the "Team" section of the New Deal dialog) rather than
 		# added later as an edit. No share_with_agent() here either - see
 		# the comment in validate() for why.
-		for fieldname in ("sales_manager", "account_manager", "training_engagement_manager"):
+		for fieldname in ("sales_manager", "training_engagement_manager"):
 			value = self.get(fieldname)
 			if value:
 				self.assign_agent(value)
+		for row in self.solution_managers or []:
+			if row.user:
+				self.assign_agent(row.user)
 
 	def before_save(self):
 		self.apply_sla()
 
 	def calculate_financials(self):
 		"""
-		Complete PBS Financial Calculation:
+		Commercial model (Proposed vs Landing):
 
-		1. Trainer Cost = Trainer Commercial × Days/Hours
-		2. Total Expense = Trainer Cost + Lab Expense
-		3. GP = Total Expense × Margin% / 100
-		4. Base Amount = Total Expense + GP
-		5. GST Amount = Base Amount × GST% / 100
-		6. Final Amount = Base Amount + GST Amount
-		7. GP% = GP / Base Amount × 100
+		Each of Proposed Cost (Quoted) and Landing Cost (Expenses) is built
+		from the same set of inputs, computed independently:
+
+			Trainer Cost = Trainer Commercial x No. of Days/Hours
+			Lab Total     = Lab Cost x No. of Days/Hours
+			                (or just Lab Cost, unchanged, if Lab Costing
+			                 Type is "Total Lab Costing" - a flat lump sum)
+			Section Total = Trainer Cost + Lab Total
+			                + Certification/Voucher Costing + Misc Expenses
+
+		Gross Profit is always the spread between the two totals, computed
+		BEFORE any GST is applied - GST is a pass-through tax, not profit,
+		and must never inflate GP or the dashboard target numbers just
+		because someone picked "Including GST" for display purposes:
+
+			Gross Profit = Proposed Total - Landing Total
+			GP%          = Gross Profit / Proposed Total x 100
+
+		The GST dropdown only controls what's DISPLAYED as the client/expense
+		facing totals (Proposed Total / Landing Total "with GST"); it never
+		touches the underlying Proposed Total / Landing Total / Gross Profit
+		used for reporting.
 		"""
-		trainer_commercial = float(self.trainer_commercial or 0)
-		costing_type = self.costing_type or ""
-		no_of_days = int(self.no_of_days or 0)
-		no_of_hours = float(self.no_of_hours or 0)
-		lab_expense = float(self.lab_expense or 0)
+		self.proposed_trainer_cost = self._cost_leg(
+			self.proposed_trainer_commercial,
+			self.proposed_trainer_costing_type,
+			self.proposed_trainer_no_of_days,
+			self.proposed_trainer_no_of_hours,
+		)
+		self.proposed_lab_total = self._lab_leg(
+			self.proposed_lab_cost,
+			self.proposed_lab_costing_type,
+			self.proposed_lab_no_of_days,
+			self.proposed_lab_no_of_hours,
+		)
+		self.proposed_total = (
+			float(self.proposed_trainer_cost or 0)
+			+ float(self.proposed_lab_total or 0)
+			+ float(self.proposed_certification_cost or 0)
+			+ float(self.proposed_misc_expense or 0)
+		)
+
+		self.landing_trainer_cost = self._cost_leg(
+			self.landing_trainer_commercial,
+			self.landing_trainer_costing_type,
+			self.landing_trainer_no_of_days,
+			self.landing_trainer_no_of_hours,
+		)
+		self.landing_lab_total = self._lab_leg(
+			self.landing_lab_cost,
+			self.landing_lab_costing_type,
+			self.landing_lab_no_of_days,
+			self.landing_lab_no_of_hours,
+		)
+		self.landing_total = (
+			float(self.landing_trainer_cost or 0)
+			+ float(self.landing_lab_total or 0)
+			+ float(self.landing_certification_cost or 0)
+			+ float(self.landing_misc_expense or 0)
+		)
+
+		# GST only affects the displayed totals, never GP.
 		gst_pct = float(self.gst_percentage or 18)
+		if self.gst_type == "Including GST":
+			self.proposed_total_with_gst = self.proposed_total * (1 + gst_pct / 100)
+			self.landing_total_with_gst = self.landing_total * (1 + gst_pct / 100)
+		else:
+			self.proposed_total_with_gst = self.proposed_total
+			self.landing_total_with_gst = self.landing_total
 
-		# Default Margin % to 20 if left blank, so GP is never silently zero
-		if not self.margin_pct:
-			self.margin_pct = 20
-		margin_pct = float(self.margin_pct or 0)
+		# Gross Profit - always computed pre-GST, feeds the dashboard/target.
+		self.gross_profit = float(self.proposed_total or 0) - float(self.landing_total or 0)
+		self.gross_profit_pct = (
+			(self.gross_profit / self.proposed_total * 100) if self.proposed_total else 0
+		)
 
-		# Step 1: Trainer Cost
+	@staticmethod
+	def _cost_leg(commercial, costing_type, no_of_days, no_of_hours):
+		"""Trainer Cost = Commercial x Days (or Hours), depending on Costing Type."""
+		commercial = float(commercial or 0)
 		if costing_type == "Per Day":
-			self.trainer_cost = trainer_commercial * no_of_days
+			return commercial * int(no_of_days or 0)
 		elif costing_type == "Per Hour":
-			self.trainer_cost = trainer_commercial * no_of_hours
-		else:
-			self.trainer_cost = trainer_commercial
+			return commercial * float(no_of_hours or 0)
+		return commercial
 
-		trainer_cost = float(self.trainer_cost or 0)
-
-		# Step 2: Total Expense
-		self.total_expense = trainer_cost + lab_expense
-
-		total_expense = float(self.total_expense or 0)
-
-		if total_expense > 0 and margin_pct > 0:
-			# Step 3: Gross Profit
-			self.gross_profit = total_expense * margin_pct / 100
-
-			# Step 4: Base Amount
-			self.base_amount = total_expense + self.gross_profit
-
-			# Step 5: GST Amount
-			self.gst_amount = self.base_amount * gst_pct / 100
-
-			# Step 6: Final Amount
-			self.final_amount = self.base_amount + self.gst_amount
-
-			# Step 7: GP%
-			self.gross_profit_pct = (self.gross_profit / self.base_amount) * 100
-		else:
-			self.gross_profit = 0
-			self.base_amount = total_expense
-			self.gst_amount = total_expense * gst_pct / 100
-			self.final_amount = total_expense + self.gst_amount
-			self.gross_profit_pct = 0
+	@staticmethod
+	def _lab_leg(cost, costing_type, no_of_days, no_of_hours):
+		"""Lab Total = Cost x Days/Hours, unless Costing Type is a flat
+		'Total Lab Costing' lump sum, in which case Cost is used as-is."""
+		cost = float(cost or 0)
+		if costing_type == "Per Day":
+			return cost * int(no_of_days or 0)
+		elif costing_type == "Per Hour":
+			return cost * float(no_of_hours or 0)
+		# "Total Lab Costing" (or blank) - flat amount, no multiplication.
+		return cost
 
 	def validate_status(self):
 		if self.is_new() and not self.status:
