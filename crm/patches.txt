@@ -30,3 +30,4 @@ crm.patches.v1_0.add_audit_info_to_crm_trainer #02-07-2026
 crm.patches.v1_0.add_assigned_team_section_in_deal_sidepanel
 crm.patches.v1_0.fix_deal_sidepanel_layout
 crm.patches.v1_0.rename_deal_stage_labels
+crm.patches.v1_0.update_deal_quick_entry_layout_v2_commercial
