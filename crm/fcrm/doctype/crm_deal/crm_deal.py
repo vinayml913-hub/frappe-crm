@@ -258,7 +258,11 @@ class CRMDeal(Document):
 		no_of_hours = float(self.no_of_hours or 0)
 		lab_expense = float(self.lab_expense or 0)
 		gst_pct = float(self.gst_percentage or 18)
-		training_commercial = float(self.training_commercial or 0)
+
+		# Default Margin % to 20 if left blank, so GP is never silently zero
+		if not self.margin_pct:
+			self.margin_pct = 20
+		margin_pct = float(self.margin_pct or 0)
 
 		# Step 1: Trainer Cost
 		if costing_type == "Per Day":
@@ -272,33 +276,30 @@ class CRMDeal(Document):
 
 		# Step 2: Total Expense
 		self.total_expense = trainer_cost + lab_expense
+
 		total_expense = float(self.total_expense or 0)
 
-		if training_commercial > 0:
-			# Method A: Client-amount-driven GP
-			# Training Commercial is GST-INCLUSIVE (final amount client pays).
-			# Strip GST first to get the base, then subtract costs to get GP.
-			self.final_amount = training_commercial
-			self.base_amount = training_commercial / (1 + (gst_pct / 100))
-			self.gst_amount = training_commercial - self.base_amount
-			self.gross_profit = self.base_amount - trainer_cost - lab_expense
-		elif self.margin_pct:
-			# Method B: Margin%-driven GP (only when margin_pct was actually entered)
-			# Build up from costs: GP added on top of expenses, then GST added on top of that.
-			margin_pct = float(self.margin_pct)
+		if total_expense > 0 and margin_pct > 0:
+			# Step 3: Gross Profit
 			self.gross_profit = total_expense * margin_pct / 100
+
+			# Step 4: Base Amount
 			self.base_amount = total_expense + self.gross_profit
+
+			# Step 5: GST Amount
 			self.gst_amount = self.base_amount * gst_pct / 100
-			self.final_amount = self.base_amount + self.gst_amount
-		else:
-			# Neither Training Commercial nor Margin % given - don't silently assume a margin
-			self.gross_profit = 0
-			self.base_amount = total_expense
-			self.gst_amount = self.base_amount * gst_pct / 100
+
+			# Step 6: Final Amount
 			self.final_amount = self.base_amount + self.gst_amount
 
-		# Step 7: GP%
-		self.gross_profit_pct = (self.gross_profit / self.base_amount * 100) if self.base_amount else 0
+			# Step 7: GP%
+			self.gross_profit_pct = (self.gross_profit / self.base_amount) * 100
+		else:
+			self.gross_profit = 0
+			self.base_amount = total_expense
+			self.gst_amount = total_expense * gst_pct / 100
+			self.final_amount = total_expense + self.gst_amount
+			self.gross_profit_pct = 0
 
 	def validate_status(self):
 		if self.is_new() and not self.status:
