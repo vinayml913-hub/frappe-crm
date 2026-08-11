@@ -8,11 +8,14 @@ Revenue is calculated exclusively from **CRM Deal** records whose linked
 **CRM Deal Status** has ``type == "Won"`` (the same definition the existing
 CRM Dashboard uses — see ``crm/api/dashboard.py``).
 
-Revenue amount per deal = ``deal_value * COALESCE(exchange_rate, 1)``
-(same formula already used in ``get_average_won_deal_value``).
+Revenue amount per deal = ``Deal.gross_profit`` (Proposed Total minus
+Landing Total, computed by CRMDeal.calculate_financials() on every save).
+The old ``deal_value`` field predates the Proposed/Landing Cost + GST
+commercial model and is no longer populated, so it must not be used here.
 
-The deal's owner (``deal_owner``) is treated as the "employee" who
-generated that revenue.
+A deal's team - Deal Owner, Sales Manager, Training Engagement
+Co-ordinator, or any Solution Manager - is treated as the "employee(s)"
+who generated that revenue (see ``_deal_team_condition``).
 
 Access model
 ------------
@@ -98,6 +101,33 @@ def _period_bounds(period_type, year, month=None, quarter=None):
 #  Core query builder — shared by every endpoint
 # ─────────────────────────────────────────────────────────────────────────
 
+def _deal_team_condition(Deal, user):
+    """
+    Pypika condition matching any CRM Deal that `user` is part of the deal
+    team for: the Deal Owner, Sales Manager, Training Engagement
+    Co-ordinator, or one of the (multi-select) Solution Managers.
+
+    This is the single source of truth for "whose deal is this" across
+    revenue/report endpoints - it mirrors and extends the ownership rule
+    crm.api.revenue_target._get_achieved_revenue already used (deal_owner
+    OR Solution Manager), adding Sales Manager / Training Engagement
+    Co-ordinator so every endpoint agrees on the same definition instead
+    of each one silently only checking deal_owner.
+    """
+    SolutionManager = DocType("CRM Deal Solution Manager")
+    solution_manager_deals = (
+        frappe.qb.from_(SolutionManager)
+        .select(SolutionManager.parent)
+        .where(SolutionManager.user == user)
+    )
+    return (
+        (Deal.deal_owner == user)
+        | (Deal.sales_manager == user)
+        | (Deal.training_engagement_manager == user)
+        | (Deal.name.isin(solution_manager_deals))
+    )
+
+
 def _won_deal_query(from_date, to_date, user=None):
     """
     Base query builder for Won deals in a date range, optionally for one user.
@@ -121,14 +151,23 @@ def _won_deal_query(from_date, to_date, user=None):
     )
 
     if user:
-        query = query.where(Deal.deal_owner == user)
+        query = query.where(_deal_team_condition(Deal, user))
 
     return query, Deal, Status
 
 
 def _revenue_expr(Deal):
-    """Revenue per deal = deal_value * exchange_rate (defaults to 1)."""
-    return Deal.deal_value * IfNull(Deal.exchange_rate, 1)
+    """
+    Revenue per deal = Gross Profit (Proposed Total - Landing Total),
+    computed by CRMDeal.calculate_financials() on every save.
+
+    This is the current source of truth for revenue/target/achievement
+    figures. The old `deal_value` field is no longer populated by the
+    Proposed/Landing Cost + GST commercial model and must not be used here
+    - it silently stays 0 for any deal created under the new model, which
+    is what was producing wrong Achieved/Avg Deal Value figures.
+    """
+    return IfNull(Deal.gross_profit, 0)
 
 
 # ─────────────────────────────────────────────────────────────────────────
