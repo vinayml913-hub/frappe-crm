@@ -57,6 +57,8 @@ class CRMDeal {
 	proposed_lab_no_of_hours() { this.calculate() }
 	proposed_certification_cost() { this.calculate() }
 	proposed_misc_expense() { this.calculate() }
+	// Flipping the override off snaps straight back to the auto value.
+	proposed_total_override() { this.calculate() }
 
 	// Landing Cost (Expenses) inputs
 	landing_trainer_commercial() { this.calculate() }
@@ -69,6 +71,7 @@ class CRMDeal {
 	landing_lab_no_of_hours() { this.calculate() }
 	landing_certification_cost() { this.calculate() }
 	landing_misc_expense() { this.calculate() }
+	landing_total_override() { this.calculate() }
 
 	// GST (display-only toggle - never affects Gross Profit)
 	gst_type() { this.calculate() }
@@ -89,11 +92,14 @@ class CRMDeal {
 			d.proposed_lab_no_of_days,
 			d.proposed_lab_no_of_hours,
 		)
-		const proposedTotal =
-			proposedTrainerCost +
-			proposedLabTotal +
-			(Number(d.proposed_certification_cost) || 0) +
-			(Number(d.proposed_misc_expense) || 0)
+		// Proposed Total: auto-calculated UNLESS the manual override is
+		// checked, in which case whatever the user typed is left alone.
+		const proposedTotal = d.proposed_total_override
+			? Number(d.proposed_total) || 0
+			: proposedTrainerCost +
+				proposedLabTotal +
+				(Number(d.proposed_certification_cost) || 0) +
+				(Number(d.proposed_misc_expense) || 0)
 
 		const landingTrainerCost = costLeg(
 			d.landing_trainer_commercial,
@@ -107,11 +113,13 @@ class CRMDeal {
 			d.landing_lab_no_of_days,
 			d.landing_lab_no_of_hours,
 		)
-		const landingTotal =
-			landingTrainerCost +
-			landingLabTotal +
-			(Number(d.landing_certification_cost) || 0) +
-			(Number(d.landing_misc_expense) || 0)
+		// Landing Total: same manual-override rule as Proposed Total above.
+		const landingTotal = d.landing_total_override
+			? Number(d.landing_total) || 0
+			: landingTrainerCost +
+				landingLabTotal +
+				(Number(d.landing_certification_cost) || 0) +
+				(Number(d.landing_misc_expense) || 0)
 
 		// GST only affects the DISPLAYED totals, never Gross Profit.
 		const gstPct = Number(d.gst_percentage) || 18
