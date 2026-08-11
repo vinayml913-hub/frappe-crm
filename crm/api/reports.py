@@ -21,7 +21,7 @@ Deal status classification
               which also groups Open+Ongoing+On Hold together via
               `Status.type.notin(["Won", "Lost"])`).
 
-Revenue figure included in KPIs/leaderboard here = deal_value * exchange_rate
+Revenue figure included in KPIs/leaderboard here = Deal.gross_profit
 on Won deals only, identical formula to revenue.py, for consistency.
 """
 
@@ -33,7 +33,14 @@ from frappe.query_builder import Case, DocType
 from frappe.query_builder.functions import Sum, Count, IfNull, DateFormat
 from frappe.utils import getdate, get_first_day, get_last_day, add_months, add_days, nowdate, flt
 
-from crm.api.revenue import _resolve_scope, _is_admin, _bulk_user_names, _get_target_for_range, _revenue_expr
+from crm.api.revenue import (
+    _resolve_scope,
+    _is_admin,
+    _bulk_user_names,
+    _get_target_for_range,
+    _revenue_expr,
+    _deal_team_condition,
+)
 from crm.api.revenue_target import get_financial_quarter_bounds, get_financial_quarter_for_date
 
 
@@ -113,7 +120,7 @@ def _deal_base_query(from_date, to_date, user=None, date_field="creation"):
     if from_date:
         query = query.where(field >= from_date)
     if user:
-        query = query.where(Deal.deal_owner == user)
+        query = query.where(_deal_team_condition(Deal, user))
 
     return query, Deal, Status
 
