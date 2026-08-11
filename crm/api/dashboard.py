@@ -6,6 +6,7 @@ from frappe.query_builder import Case, DocType
 from frappe.query_builder.functions import Avg, Coalesce, Count, Date, DateFormat, IfNull, Sum
 from pypika.functions import Function
 
+from crm.api.revenue import _deal_team_condition
 from crm.fcrm.doctype.crm_dashboard.crm_dashboard import create_default_manager_dashboard
 from crm.utils import sales_user_only
 
@@ -156,14 +157,14 @@ def get_ongoing_deals(from_date: str | None = None, to_date: str | None = None, 
 		& (Status.type.notin(["Won", "Lost"]))
 	)
 	if user:
-		current_cond = current_cond & (Deal.deal_owner == user)
+		current_cond = current_cond & _deal_team_condition(Deal, user)
 
 	# Build conditions for previous period
 	prev_cond = (
 		(Deal.creation >= prev_from_date) & (Deal.creation < from_date) & (Status.type.notin(["Won", "Lost"]))
 	)
 	if user:
-		prev_cond = prev_cond & (Deal.deal_owner == user)
+		prev_cond = prev_cond & _deal_team_condition(Deal, user)
 
 	# Build query with CASE expressions
 	query = (
@@ -217,17 +218,17 @@ def get_average_ongoing_deal_value(
 		& (Status.type.notin(["Won", "Lost"]))
 	)
 	if user:
-		current_cond = current_cond & (Deal.deal_owner == user)
+		current_cond = current_cond & _deal_team_condition(Deal, user)
 
 	# Build conditions for previous period
 	prev_cond = (
 		(Deal.creation >= prev_from_date) & (Deal.creation < from_date) & (Status.type.notin(["Won", "Lost"]))
 	)
 	if user:
-		prev_cond = prev_cond & (Deal.deal_owner == user)
+		prev_cond = prev_cond & _deal_team_condition(Deal, user)
 
 	# Calculate deal value with exchange rate
-	deal_value_expr = Deal.deal_value * IfNull(Deal.exchange_rate, 1)
+	deal_value_expr = IfNull(Deal.gross_profit, 0)  # gross_profit is the current commercial-model figure; deal_value is unused/stale
 
 	# Build query with CASE expressions
 	query = (
@@ -275,12 +276,12 @@ def get_won_deals(from_date: str | None = None, to_date: str | None = None, user
 		(Deal.closed_date >= from_date) & (Deal.closed_date < to_date_plus_one) & (Status.type == "Won")
 	)
 	if user:
-		current_cond = current_cond & (Deal.deal_owner == user)
+		current_cond = current_cond & _deal_team_condition(Deal, user)
 
 	# Build conditions for previous period
 	prev_cond = (Deal.closed_date >= prev_from_date) & (Deal.closed_date < from_date) & (Status.type == "Won")
 	if user:
-		prev_cond = prev_cond & (Deal.deal_owner == user)
+		prev_cond = prev_cond & _deal_team_condition(Deal, user)
 
 	# Build query with CASE expressions
 	query = (
@@ -332,15 +333,15 @@ def get_average_won_deal_value(
 		(Deal.closed_date >= from_date) & (Deal.closed_date < to_date_plus_one) & (Status.type == "Won")
 	)
 	if user:
-		current_cond = current_cond & (Deal.deal_owner == user)
+		current_cond = current_cond & _deal_team_condition(Deal, user)
 
 	# Build conditions for previous period
 	prev_cond = (Deal.closed_date >= prev_from_date) & (Deal.closed_date < from_date) & (Status.type == "Won")
 	if user:
-		prev_cond = prev_cond & (Deal.deal_owner == user)
+		prev_cond = prev_cond & _deal_team_condition(Deal, user)
 
 	# Calculate deal value with exchange rate
-	deal_value_expr = Deal.deal_value * IfNull(Deal.exchange_rate, 1)
+	deal_value_expr = IfNull(Deal.gross_profit, 0)  # gross_profit is the current commercial-model figure; deal_value is unused/stale
 
 	# Build query with CASE expressions
 	query = (
@@ -386,15 +387,15 @@ def get_average_deal_value(from_date: str | None = None, to_date: str | None = N
 	# Build conditions for current period
 	current_cond = (Deal.creation >= from_date) & (Deal.creation < to_date_plus_one) & (Status.type != "Lost")
 	if user:
-		current_cond = current_cond & (Deal.deal_owner == user)
+		current_cond = current_cond & _deal_team_condition(Deal, user)
 
 	# Build conditions for previous period
 	prev_cond = (Deal.creation >= prev_from_date) & (Deal.creation < from_date) & (Status.type != "Lost")
 	if user:
-		prev_cond = prev_cond & (Deal.deal_owner == user)
+		prev_cond = prev_cond & _deal_team_condition(Deal, user)
 
 	# Calculate deal value with exchange rate
-	deal_value_expr = Deal.deal_value * IfNull(Deal.exchange_rate, 1)
+	deal_value_expr = IfNull(Deal.gross_profit, 0)  # gross_profit is the current commercial-model figure; deal_value is unused/stale
 
 	# Build query with CASE expressions
 	query = (
