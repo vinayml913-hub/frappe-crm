@@ -285,6 +285,11 @@ class CRMDeal(Document):
 		facing totals (Proposed Total / Landing Total "with GST"); it never
 		touches the underlying Proposed Total / Landing Total / Gross Profit
 		used for reporting.
+
+		Either total can also be entered directly instead of computed: check
+		"Enter Proposed/Landing Total Manually" and the corresponding total
+		field becomes editable and is left as typed on save, instead of
+		being recalculated from the breakdown fields above it.
 		"""
 		self.proposed_trainer_cost = self._cost_leg(
 			self.proposed_trainer_commercial,
@@ -298,12 +303,16 @@ class CRMDeal(Document):
 			self.proposed_lab_no_of_days,
 			self.proposed_lab_no_of_hours,
 		)
-		self.proposed_total = (
-			float(self.proposed_trainer_cost or 0)
-			+ float(self.proposed_lab_total or 0)
-			+ float(self.proposed_certification_cost or 0)
-			+ float(self.proposed_misc_expense or 0)
-		)
+		# Proposed Total: auto-calculated UNLESS "Enter Proposed Total
+		# Manually" is checked, in which case whatever the user typed into
+		# proposed_total is left untouched (not overwritten on save).
+		if not self.proposed_total_override:
+			self.proposed_total = (
+				float(self.proposed_trainer_cost or 0)
+				+ float(self.proposed_lab_total or 0)
+				+ float(self.proposed_certification_cost or 0)
+				+ float(self.proposed_misc_expense or 0)
+			)
 
 		self.landing_trainer_cost = self._cost_leg(
 			self.landing_trainer_commercial,
@@ -317,12 +326,14 @@ class CRMDeal(Document):
 			self.landing_lab_no_of_days,
 			self.landing_lab_no_of_hours,
 		)
-		self.landing_total = (
-			float(self.landing_trainer_cost or 0)
-			+ float(self.landing_lab_total or 0)
-			+ float(self.landing_certification_cost or 0)
-			+ float(self.landing_misc_expense or 0)
-		)
+		# Landing Total: same manual-override rule as Proposed Total above.
+		if not self.landing_total_override:
+			self.landing_total = (
+				float(self.landing_trainer_cost or 0)
+				+ float(self.landing_lab_total or 0)
+				+ float(self.landing_certification_cost or 0)
+				+ float(self.landing_misc_expense or 0)
+			)
 
 		# GST only affects the displayed totals, never GP.
 		gst_pct = float(self.gst_percentage or 18)
