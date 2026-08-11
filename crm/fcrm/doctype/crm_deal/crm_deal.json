@@ -71,6 +71,7 @@
     "proposed_misc_expense",
     "proposed_trainer_cost",
     "proposed_lab_total",
+    "proposed_total_override",
     "proposed_total",
     "section_landing_cost",
     "landing_trainer_commercial",
@@ -86,6 +87,7 @@
     "landing_misc_expense",
     "landing_trainer_cost",
     "landing_lab_total",
+    "landing_total_override",
     "landing_total",
     "section_gst",
     "gst_type",
@@ -668,11 +670,18 @@
       "read_only": 1
     },
     {
+      "default": "0",
+      "fieldname": "proposed_total_override",
+      "fieldtype": "Check",
+      "label": "Enter Proposed Total Manually"
+    },
+    {
       "fieldname": "proposed_total",
       "fieldtype": "Currency",
-      "label": "Proposed Total (Auto)",
+      "label": "Proposed Total",
+      "description": "Auto-calculated from the fields above. Check \"Enter Proposed Total Manually\" to type a value directly instead - it will stay as entered until you uncheck that box again.",
       "options": "currency",
-      "read_only": 1,
+      "read_only": "eval:!doc.proposed_total_override",
       "bold": 1
     },
     {
@@ -759,11 +768,18 @@
       "read_only": 1
     },
     {
+      "default": "0",
+      "fieldname": "landing_total_override",
+      "fieldtype": "Check",
+      "label": "Enter Landing Total Manually"
+    },
+    {
       "fieldname": "landing_total",
       "fieldtype": "Currency",
-      "label": "Landing Total (Auto)",
+      "label": "Landing Total",
+      "description": "Auto-calculated from the fields above. Check \"Enter Landing Total Manually\" to type a value directly instead - it will stay as entered until you uncheck that box again.",
       "options": "currency",
-      "read_only": 1,
+      "read_only": "eval:!doc.landing_total_override",
       "bold": 1
     },
     {
