@@ -263,15 +263,23 @@ class CRMDeal(Document):
 		"""
 		Commercial model (Proposed vs Landing):
 
-		Each of Proposed Cost (Quoted) and Landing Cost (Expenses) is built
-		from the same set of inputs, computed independently:
+		Costing Type, No. of Days/Hours, Lab Pax, and Certification/Voucher
+		Pax are entered ONCE and shared by both Proposed and Landing - the
+		training's delivery format, duration, and headcount don't change
+		between what was quoted and what actually happened, only the RATES
+		(Trainer Commercial, Lab Cost, Certification Cost, Misc Expense) do:
 
 			Trainer Cost = Trainer Commercial x No. of Days/Hours
-			Lab Total     = Lab Cost x No. of Days/Hours
-			                (or just Lab Cost, unchanged, if Lab Costing
-			                 Type is "Total Lab Costing" - a flat lump sum)
-			Section Total = Trainer Cost + Lab Total
-			                + Certification/Voucher Costing + Misc Expenses
+
+			Lab Total (Per Day)   = Lab Cost x Lab Pax x No. of Days
+			Lab Total (Per Hour)  = Lab Cost x Lab Pax x No. of Hours
+			Lab Total (Total Lab Costing) = Lab Cost x Lab Pax
+			                        (flat rate-per-participant, no days/hours)
+
+			Certification Total = Certification/Voucher Costing x Certification Pax
+
+			Section Total = Trainer Cost + Lab Total + Certification Total
+			                + Misc Expense (flat, no pax multiplier)
 
 		Gross Profit is always the spread between the two totals, computed
 		BEFORE any GST is applied - GST is a pass-through tax, not profit,
@@ -291,18 +299,9 @@ class CRMDeal(Document):
 		field becomes editable and is left as typed on save, instead of
 		being recalculated from the breakdown fields above it.
 		"""
-		self.proposed_trainer_cost = self._cost_leg(
-			self.proposed_trainer_commercial,
-			self.proposed_trainer_costing_type,
-			self.proposed_trainer_no_of_days,
-			self.proposed_trainer_no_of_hours,
-		)
-		self.proposed_lab_total = self._lab_leg(
-			self.proposed_lab_cost,
-			self.proposed_lab_costing_type,
-			self.proposed_lab_no_of_days,
-			self.proposed_lab_no_of_hours,
-		)
+		self.proposed_trainer_cost = self._trainer_leg(self.proposed_trainer_commercial)
+		self.proposed_lab_total = self._lab_leg(self.proposed_lab_cost)
+		self.proposed_certification_total = self._certification_leg(self.proposed_certification_cost)
 		# Proposed Total: auto-calculated UNLESS "Enter Proposed Total
 		# Manually" is checked, in which case whatever the user typed into
 		# proposed_total is left untouched (not overwritten on save).
@@ -310,28 +309,19 @@ class CRMDeal(Document):
 			self.proposed_total = (
 				float(self.proposed_trainer_cost or 0)
 				+ float(self.proposed_lab_total or 0)
-				+ float(self.proposed_certification_cost or 0)
+				+ float(self.proposed_certification_total or 0)
 				+ float(self.proposed_misc_expense or 0)
 			)
 
-		self.landing_trainer_cost = self._cost_leg(
-			self.landing_trainer_commercial,
-			self.landing_trainer_costing_type,
-			self.landing_trainer_no_of_days,
-			self.landing_trainer_no_of_hours,
-		)
-		self.landing_lab_total = self._lab_leg(
-			self.landing_lab_cost,
-			self.landing_lab_costing_type,
-			self.landing_lab_no_of_days,
-			self.landing_lab_no_of_hours,
-		)
+		self.landing_trainer_cost = self._trainer_leg(self.landing_trainer_commercial)
+		self.landing_lab_total = self._lab_leg(self.landing_lab_cost)
+		self.landing_certification_total = self._certification_leg(self.landing_certification_cost)
 		# Landing Total: same manual-override rule as Proposed Total above.
 		if not self.landing_total_override:
 			self.landing_total = (
 				float(self.landing_trainer_cost or 0)
 				+ float(self.landing_lab_total or 0)
-				+ float(self.landing_certification_cost or 0)
+				+ float(self.landing_certification_total or 0)
 				+ float(self.landing_misc_expense or 0)
 			)
 
@@ -350,27 +340,42 @@ class CRMDeal(Document):
 			(self.gross_profit / self.proposed_total * 100) if self.proposed_total else 0
 		)
 
-	@staticmethod
-	def _cost_leg(commercial, costing_type, no_of_days, no_of_hours):
-		"""Trainer Cost = Commercial x Days (or Hours), depending on Costing Type."""
+	def _trainer_leg(self, commercial):
+		"""Trainer Cost = Commercial x Days (or Hours), using the shared
+		Costing Type/No. of Days/No. of Hours fields."""
 		commercial = float(commercial or 0)
-		if costing_type == "Per Day":
-			return commercial * int(no_of_days or 0)
-		elif costing_type == "Per Hour":
-			return commercial * float(no_of_hours or 0)
+		if self.trainer_costing_type == "Per Day":
+			return commercial * int(self.trainer_no_of_days or 0)
+		elif self.trainer_costing_type == "Per Hour":
+			return commercial * float(self.trainer_no_of_hours or 0)
 		return commercial
 
-	@staticmethod
-	def _lab_leg(cost, costing_type, no_of_days, no_of_hours):
-		"""Lab Total = Cost x Days/Hours, unless Costing Type is a flat
-		'Total Lab Costing' lump sum, in which case Cost is used as-is."""
+	def _lab_leg(self, cost):
+		"""Lab Total = Cost x Lab Pax x Days/Hours, using the shared Lab
+		Costing Type/No. of Days/No. of Hours/Lab Pax fields. If Costing
+		Type is "Total Lab Costing", it's a flat rate-per-participant -
+		Cost x Pax, with no days/hours multiplier.
+
+		Pax defaults to 1 if left blank (rather than 0), so simply not
+		filling in a headcount never silently zeroes out the whole leg."""
 		cost = float(cost or 0)
-		if costing_type == "Per Day":
-			return cost * int(no_of_days or 0)
-		elif costing_type == "Per Hour":
-			return cost * float(no_of_hours or 0)
-		# "Total Lab Costing" (or blank) - flat amount, no multiplication.
-		return cost
+		pax = int(self.lab_pax) if self.lab_pax else 1
+		if self.lab_costing_type == "Per Day":
+			return cost * pax * int(self.lab_no_of_days or 0)
+		elif self.lab_costing_type == "Per Hour":
+			return cost * pax * float(self.lab_no_of_hours or 0)
+		elif self.lab_costing_type == "Total Lab Costing":
+			return cost * pax
+		return cost * pax
+
+	def _certification_leg(self, cost):
+		"""Certification Total = Certification/Voucher Costing x
+		Certification/Voucher Pax (its own headcount, independent of Lab
+		Pax - e.g. fewer people take the certification than attended the
+		lab session). Pax defaults to 1 if left blank, same reasoning as
+		Lab Pax above."""
+		pax = int(self.certification_pax) if self.certification_pax else 1
+		return float(cost or 0) * pax
 
 	def validate_status(self):
 		if self.is_new() and not self.status:
