@@ -12,6 +12,11 @@ def get_deal_commercial_calculator_script():
 // same generic FieldLayout -> triggerOnChange() -> this[fieldname]()
 // mechanism this script hooks into.
 //
+// Costing Type, No. of Days/Hours, Lab Pax, and Certification/Voucher Pax
+// are entered ONCE (in the Proposed section) and shared by both Proposed
+// and Landing - the delivery format/duration/headcount don't change
+// between what was quoted and what actually happened, only the RATES do.
+//
 // The Python calculate_financials() on the server remains the source of
 // truth and runs again on save/validate - this script only gives instant
 // visual feedback before that save happens. If you ever change the
@@ -21,21 +26,35 @@ function round2(value) {
 	return Math.round((Number(value) || 0) * 100) / 100
 }
 
-// Trainer Cost = Commercial x Days (or Hours), depending on Costing Type.
-function costLeg(commercial, costingType, noOfDays, noOfHours) {
+// Trainer Cost = Commercial x Days (or Hours), using the shared Costing
+// Type/No. of Days/No. of Hours fields.
+function trainerLeg(commercial, d) {
 	commercial = Number(commercial) || 0
-	if (costingType === 'Per Day') return commercial * (Number(noOfDays) || 0)
-	if (costingType === 'Per Hour') return commercial * (Number(noOfHours) || 0)
+	if (d.trainer_costing_type === 'Per Day') return commercial * (Number(d.trainer_no_of_days) || 0)
+	if (d.trainer_costing_type === 'Per Hour') return commercial * (Number(d.trainer_no_of_hours) || 0)
 	return commercial
 }
 
-// Lab Total = Cost x Days/Hours, unless Costing Type is a flat
-// "Total Lab Costing" lump sum, in which case Cost is used as-is.
-function labLeg(cost, costingType, noOfDays, noOfHours) {
+// Lab Total = Cost x Lab Pax x Days/Hours, using the shared Lab Costing
+// Type/No. of Days/No. of Hours/Lab Pax fields. "Total Lab Costing" is a
+// flat rate-per-participant - Cost x Pax, no days/hours multiplier.
+// Pax defaults to 1 if left blank, so an empty headcount never silently
+// zeroes out the whole leg.
+function labLeg(cost, d) {
 	cost = Number(cost) || 0
-	if (costingType === 'Per Day') return cost * (Number(noOfDays) || 0)
-	if (costingType === 'Per Hour') return cost * (Number(noOfHours) || 0)
-	return cost
+	const pax = Number(d.lab_pax) || 1
+	if (d.lab_costing_type === 'Per Day') return cost * pax * (Number(d.lab_no_of_days) || 0)
+	if (d.lab_costing_type === 'Per Hour') return cost * pax * (Number(d.lab_no_of_hours) || 0)
+	// "Total Lab Costing" (or blank) - flat rate-per-participant.
+	return cost * pax
+}
+
+// Certification Total = Certification/Voucher Costing x Certification Pax
+// (its own headcount, independent of Lab Pax). Pax defaults to 1 if
+// blank, same reasoning as Lab Pax above.
+function certificationLeg(cost, d) {
+	const pax = Number(d.certification_pax) || 1
+	return (Number(cost) || 0) * pax
 }
 
 class CRMDeal {
@@ -46,29 +65,28 @@ class CRMDeal {
 		this.calculate()
 	}
 
-	// Proposed Cost (Quoted) inputs
+	// Shared inputs (Costing Type/Days/Hours/Pax) - used by BOTH Proposed
+	// and Landing, entered once.
+	trainer_costing_type() { this.calculate() }
+	trainer_no_of_days() { this.calculate() }
+	trainer_no_of_hours() { this.calculate() }
+	lab_costing_type() { this.calculate() }
+	lab_no_of_days() { this.calculate() }
+	lab_no_of_hours() { this.calculate() }
+	lab_pax() { this.calculate() }
+	certification_pax() { this.calculate() }
+
+	// Proposed Cost (Quoted) rate inputs
 	proposed_trainer_commercial() { this.calculate() }
-	proposed_trainer_costing_type() { this.calculate() }
-	proposed_trainer_no_of_days() { this.calculate() }
-	proposed_trainer_no_of_hours() { this.calculate() }
 	proposed_lab_cost() { this.calculate() }
-	proposed_lab_costing_type() { this.calculate() }
-	proposed_lab_no_of_days() { this.calculate() }
-	proposed_lab_no_of_hours() { this.calculate() }
 	proposed_certification_cost() { this.calculate() }
 	proposed_misc_expense() { this.calculate() }
 	// Flipping the override off snaps straight back to the auto value.
 	proposed_total_override() { this.calculate() }
 
-	// Landing Cost (Expenses) inputs
+	// Landing Cost (Expenses) rate inputs
 	landing_trainer_commercial() { this.calculate() }
-	landing_trainer_costing_type() { this.calculate() }
-	landing_trainer_no_of_days() { this.calculate() }
-	landing_trainer_no_of_hours() { this.calculate() }
 	landing_lab_cost() { this.calculate() }
-	landing_lab_costing_type() { this.calculate() }
-	landing_lab_no_of_days() { this.calculate() }
-	landing_lab_no_of_hours() { this.calculate() }
 	landing_certification_cost() { this.calculate() }
 	landing_misc_expense() { this.calculate() }
 	landing_total_override() { this.calculate() }
@@ -80,45 +98,27 @@ class CRMDeal {
 	calculate() {
 		const d = this.doc
 
-		const proposedTrainerCost = costLeg(
-			d.proposed_trainer_commercial,
-			d.proposed_trainer_costing_type,
-			d.proposed_trainer_no_of_days,
-			d.proposed_trainer_no_of_hours,
-		)
-		const proposedLabTotal = labLeg(
-			d.proposed_lab_cost,
-			d.proposed_lab_costing_type,
-			d.proposed_lab_no_of_days,
-			d.proposed_lab_no_of_hours,
-		)
+		const proposedTrainerCost = trainerLeg(d.proposed_trainer_commercial, d)
+		const proposedLabTotal = labLeg(d.proposed_lab_cost, d)
+		const proposedCertificationTotal = certificationLeg(d.proposed_certification_cost, d)
 		// Proposed Total: auto-calculated UNLESS the manual override is
 		// checked, in which case whatever the user typed is left alone.
 		const proposedTotal = d.proposed_total_override
 			? Number(d.proposed_total) || 0
 			: proposedTrainerCost +
 				proposedLabTotal +
-				(Number(d.proposed_certification_cost) || 0) +
+				proposedCertificationTotal +
 				(Number(d.proposed_misc_expense) || 0)
 
-		const landingTrainerCost = costLeg(
-			d.landing_trainer_commercial,
-			d.landing_trainer_costing_type,
-			d.landing_trainer_no_of_days,
-			d.landing_trainer_no_of_hours,
-		)
-		const landingLabTotal = labLeg(
-			d.landing_lab_cost,
-			d.landing_lab_costing_type,
-			d.landing_lab_no_of_days,
-			d.landing_lab_no_of_hours,
-		)
+		const landingTrainerCost = trainerLeg(d.landing_trainer_commercial, d)
+		const landingLabTotal = labLeg(d.landing_lab_cost, d)
+		const landingCertificationTotal = certificationLeg(d.landing_certification_cost, d)
 		// Landing Total: same manual-override rule as Proposed Total above.
 		const landingTotal = d.landing_total_override
 			? Number(d.landing_total) || 0
 			: landingTrainerCost +
 				landingLabTotal +
-				(Number(d.landing_certification_cost) || 0) +
+				landingCertificationTotal +
 				(Number(d.landing_misc_expense) || 0)
 
 		// GST only affects the DISPLAYED totals, never Gross Profit.
@@ -136,10 +136,12 @@ class CRMDeal {
 
 		this.doc.proposed_trainer_cost = round2(proposedTrainerCost)
 		this.doc.proposed_lab_total = round2(proposedLabTotal)
+		this.doc.proposed_certification_total = round2(proposedCertificationTotal)
 		this.doc.proposed_total = round2(proposedTotal)
 
 		this.doc.landing_trainer_cost = round2(landingTrainerCost)
 		this.doc.landing_lab_total = round2(landingLabTotal)
+		this.doc.landing_certification_total = round2(landingCertificationTotal)
 		this.doc.landing_total = round2(landingTotal)
 
 		this.doc.proposed_total_with_gst = round2(proposedTotalWithGst)
