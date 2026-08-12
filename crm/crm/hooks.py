@@ -24,6 +24,19 @@ add_to_apps_screen = [
 
 get_site_info = "crm.activation.get_site_info"
 
+# Fixtures
+# --------
+# Records exported here are (re)synced into the site DB on every
+# `bench migrate` / Frappe Cloud deploy, so they're version-controlled
+# instead of living only in the database.
+
+fixtures = [
+	{
+		"doctype": "CRM Form Script",
+		"filters": [["dt", "=", "CRM Deal"]],
+	},
+]
+
 export_python_type_annotations = True
 require_type_annotated_api_methods = True
 
@@ -128,13 +141,19 @@ before_uninstall = "crm.uninstall.before_uninstall"
 # -----------
 # Permissions evaluated in scripted ways
 
-# permission_query_conditions = {
-# "Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
-# }
-#
-# has_permission = {
-# "Event": "frappe.desk.doctype.event.event.has_permission",
-# }
+permission_query_conditions = {
+	"CRM Deal": "crm.fcrm.doctype.crm_deal.crm_deal.get_permission_query_conditions",
+	"CRM Lead": "crm.fcrm.doctype.crm_lead.crm_lead.get_permission_query_conditions",
+	"CRM Organization": "crm.fcrm.doctype.crm_organization.crm_organization.get_permission_query_conditions",
+	"Contact": "crm.overrides.contact.get_permission_query_conditions",
+}
+
+has_permission = {
+	"CRM Deal": "crm.fcrm.doctype.crm_deal.crm_deal.has_permission",
+	"CRM Lead": "crm.fcrm.doctype.crm_lead.crm_lead.has_permission",
+	"CRM Organization": "crm.fcrm.doctype.crm_organization.crm_organization.has_permission",
+	"Contact": "crm.overrides.contact.has_permission",
+}
 
 # DocType Class
 # ---------------
