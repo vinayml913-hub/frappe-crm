@@ -32,3 +32,5 @@ crm.patches.v1_0.fix_deal_sidepanel_layout
 crm.patches.v1_0.rename_deal_stage_labels
 crm.patches.v1_0.update_deal_quick_entry_layout_v2_commercial
 crm.patches.v1_0.install_deal_commercial_calculator_script
+crm.patches.v1_0.update_deal_quick_entry_layout_v3_manual_override
+crm.patches.v1_0.update_deal_data_and_side_panel_layouts
