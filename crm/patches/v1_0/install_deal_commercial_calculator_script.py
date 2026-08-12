@@ -19,7 +19,11 @@ def execute():
 	script = get_deal_commercial_calculator_script()
 
 	if frappe.db.exists("CRM Form Script", SCRIPT_NAME):
-		frappe.db.set_value("CRM Form Script", SCRIPT_NAME, "script", script)
+		frappe.db.set_value(
+			"CRM Form Script",
+			SCRIPT_NAME,
+			{"script": script, "enabled": 1},
+		)
 		return
 
 	frappe.get_doc(
