@@ -59,34 +59,33 @@
     "probability_pct",
     "section_proposed_cost",
     "proposed_trainer_commercial",
-    "proposed_trainer_costing_type",
-    "proposed_trainer_no_of_days",
-    "proposed_trainer_no_of_hours",
     "proposed_lab_cost",
-    "proposed_lab_costing_type",
-    "proposed_lab_no_of_days",
-    "proposed_lab_no_of_hours",
-    "column_break_propc1",
     "proposed_certification_cost",
     "proposed_misc_expense",
+    "column_break_propc1",
+    "trainer_costing_type",
+    "trainer_no_of_days",
+    "trainer_no_of_hours",
+    "lab_costing_type",
+    "lab_no_of_days",
+    "lab_no_of_hours",
+    "lab_pax",
+    "certification_pax",
+    "column_break_propc2",
     "proposed_trainer_cost",
     "proposed_lab_total",
+    "proposed_certification_total",
     "proposed_total_override",
     "proposed_total",
     "section_landing_cost",
     "landing_trainer_commercial",
-    "landing_trainer_costing_type",
-    "landing_trainer_no_of_days",
-    "landing_trainer_no_of_hours",
     "landing_lab_cost",
-    "landing_lab_costing_type",
-    "landing_lab_no_of_days",
-    "landing_lab_no_of_hours",
-    "column_break_landc1",
     "landing_certification_cost",
     "landing_misc_expense",
+    "column_break_landc1",
     "landing_trainer_cost",
     "landing_lab_total",
+    "landing_certification_total",
     "landing_total_override",
     "landing_total",
     "section_gst",
@@ -598,50 +597,10 @@
       "options": "currency"
     },
     {
-      "fieldname": "proposed_trainer_costing_type",
-      "fieldtype": "Select",
-      "label": "Trainer Costing Type",
-      "options": "\nPer Day\nPer Hour"
-    },
-    {
-      "fieldname": "proposed_trainer_no_of_days",
-      "fieldtype": "Int",
-      "label": "Trainer No. of Days",
-      "depends_on": "eval: doc.proposed_trainer_costing_type == 'Per Day'"
-    },
-    {
-      "fieldname": "proposed_trainer_no_of_hours",
-      "fieldtype": "Float",
-      "label": "Trainer No. of Hours",
-      "depends_on": "eval: doc.proposed_trainer_costing_type == 'Per Hour'"
-    },
-    {
       "fieldname": "proposed_lab_cost",
       "fieldtype": "Currency",
-      "label": "Lab Cost (Per Day/Hour)",
+      "label": "Lab Cost (Per Day/Hour/Total Lab Costing)",
       "options": "currency"
-    },
-    {
-      "fieldname": "proposed_lab_costing_type",
-      "fieldtype": "Select",
-      "label": "Lab Costing Type",
-      "options": "\nPer Day\nPer Hour\nTotal Lab Costing"
-    },
-    {
-      "fieldname": "proposed_lab_no_of_days",
-      "fieldtype": "Int",
-      "label": "Lab No. of Days",
-      "depends_on": "eval: doc.proposed_lab_costing_type == 'Per Day'"
-    },
-    {
-      "fieldname": "proposed_lab_no_of_hours",
-      "fieldtype": "Float",
-      "label": "Lab No. of Hours",
-      "depends_on": "eval: doc.proposed_lab_costing_type == 'Per Hour'"
-    },
-    {
-      "fieldname": "column_break_propc1",
-      "fieldtype": "Column Break"
     },
     {
       "fieldname": "proposed_certification_cost",
@@ -656,6 +615,66 @@
       "options": "currency"
     },
     {
+      "fieldname": "column_break_propc1",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "trainer_costing_type",
+      "fieldtype": "Select",
+      "label": "Trainer Costing Type",
+      "options": "\nPer Day\nPer Hour",
+      "description": "Shared by Proposed and Landing - only the rate differs between them, the delivery format/duration doesn't."
+    },
+    {
+      "fieldname": "trainer_no_of_days",
+      "fieldtype": "Int",
+      "label": "Trainer No. of Days",
+      "depends_on": "eval: doc.trainer_costing_type == 'Per Day'"
+    },
+    {
+      "fieldname": "trainer_no_of_hours",
+      "fieldtype": "Float",
+      "label": "Trainer No. of Hours",
+      "depends_on": "eval: doc.trainer_costing_type == 'Per Hour'"
+    },
+    {
+      "fieldname": "lab_costing_type",
+      "fieldtype": "Select",
+      "label": "Lab Costing Type",
+      "options": "\nPer Day\nPer Hour\nTotal Lab Costing",
+      "description": "Shared by Proposed and Landing."
+    },
+    {
+      "fieldname": "lab_no_of_days",
+      "fieldtype": "Int",
+      "label": "Lab No. of Days",
+      "depends_on": "eval: doc.lab_costing_type == 'Per Day'"
+    },
+    {
+      "fieldname": "lab_no_of_hours",
+      "fieldtype": "Float",
+      "label": "Lab No. of Hours",
+      "depends_on": "eval: doc.lab_costing_type == 'Per Hour'"
+    },
+    {
+      "default": "1",
+      "fieldname": "lab_pax",
+      "fieldtype": "Int",
+      "label": "Lab Pax",
+      "description": "No. of participants. Lab Total = Lab Cost x Pax x No. of Days/Hours (or just x Pax if Total Lab Costing)."
+    },
+    {
+      "default": "1",
+      "fieldname": "certification_pax",
+      "fieldtype": "Int",
+      "label": "Certification/Voucher Pax",
+      "description": "No. of participants taking certification - can differ from Lab Pax. Certification Total = Certification Cost x this Pax."
+    },
+    {
+      "fieldname": "column_break_propc2",
+      "fieldtype": "Column Break"
+    },
+    {
       "fieldname": "proposed_trainer_cost",
       "fieldtype": "Currency",
       "label": "Trainer Cost (Auto)",
@@ -666,6 +685,13 @@
       "fieldname": "proposed_lab_total",
       "fieldtype": "Currency",
       "label": "Lab Total (Auto)",
+      "options": "currency",
+      "read_only": 1
+    },
+    {
+      "fieldname": "proposed_certification_total",
+      "fieldtype": "Currency",
+      "label": "Certification Total (Auto)",
       "options": "currency",
       "read_only": 1
     },
@@ -696,50 +722,10 @@
       "options": "currency"
     },
     {
-      "fieldname": "landing_trainer_costing_type",
-      "fieldtype": "Select",
-      "label": "Trainer Costing Type",
-      "options": "\nPer Day\nPer Hour"
-    },
-    {
-      "fieldname": "landing_trainer_no_of_days",
-      "fieldtype": "Int",
-      "label": "Trainer No. of Days",
-      "depends_on": "eval: doc.landing_trainer_costing_type == 'Per Day'"
-    },
-    {
-      "fieldname": "landing_trainer_no_of_hours",
-      "fieldtype": "Float",
-      "label": "Trainer No. of Hours",
-      "depends_on": "eval: doc.landing_trainer_costing_type == 'Per Hour'"
-    },
-    {
       "fieldname": "landing_lab_cost",
       "fieldtype": "Currency",
-      "label": "Lab Cost (Per Day/Hour)",
+      "label": "Lab Cost (Per Day/Hour/Total Lab Costing)",
       "options": "currency"
-    },
-    {
-      "fieldname": "landing_lab_costing_type",
-      "fieldtype": "Select",
-      "label": "Lab Costing Type",
-      "options": "\nPer Day\nPer Hour\nTotal Lab Costing"
-    },
-    {
-      "fieldname": "landing_lab_no_of_days",
-      "fieldtype": "Int",
-      "label": "Lab No. of Days",
-      "depends_on": "eval: doc.landing_lab_costing_type == 'Per Day'"
-    },
-    {
-      "fieldname": "landing_lab_no_of_hours",
-      "fieldtype": "Float",
-      "label": "Lab No. of Hours",
-      "depends_on": "eval: doc.landing_lab_costing_type == 'Per Hour'"
-    },
-    {
-      "fieldname": "column_break_landc1",
-      "fieldtype": "Column Break"
     },
     {
       "fieldname": "landing_certification_cost",
@@ -752,6 +738,10 @@
       "fieldtype": "Currency",
       "label": "Misc./Other Expenses",
       "options": "currency"
+    },
+    {
+      "fieldname": "column_break_landc1",
+      "fieldtype": "Column Break"
     },
     {
       "fieldname": "landing_trainer_cost",
@@ -768,6 +758,13 @@
       "read_only": 1
     },
     {
+      "fieldname": "landing_certification_total",
+      "fieldtype": "Currency",
+      "label": "Certification Total (Auto)",
+      "options": "currency",
+      "read_only": 1
+    },
+    {
       "default": "0",
       "fieldname": "landing_total_override",
       "fieldtype": "Check",
@@ -777,7 +774,7 @@
       "fieldname": "landing_total",
       "fieldtype": "Currency",
       "label": "Landing Total",
-      "description": "Auto-calculated from the fields above. Check \"Enter Landing Total Manually\" to type a value directly instead - it will stay as entered until you uncheck that box again.",
+      "description": "Auto-calculated from the fields above (using the shared Costing Type/Days/Pax set in the Proposed section). Check \"Enter Landing Total Manually\" to type a value directly instead - it will stay as entered until you uncheck that box again.",
       "options": "currency",
       "read_only": "eval:!doc.landing_total_override",
       "bold": 1
