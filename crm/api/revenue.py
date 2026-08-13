@@ -131,8 +131,8 @@ def _deal_team_condition(Deal, user):
 def _won_deal_query(from_date, to_date, user=None):
     """
     Base query builder for Won deals in a date range, optionally for one user.
-    Filters on closed_date (falls back to modified for legacy data without
-    closed_date set, mirroring how the existing dashboard treats this field).
+    Filters on delivery_date (falls back to modified for legacy data without
+    delivery_date set, mirroring how the existing dashboard treats this field).
     Returns a pypika query builder ready for .select(...)
     """
     Deal = DocType("CRM Deal")
@@ -145,9 +145,9 @@ def _won_deal_query(from_date, to_date, user=None):
         .join(Status)
         .on(Deal.status == Status.name)
         .where(Status.type == "Won")
-        .where(Deal.closed_date.isnotnull())
-        .where(Deal.closed_date >= from_date)
-        .where(Deal.closed_date < to_date_plus_one)
+        .where(Deal.delivery_date.isnotnull())
+        .where(Deal.delivery_date >= from_date)
+        .where(Deal.delivery_date < to_date_plus_one)
     )
 
     if user:
@@ -356,12 +356,12 @@ def get_revenue_trends(fromDate=None, toDate=None, userId=None, granularity="mon
 
     rows = (
         query.select(
-            DateFormat(Deal.closed_date, "%Y-%m").as_("period"),
+            DateFormat(Deal.delivery_date, "%Y-%m").as_("period"),
             Sum(_revenue_expr(Deal)).as_("revenue"),
             Count(Deal.name).as_("won_deals"),
         )
-        .groupby(DateFormat(Deal.closed_date, "%Y-%m"))
-        .orderby(DateFormat(Deal.closed_date, "%Y-%m"))
+        .groupby(DateFormat(Deal.delivery_date, "%Y-%m"))
+        .orderby(DateFormat(Deal.delivery_date, "%Y-%m"))
         .run(as_dict=True)
     )
 
