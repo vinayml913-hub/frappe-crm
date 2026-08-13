@@ -77,6 +77,11 @@ def _get_achieved_revenue(employee: str, from_date: str, to_date: str) -> float:
 	for any deal where `employee` is EITHER the Deal Owner OR one of the
 	(now multi-select) Solution Managers (Deal.solution_managers).
 
+	Bucketed by Deal.delivery_date (NOT closed_date - closed_date no longer
+	exists on CRM Deal / PBS Sales Order). A Won deal only counts toward a
+	period if its delivery_date falls inside that period's date range; a
+	Won deal with no delivery_date set is excluded entirely.
+
 	A deal's GP counts in FULL toward both people independently when both
 	roles are filled by different users - e.g. a deal owner and a solution
 	manager on the same Won deal each get their own target's "achieved"
@@ -104,8 +109,8 @@ def _get_achieved_revenue(employee: str, from_date: str, to_date: str) -> float:
 				WHERE sm.parent = d.name AND sm.user = %(employee)s
 			)
 		)
-		AND d.closed_date >= %(from_date)s
-		AND d.closed_date < %(to_date_plus_one)s
+		AND d.delivery_date >= %(from_date)s
+		AND d.delivery_date < %(to_date_plus_one)s
 		AND s.type = 'Won'
 		""",
 		{
