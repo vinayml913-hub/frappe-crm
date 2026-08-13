@@ -273,13 +273,13 @@ def get_won_deals(from_date: str | None = None, to_date: str | None = None, user
 
 	# Build conditions for current period
 	current_cond = (
-		(Deal.closed_date >= from_date) & (Deal.closed_date < to_date_plus_one) & (Status.type == "Won")
+		(Deal.delivery_date >= from_date) & (Deal.delivery_date < to_date_plus_one) & (Status.type == "Won")
 	)
 	if user:
 		current_cond = current_cond & _deal_team_condition(Deal, user)
 
 	# Build conditions for previous period
-	prev_cond = (Deal.closed_date >= prev_from_date) & (Deal.closed_date < from_date) & (Status.type == "Won")
+	prev_cond = (Deal.delivery_date >= prev_from_date) & (Deal.delivery_date < from_date) & (Status.type == "Won")
 	if user:
 		prev_cond = prev_cond & _deal_team_condition(Deal, user)
 
@@ -305,7 +305,7 @@ def get_won_deals(from_date: str | None = None, to_date: str | None = None, user
 
 	return {
 		"title": _("Won deals"),
-		"tooltip": _("Total number of won deals based on its closure date"),
+		"tooltip": _("Total number of won deals based on its delivery date"),
 		"value": current_month_deals,
 		"delta": delta_in_percentage,
 		"deltaSuffix": "%",
@@ -330,13 +330,13 @@ def get_average_won_deal_value(
 
 	# Build conditions for current period
 	current_cond = (
-		(Deal.closed_date >= from_date) & (Deal.closed_date < to_date_plus_one) & (Status.type == "Won")
+		(Deal.delivery_date >= from_date) & (Deal.delivery_date < to_date_plus_one) & (Status.type == "Won")
 	)
 	if user:
 		current_cond = current_cond & _deal_team_condition(Deal, user)
 
 	# Build conditions for previous period
-	prev_cond = (Deal.closed_date >= prev_from_date) & (Deal.closed_date < from_date) & (Status.type == "Won")
+	prev_cond = (Deal.delivery_date >= prev_from_date) & (Deal.delivery_date < from_date) & (Status.type == "Won")
 	if user:
 		prev_cond = prev_cond & _deal_team_condition(Deal, user)
 
@@ -443,20 +443,20 @@ def get_average_time_to_close_a_lead(
 	Status = DocType("CRM Deal Status")
 	Lead = DocType("CRM Lead")
 
-	# Base condition: closed_date is not null and status type is Won
-	base_cond = (Deal.closed_date.isnotnull()) & (Status.type == "Won")
+	# Base condition: delivery_date is not null and status type is Won
+	base_cond = (Deal.delivery_date.isnotnull()) & (Status.type == "Won")
 	if user:
 		base_cond = base_cond & (Deal.deal_owner == user)
 
 	# Current period condition
-	current_cond = (Deal.closed_date >= from_date) & (Deal.closed_date < to_date_plus_one)
+	current_cond = (Deal.delivery_date >= from_date) & (Deal.delivery_date < to_date_plus_one)
 
 	# Previous period condition
-	prev_cond = (Deal.closed_date >= prev_from_date) & (Deal.closed_date < prev_to_date)
+	prev_cond = (Deal.delivery_date >= prev_from_date) & (Deal.delivery_date < prev_to_date)
 
 	# Calculate time difference from lead/deal creation to deal closure
 	time_diff = TimestampDiff(
-		frappe.qb.terms.LiteralValue("DAY"), Coalesce(Lead.creation, Deal.creation), Deal.closed_date
+		frappe.qb.terms.LiteralValue("DAY"), Coalesce(Lead.creation, Deal.creation), Deal.delivery_date
 	)
 
 	# Build query
@@ -508,19 +508,19 @@ def get_average_time_to_close_a_deal(
 	Status = DocType("CRM Deal Status")
 	Lead = DocType("CRM Lead")
 
-	# Base condition: closed_date is not null and status type is Won
-	base_cond = (Deal.closed_date.isnotnull()) & (Status.type == "Won")
+	# Base condition: delivery_date is not null and status type is Won
+	base_cond = (Deal.delivery_date.isnotnull()) & (Status.type == "Won")
 	if user:
 		base_cond = base_cond & (Deal.deal_owner == user)
 
 	# Current period condition
-	current_cond = (Deal.closed_date >= from_date) & (Deal.closed_date < to_date_plus_one)
+	current_cond = (Deal.delivery_date >= from_date) & (Deal.delivery_date < to_date_plus_one)
 
 	# Previous period condition
-	prev_cond = (Deal.closed_date >= prev_from_date) & (Deal.closed_date < prev_to_date)
+	prev_cond = (Deal.delivery_date >= prev_from_date) & (Deal.delivery_date < prev_to_date)
 
 	# Calculate time difference from deal creation to deal closure
-	time_diff = TimestampDiff(frappe.qb.terms.LiteralValue("DAY"), Deal.creation, Deal.closed_date)
+	time_diff = TimestampDiff(frappe.qb.terms.LiteralValue("DAY"), Deal.creation, Deal.delivery_date)
 
 	# Build query
 	query = (
