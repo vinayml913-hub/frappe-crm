@@ -101,7 +101,7 @@ def _deal_base_query(from_date, to_date, user=None, date_field="creation"):
     Base query over CRM Deal joined to CRM Deal Status, filtered by a date
     range on the given date field (default: creation date, so "Total Deals"
     reflects deals *created* in range — Won/Lost counts separately filter
-    on closed_date, see _won_lost_query below).
+    on delivery_date, see _won_lost_query below).
 
     from_date may be None (meaning "Ever" / no lower bound).
     """
@@ -148,7 +148,7 @@ def get_dashboard_kpis(fromDate=None, toDate=None, userId=None, quickRange=None)
     "Total/Won/Lost/Open Deals" are counted by deal *creation* date inside
     the range (so the cards answer "how many deals were created in this
     window, and what happened to them"). Revenue is still anchored on
-    closed_date for Won deals, matching revenue.py.
+    delivery_date for Won deals, matching revenue.py.
     """
     from_date, to_date = _default_date_range(fromDate, toDate, quickRange)
     scoped_user = _resolve_scope(userId)
@@ -170,10 +170,10 @@ def get_dashboard_kpis(fromDate=None, toDate=None, userId=None, quickRange=None)
         counts[r["bucket"]] = int(r["count"] or 0)
     total_deals = sum(counts.values())
 
-    # Revenue generated — Won deals only, by closed_date in range (same
+    # Revenue generated — Won deals only, by delivery_date in range (same
     # convention as revenue.py so the number matches the Revenue tab).
-    revenue_query, RDeal, RStatus = _deal_base_query(from_date, to_date, scoped_user, date_field="closed_date")
-    revenue_query = revenue_query.where(RStatus.type == "Won").where(RDeal.closed_date.isnotnull())
+    revenue_query, RDeal, RStatus = _deal_base_query(from_date, to_date, scoped_user, date_field="delivery_date")
+    revenue_query = revenue_query.where(RStatus.type == "Won").where(RDeal.delivery_date.isnotnull())
     revenue_result = revenue_query.select(Sum(_revenue_expr(RDeal)).as_("revenue")).run(as_dict=True)
     revenue_generated = flt(revenue_result[0].get("revenue") or 0) if revenue_result else 0
 
@@ -203,7 +203,7 @@ def _target_and_achievement(from_date, to_date, user):
     """
     total_target = sum of CRM Revenue Target rows overlapping the range
                     (for the given user, or all users if user is None)
-    achieved_target = Won-deal revenue in the same range (closed_date),
+    achieved_target = Won-deal revenue in the same range (delivery_date),
                        scoped the same way.
     """
     if user:
@@ -215,8 +215,8 @@ def _target_and_achievement(from_date, to_date, user):
     # or a target in range.
     Deal = DocType("CRM Deal")
     Status = DocType("CRM Deal Status")
-    query, _deal, _status = _deal_base_query(from_date, to_date, None, date_field="closed_date")
-    query = query.where(Status.type == "Won").where(Deal.closed_date.isnotnull())
+    query, _deal, _status = _deal_base_query(from_date, to_date, None, date_field="delivery_date")
+    query = query.where(Status.type == "Won").where(Deal.delivery_date.isnotnull())
     owners = query.select(Deal.deal_owner).distinct().run(as_dict=True)
     owner_names = {o["deal_owner"] for o in owners if o["deal_owner"]}
 
@@ -239,8 +239,8 @@ def _target_and_achievement(from_date, to_date, user):
 
 
 def _won_revenue_in_range(from_date, to_date, user):
-    query, Deal, Status = _deal_base_query(from_date, to_date, user, date_field="closed_date")
-    query = query.where(Status.type == "Won").where(Deal.closed_date.isnotnull())
+    query, Deal, Status = _deal_base_query(from_date, to_date, user, date_field="delivery_date")
+    query = query.where(Status.type == "Won").where(Deal.delivery_date.isnotnull())
     result = query.select(Sum(_revenue_expr(Deal)).as_("revenue")).run(as_dict=True)
     return flt(result[0].get("revenue") or 0) if result else 0
 
@@ -383,8 +383,8 @@ def get_target_achievement(fromDate=None, toDate=None, userId=None, quickRange=N
     else:
         Deal = DocType("CRM Deal")
         Status = DocType("CRM Deal Status")
-        query, _deal, _status = _deal_base_query(from_date, to_date, None, date_field="closed_date")
-        query = query.where(Status.type == "Won").where(Deal.closed_date.isnotnull())
+        query, _deal, _status = _deal_base_query(from_date, to_date, None, date_field="delivery_date")
+        query = query.where(Status.type == "Won").where(Deal.delivery_date.isnotnull())
         owners = query.select(Deal.deal_owner).distinct().run(as_dict=True)
         users_to_show = sorted({o["deal_owner"] for o in owners if o["deal_owner"]})
 
