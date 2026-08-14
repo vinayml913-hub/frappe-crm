@@ -101,6 +101,7 @@ def _map_deal_to_so_fields(so, deal_doc):
 	so.company = deal_doc.organization_name or so.company or ""
 
 	# Project / delivery configuration
+	so.training_name = deal_doc.get("deal_name") or ""
 	so.technology = deal_doc.get("technology") or ""
 	so.delivery_type = deal_doc.get("delivery_type") or ""
 	so.project_duration = deal_doc.get("duration") or ""
@@ -356,7 +357,7 @@ def get_sales_orders():
 		fields=[
 			"name", "organization", "status", "amount",
 			"gross_profit", "gross_profit_percentage", "deal",
-			"sales_manager", "account_manager", "technology",
+			"sales_manager", "account_manager", "training_name", "technology",
 			"trainer_assigned", "start_date", "end_date",
 			"payment_status", "delivery_type", "delivery_manager"
 		],
