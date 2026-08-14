@@ -25,6 +25,7 @@
   "email",
   "phone",
   "company",
+  "training_name",
   "technology",
   "trainer_assigned",
   "delivery_type",
@@ -176,6 +177,12 @@
    "fieldname": "company",
    "fieldtype": "Data",
    "label": "Company"
+  },
+  {
+   "fieldname": "training_name",
+   "fieldtype": "Data",
+   "label": "Training Name",
+   "read_only": 1
   },
   {
    "fieldname": "technology",
