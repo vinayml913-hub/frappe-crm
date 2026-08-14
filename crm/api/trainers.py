@@ -84,16 +84,16 @@ def get_trainers(
 	_or_filters = {}
 	if search:
 		like = ["like", f"%{search}%"]
-		# Universal search: matches any of these fields, so a query like
-		# "5 years" or "aws" or a phone/email fragment all work from the
-		# single search box.
+		# Universal search: matches trainer name, either phone number, or
+		# email, so one query like "vikas" / "98800" / "gmail.com" works
+		# from the single search box. Location and Technology stay as
+		# their own separate, independent filters (not part of this OR
+		# group) so they keep AND semantics with everything else.
 		_or_filters = {
 			"trainer_name": like,
 			"phone": like,
 			"alternate_phone": like,
 			"email": like,
-			"technology_expert_in": like,
-			"experience": like,
 		}
 
 	if filters:
