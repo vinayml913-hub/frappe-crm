@@ -651,11 +651,15 @@ EXPORT_PRESETS = {
 
 
 @frappe.whitelist()
-def export_trainers(preset="all", filters=None, format="xlsx"):
+def export_trainers(preset="all", filters=None, search=None, format="xlsx"):
 	"""
 	Streams a file download of trainers matching either a named preset
 	(all / active / available) or an explicit filters dict (for "Filtered
 	Trainers" - whatever filter state the Trainers list view currently has).
+
+	`search` mirrors the universal name/phone/email OR-match used by
+	get_trainers(), so "Export Current Filtered View" matches whatever the
+	search box on the Trainers list currently has typed in it.
 	"""
 	_require_admin()
 
@@ -666,12 +670,21 @@ def export_trainers(preset="all", filters=None, format="xlsx"):
 	else:
 		_filters = EXPORT_PRESETS.get(preset, {})
 
+	list_kwargs = dict(filters=_filters, ignore_permissions=True)
+	if search:
+		like = ["like", f"%{search}%"]
+		list_kwargs["or_filters"] = {
+			"trainer_name": like,
+			"phone": like,
+			"alternate_phone": like,
+			"email": like,
+		}
+
 	trainers = frappe.get_all(
 		"CRM Trainer",
-		filters=_filters,
 		fields=["name"] + [c["field"] for c in COLUMNS],
 		order_by="trainer_name asc",
-		ignore_permissions=True,
+		**list_kwargs,
 	)
 
 	headers = [c["header"] for c in COLUMNS]
