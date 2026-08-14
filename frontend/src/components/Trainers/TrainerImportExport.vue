@@ -248,9 +248,12 @@ import { ref, computed } from 'vue'
 
 // currentFilters lets the parent Trainers.vue pass its live status/availability
 // filter state through, so "Current Filtered View" export matches exactly
-// what the user is looking at on screen right now.
+// what the user is looking at on screen right now. currentSearch does the
+// same for the universal name/phone/email search box, which is applied as
+// an OR match server-side rather than living inside currentFilters.
 const props = defineProps({
   currentFilters: { type: Object, default: () => ({}) },
+  currentSearch: { type: String, default: '' },
 })
 
 // ── Import state ─────────────────────────────────────────────────────
@@ -417,6 +420,9 @@ async function doExport(format) {
   let url = `/api/method/crm.api.trainers_import.export_trainers?format=${format}`
   if (exportPreset.value === 'filtered') {
     url += `&filters=${encodeURIComponent(JSON.stringify(props.currentFilters || {}))}`
+    if (props.currentSearch) {
+      url += `&search=${encodeURIComponent(props.currentSearch)}`
+    }
   } else {
     url += `&preset=${exportPreset.value}`
   }
