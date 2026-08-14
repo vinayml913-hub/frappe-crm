@@ -37,6 +37,20 @@ def get_sales_orders():
             "delivery_manager", "technology", "trainer_assigned", "delivery_type",
             "project_duration", "start_date", "end_date", "delivery_date",
             "lab_required", "training_required", "notes", "modified",
+            # Commercial / pricing / costing breakdown - synced from the
+            # linked Deal (see pbs_sales_order.py: _map_deal_to_so_fields)
+            "currency", "gst_type", "gst_percentage",
+            "trainer_costing_type", "trainer_no_of_days", "trainer_no_of_hours",
+            "lab_costing_type", "lab_no_of_days", "lab_no_of_hours",
+            "lab_pax", "certification_pax",
+            "proposed_trainer_commercial", "proposed_lab_cost",
+            "proposed_certification_cost", "proposed_misc_expense",
+            "proposed_trainer_cost", "proposed_lab_total",
+            "proposed_certification_total", "proposed_total", "proposed_total_with_gst",
+            "landing_trainer_commercial", "landing_lab_cost",
+            "landing_certification_cost", "landing_misc_expense",
+            "landing_trainer_cost", "landing_lab_total",
+            "landing_certification_total", "landing_total", "landing_total_with_gst",
         ],
         order_by="modified desc",
         ignore_permissions=True,
@@ -122,6 +136,24 @@ def update_sales_order(name, data):
         frappe.throw(_("Could not save Sales Order: {0}").format(str(e)))
 
     return doc.as_dict()
+
+
+# ─────────────────────────────────────────────
+#  SYNC FROM DEAL
+# ─────────────────────────────────────────────
+
+@frappe.whitelist()
+def resync_sales_order_from_deal(name):
+    """
+    Re-pull commercial/pricing/costing, delivery configuration, and
+    delivery item (Products → Delivery Orders) details from the linked
+    Deal onto this Sales Order. Thin proxy so the frontend can call
+    everything under crm.api.sales_order.*; the actual logic lives next
+    to the doctype in pbs_sales_order.py (shared with the automatic
+    on-save sync triggered from CRM Deal).
+    """
+    from crm.fcrm.doctype.pbs_sales_order.pbs_sales_order import sync_sales_order_from_deal
+    return sync_sales_order_from_deal(name)
 
 
 # ─────────────────────────────────────────────
