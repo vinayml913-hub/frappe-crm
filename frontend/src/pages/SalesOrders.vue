@@ -107,6 +107,50 @@
             </div>
           </div>
 
+          <!-- Commercial & Costing Breakdown (synced from Deal) -->
+          <div v-if="order.deal" class="border-t border-outline-gray-1">
+            <div class="flex items-center justify-between px-5 py-3 bg-surface-gray-1">
+              <p class="text-sm font-semibold text-ink-gray-8">{{ __('Commercial & Costing Breakdown') }}</p>
+              <Button
+                size="sm"
+                variant="outline"
+                icon-left="refresh-cw"
+                :label="__('Sync from Deal')"
+                :loading="syncingOrder === order.name"
+                @click.stop="syncFromDeal(order)"
+              />
+            </div>
+            <div class="grid grid-cols-3 divide-x divide-outline-gray-1">
+              <div class="p-5">
+                <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Proposed (Quoted)') }}</p>
+                <div class="space-y-2.5">
+                  <div v-for="row in proposedCostInfo(order)" :key="row.label" class="flex items-start gap-2">
+                    <span class="text-xs text-ink-gray-4 w-28 flex-shrink-0 pt-0.5">{{ row.label }}</span>
+                    <span class="text-sm" :class="row.bold ? 'font-semibold text-ink-gray-9' : 'text-ink-gray-7'">{{ row.value || '—' }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="p-5">
+                <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Landing (Actual)') }}</p>
+                <div class="space-y-2.5">
+                  <div v-for="row in landingCostInfo(order)" :key="row.label" class="flex items-start gap-2">
+                    <span class="text-xs text-ink-gray-4 w-28 flex-shrink-0 pt-0.5">{{ row.label }}</span>
+                    <span class="text-sm" :class="row.bold ? 'font-semibold text-ink-gray-9' : 'text-ink-gray-7'">{{ row.value || '—' }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="p-5">
+                <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Costing Configuration') }}</p>
+                <div class="space-y-2.5">
+                  <div v-for="row in costingConfigInfo(order)" :key="row.label" class="flex items-start gap-2">
+                    <span class="text-xs text-ink-gray-4 w-28 flex-shrink-0 pt-0.5">{{ row.label }}</span>
+                    <span class="text-sm text-ink-gray-7">{{ row.value || '—' }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Delivery Orders -->
           <div class="border-t border-outline-gray-1">
             <div class="flex items-center justify-between px-5 py-3 bg-surface-gray-1">
@@ -454,6 +498,9 @@ const editForm      = reactive({
   sales_manager: '', account_manager: '', delivery_manager: '',
 })
 
+// Sync-from-Deal (Commercial & Costing Breakdown)
+const syncingOrder = ref(null)   // holds the order.name currently syncing
+
 // Delivery order modal
 const showDeliveryModal = ref(false)
 const selectedOrder     = ref(null)
@@ -641,6 +688,20 @@ async function submitDeliveryOrder() {
   }
 }
 
+async function syncFromDeal(order) {
+  syncingOrder.value = order.name
+  try {
+    const updated = await call('crm.api.sales_order.resync_sales_order_from_deal', { name: order.name })
+    const idx = salesOrders.value.findIndex(o => o.name === order.name)
+    if (idx !== -1) Object.assign(salesOrders.value[idx], updated)
+    toast.success(__('Synced from Deal'))
+  } catch (err) {
+    toast.error(_extractError(err, __('Could not sync from Deal')))
+  } finally {
+    syncingOrder.value = null
+  }
+}
+
 function confirmDeleteOrder(order) {
   $dialog({
     title: __('Delete Sales Order'),
@@ -747,6 +808,37 @@ function teamInfo(o) {
     { label: __('Sales Manager'),    value: userLabel(o.sales_manager) },
     { label: __('Solution Manager'),  value: userLabel(o.account_manager) },
     { label: __('Delivery Manager'), value: userLabel(o.delivery_manager) },
+  ]
+}
+function proposedCostInfo(o) {
+  return [
+    { label: __('Trainer Cost'),  value: formatCurrency(o.proposed_trainer_cost) },
+    { label: __('Lab Total'),     value: formatCurrency(o.proposed_lab_total) },
+    { label: __('Cert. Total'),   value: formatCurrency(o.proposed_certification_total) },
+    { label: __('Misc.'),         value: formatCurrency(o.proposed_misc_expense) },
+    { label: __('Proposed Total'), value: formatCurrency(o.proposed_total), bold: true },
+    { label: __('With GST'),      value: formatCurrency(o.proposed_total_with_gst), bold: true },
+  ]
+}
+function landingCostInfo(o) {
+  return [
+    { label: __('Trainer Cost'),  value: formatCurrency(o.landing_trainer_cost) },
+    { label: __('Lab Total'),     value: formatCurrency(o.landing_lab_total) },
+    { label: __('Cert. Total'),   value: formatCurrency(o.landing_certification_total) },
+    { label: __('Misc.'),         value: formatCurrency(o.landing_misc_expense) },
+    { label: __('Landing Total'), value: formatCurrency(o.landing_total), bold: true },
+    { label: __('With GST'),      value: formatCurrency(o.landing_total_with_gst), bold: true },
+  ]
+}
+function costingConfigInfo(o) {
+  return [
+    { label: __('Trainer Costing'), value: o.trainer_costing_type },
+    { label: __('Lab Costing'),     value: o.lab_costing_type },
+    { label: __('Lab Pax'),         value: o.lab_pax },
+    { label: __('Cert. Pax'),       value: o.certification_pax },
+    { label: __('GST'),             value: o.gst_type },
+    { label: __('GST %'),           value: o.gst_percentage ? o.gst_percentage + '%' : null },
+    { label: __('Currency'),        value: o.currency },
   ]
 }
 
