@@ -76,7 +76,18 @@
               </div>
             </div>
             <div class="p-5">
-              <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Financial Information') }}</p>
+              <div class="flex items-center justify-between mb-3">
+                <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider">{{ __('Financial Information') }}</p>
+                <Button
+                  v-if="order.deal"
+                  size="sm"
+                  variant="ghost"
+                  icon="refresh-cw"
+                  :loading="syncingOrder === order.name"
+                  :tooltip="__('Sync from Deal')"
+                  @click.stop="syncFromDeal(order)"
+                />
+              </div>
               <div class="space-y-2.5">
                 <div v-for="row in financialInfo(order)" :key="row.label" class="flex items-start gap-2">
                   <span class="text-xs text-ink-gray-4 w-28 flex-shrink-0 pt-0.5">{{ row.label }}</span>
@@ -102,50 +113,6 @@
                 <div v-for="row in teamInfo(order)" :key="row.label" class="flex items-start gap-2">
                   <span class="text-xs text-ink-gray-4 w-28 flex-shrink-0 pt-0.5">{{ row.label }}</span>
                   <span class="text-sm text-ink-gray-7">{{ row.value || '—' }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Commercial & Costing Breakdown (synced from Deal) -->
-          <div v-if="order.deal" class="border-t border-outline-gray-1">
-            <div class="flex items-center justify-between px-5 py-3 bg-surface-gray-1">
-              <p class="text-sm font-semibold text-ink-gray-8">{{ __('Commercial & Costing Breakdown') }}</p>
-              <Button
-                size="sm"
-                variant="outline"
-                icon-left="refresh-cw"
-                :label="__('Sync from Deal')"
-                :loading="syncingOrder === order.name"
-                @click.stop="syncFromDeal(order)"
-              />
-            </div>
-            <div class="grid grid-cols-3 divide-x divide-outline-gray-1">
-              <div class="p-5">
-                <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Proposed (Quoted)') }}</p>
-                <div class="space-y-2.5">
-                  <div v-for="row in proposedCostInfo(order)" :key="row.label" class="flex items-start gap-2">
-                    <span class="text-xs text-ink-gray-4 w-28 flex-shrink-0 pt-0.5">{{ row.label }}</span>
-                    <span class="text-sm" :class="row.bold ? 'font-semibold text-ink-gray-9' : 'text-ink-gray-7'">{{ row.value || '—' }}</span>
-                  </div>
-                </div>
-              </div>
-              <div class="p-5">
-                <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Landing (Actual)') }}</p>
-                <div class="space-y-2.5">
-                  <div v-for="row in landingCostInfo(order)" :key="row.label" class="flex items-start gap-2">
-                    <span class="text-xs text-ink-gray-4 w-28 flex-shrink-0 pt-0.5">{{ row.label }}</span>
-                    <span class="text-sm" :class="row.bold ? 'font-semibold text-ink-gray-9' : 'text-ink-gray-7'">{{ row.value || '—' }}</span>
-                  </div>
-                </div>
-              </div>
-              <div class="p-5">
-                <p class="text-xs font-semibold text-ink-gray-4 uppercase tracking-wider mb-3">{{ __('Costing Configuration') }}</p>
-                <div class="space-y-2.5">
-                  <div v-for="row in costingConfigInfo(order)" :key="row.label" class="flex items-start gap-2">
-                    <span class="text-xs text-ink-gray-4 w-28 flex-shrink-0 pt-0.5">{{ row.label }}</span>
-                    <span class="text-sm text-ink-gray-7">{{ row.value || '—' }}</span>
-                  </div>
                 </div>
               </div>
             </div>
@@ -785,17 +752,15 @@ function basicInfo(o) {
 }
 function financialInfo(o) {
   return [
-    { label: __('Amount'),       value: formatCurrency(o.amount) },
-    { label: __('Tax'),          value: formatCurrency(o.tax) },
-    { label: __('Discount'),     value: formatCurrency(o.discount) },
-    { label: __('Final Amount'), value: formatCurrency(o.final_amount), bold: true },
-    { label: __('Gross Profit'), value: formatCurrency(o.gross_profit) },
-    { label: __('GP %'),         value: o.gross_profit_percentage ? o.gross_profit_percentage.toFixed(1) + '%' : null },
+    { label: __('Proposed Cost'), value: formatCurrency(o.proposed_total_with_gst || o.proposed_total || o.amount), bold: true },
+    { label: __('Landing Cost'),  value: formatCurrency(o.landing_total_with_gst || o.landing_total || o.total_expense), bold: true },
+    { label: __('GST'),           value: o.gst_type ? (o.gst_percentage ? `${o.gst_type} (${o.gst_percentage}%)` : o.gst_type) : null },
+    { label: __('Gross Profit'),  value: formatCurrency(o.gross_profit) },
   ]
 }
 function projectInfo(o) {
   return [
-    { label: __('Technology'),    value: o.technology },
+    { label: __('Training Name'), value: o.training_name },
     { label: __('Trainer'),       value: o.trainer_assigned },
     { label: __('Delivery Type'), value: o.delivery_type },
     { label: __('Duration'),      value: o.project_duration },
@@ -808,37 +773,6 @@ function teamInfo(o) {
     { label: __('Sales Manager'),    value: userLabel(o.sales_manager) },
     { label: __('Solution Manager'),  value: userLabel(o.account_manager) },
     { label: __('Delivery Manager'), value: userLabel(o.delivery_manager) },
-  ]
-}
-function proposedCostInfo(o) {
-  return [
-    { label: __('Trainer Cost'),  value: formatCurrency(o.proposed_trainer_cost) },
-    { label: __('Lab Total'),     value: formatCurrency(o.proposed_lab_total) },
-    { label: __('Cert. Total'),   value: formatCurrency(o.proposed_certification_total) },
-    { label: __('Misc.'),         value: formatCurrency(o.proposed_misc_expense) },
-    { label: __('Proposed Total'), value: formatCurrency(o.proposed_total), bold: true },
-    { label: __('With GST'),      value: formatCurrency(o.proposed_total_with_gst), bold: true },
-  ]
-}
-function landingCostInfo(o) {
-  return [
-    { label: __('Trainer Cost'),  value: formatCurrency(o.landing_trainer_cost) },
-    { label: __('Lab Total'),     value: formatCurrency(o.landing_lab_total) },
-    { label: __('Cert. Total'),   value: formatCurrency(o.landing_certification_total) },
-    { label: __('Misc.'),         value: formatCurrency(o.landing_misc_expense) },
-    { label: __('Landing Total'), value: formatCurrency(o.landing_total), bold: true },
-    { label: __('With GST'),      value: formatCurrency(o.landing_total_with_gst), bold: true },
-  ]
-}
-function costingConfigInfo(o) {
-  return [
-    { label: __('Trainer Costing'), value: o.trainer_costing_type },
-    { label: __('Lab Costing'),     value: o.lab_costing_type },
-    { label: __('Lab Pax'),         value: o.lab_pax },
-    { label: __('Cert. Pax'),       value: o.certification_pax },
-    { label: __('GST'),             value: o.gst_type },
-    { label: __('GST %'),           value: o.gst_percentage ? o.gst_percentage + '%' : null },
-    { label: __('Currency'),        value: o.currency },
   ]
 }
 
