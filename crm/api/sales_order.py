@@ -34,7 +34,7 @@ def get_sales_orders():
             "email", "phone", "status", "amount", "total_expense",
             "gross_profit", "gross_profit_percentage", "tax", "discount",
             "final_amount", "payment_status", "sales_manager", "account_manager",
-            "delivery_manager", "technology", "trainer_assigned", "delivery_type",
+            "delivery_manager", "training_name", "technology", "trainer_assigned", "delivery_type",
             "project_duration", "start_date", "end_date", "delivery_date",
             "lab_required", "training_required", "notes", "modified",
             # Commercial / pricing / costing breakdown - synced from the
