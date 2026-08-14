@@ -14,10 +14,10 @@
   <!-- Filters -->
   <div class="flex items-center gap-3 px-5 py-3 border-b border-outline-gray-1 flex-wrap">
     <input
-      v-model="nameFilter"
+      v-model="searchFilter"
       type="text"
-      :placeholder="__('Trainer name...')"
-      class="w-48 rounded-md border border-outline-gray-2 bg-surface-gray-1 py-1.5 px-3 text-sm text-ink-gray-8 placeholder-ink-gray-4 focus:border-outline-gray-4 focus:bg-surface-white focus:outline-none"
+      :placeholder="__('Search name, phone or email...')"
+      class="w-56 rounded-md border border-outline-gray-2 bg-surface-gray-1 py-1.5 px-3 text-sm text-ink-gray-8 placeholder-ink-gray-4 focus:border-outline-gray-4 focus:bg-surface-white focus:outline-none"
       @input="onFilterInput"
     />
     <input
@@ -318,6 +318,7 @@
   <TrainerImportExport
     ref="importExportRef"
     :currentFilters="activeFilters"
+    :currentSearch="searchFilter"
     @imported="loadTrainers"
   />
 </template>
@@ -335,7 +336,7 @@ const loading = ref(true)
 const total = ref(0)
 const page = ref(1)
 const pageLength = ref(20)
-const nameFilter = ref('')
+const searchFilter = ref('')
 const locationFilter = ref('')
 const technologyFilter = ref('')
 const locationSuggestions = ref([])
@@ -358,11 +359,12 @@ const importExportRef = ref(null)
 
 // Single source of truth for the current filter state - used by both
 // loadTrainers() and "Export Current Filtered View" so they always match.
-// Name/Location/Technology are independent "contains" filters, ANDed
-// together with Status/Availability (Frappe combines dict filters as AND).
+// Location/Technology are independent "contains" filters, ANDed together
+// with Status/Availability (Frappe combines dict filters as AND).
+// The universal search box (name/phone/email) is handled separately via
+// the `search` param since it's an OR-across-fields match, not an AND.
 const activeFilters = computed(() => {
   const f = {}
-  if (nameFilter.value) f.trainer_name = ['like', `%${nameFilter.value}%`]
   if (locationFilter.value) f.location = ['like', `%${locationFilter.value}%`]
   if (technologyFilter.value) f.technology_expert_in = ['like', `%${technologyFilter.value}%`]
   if (statusFilter.value) f.status = statusFilter.value
@@ -408,6 +410,7 @@ async function loadTrainers() {
   try {
     const result = await call('crm.api.trainers.get_trainers', {
       filters: JSON.stringify(activeFilters.value),
+      search: searchFilter.value,
       order_by: `${SORT_KEY_MAP[sortKey.value] || sortKey.value} ${sortOrder.value}`,
       page_length: pageLength.value,
       page: page.value,
