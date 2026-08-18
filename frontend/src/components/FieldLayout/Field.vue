@@ -92,7 +92,23 @@
       v-else-if="['Link', 'Dynamic Link'].includes(field.fieldtype)"
       class="flex gap-1"
     >
+      <TrainerHoverCard
+        v-if="field.fieldtype === 'Link' && field.options === 'CRM Trainer'"
+        class="flex-1"
+        :trainer-id="data[field.fieldname]"
+      >
+        <Link
+          class="form-control w-full truncate"
+          :value="data[field.fieldname]"
+          :doctype="field.options"
+          :filters="field.filters"
+          :placeholder="getPlaceholder(field)"
+          :onCreate="field.create"
+          @change="(v) => fieldChange(v, field)"
+        />
+      </TrainerHoverCard>
       <Link
+        v-else
         class="form-control flex-1 truncate"
         :value="data[field.fieldname]"
         :doctype="
@@ -302,6 +318,7 @@ import IndicatorIcon from '@/components/Icons/IndicatorIcon.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import TableMultiselectInput from '@/components/Controls/TableMultiselectInput.vue'
 import Link from '@/components/Controls/Link.vue'
+import TrainerHoverCard from '@/components/TrainerHoverCard.vue'
 import Grid from '@/components/Controls/Grid.vue'
 import { createDocument } from '@/composables/document'
 import {
