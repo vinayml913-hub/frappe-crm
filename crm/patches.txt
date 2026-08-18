@@ -35,3 +35,4 @@ crm.patches.v1_0.install_deal_commercial_calculator_script
 crm.patches.v1_0.update_deal_quick_entry_layout_v3_manual_override
 crm.patches.v1_0.update_deal_data_and_side_panel_layouts
 crm.patches.v1_0.refresh_deal_commercial_calculator_script
+crm.patches.v1_0.add_trainer_name_to_deal_layouts
