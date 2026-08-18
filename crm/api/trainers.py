@@ -50,6 +50,43 @@ def _attach_audit_info(row: dict, user_cache: dict | None = None) -> dict:
 
 
 @frappe.whitelist()
+def get_trainer_details(trainer: str) -> dict:
+	"""
+	Full details for a single trainer, for the Trainer ID hover-preview
+	popup on the Deal's Data tab (Trainer Details section). Returns
+	everything relevant to show in that popup in one call - identity,
+	contact, skill/experience, availability/status, and commercial info.
+	"""
+	if not trainer or not frappe.db.exists("CRM Trainer", trainer):
+		frappe.throw(frappe._("Trainer {0} not found").format(trainer))
+
+	if not frappe.has_permission("CRM Trainer", "read", trainer):
+		frappe.throw(frappe._("Not permitted to view this Trainer"), frappe.PermissionError)
+
+	doc = frappe.get_cached_doc("CRM Trainer", trainer)
+
+	data = {
+		"name": doc.name,
+		"trainer_name": doc.trainer_name,
+		"phone": doc.phone,
+		"alternate_phone": doc.alternate_phone,
+		"email": doc.email,
+		"linkedin_profile": doc.linkedin_profile,
+		"location": doc.location,
+		"technology_expert_in": doc.technology_expert_in,
+		"skill_level": doc.skill_level,
+		"experience": doc.experience,
+		"availability": doc.availability,
+		"status": doc.status,
+		"commercial": doc.commercial,
+		"commercial_type": doc.commercial_type,
+		"company": doc.company,
+	}
+
+	return _attach_audit_info({**data, "owner": doc.owner, "modified_by": doc.modified_by})
+
+
+@frappe.whitelist()
 def get_trainer_locations() -> list:
 	"""Distinct, non-empty `location` values already used by trainers.
 
@@ -84,16 +121,16 @@ def get_trainers(
 	_or_filters = {}
 	if search:
 		like = ["like", f"%{search}%"]
-		# Universal search: matches trainer name, either phone number, or
-		# email, so one query like "vikas" / "98800" / "gmail.com" works
-		# from the single search box. Location and Technology stay as
-		# their own separate, independent filters (not part of this OR
-		# group) so they keep AND semantics with everything else.
+		# Universal search: matches any of these fields, so a query like
+		# "5 years" or "aws" or a phone/email fragment all work from the
+		# single search box.
 		_or_filters = {
 			"trainer_name": like,
 			"phone": like,
 			"alternate_phone": like,
 			"email": like,
+			"technology_expert_in": like,
+			"experience": like,
 		}
 
 	if filters:
