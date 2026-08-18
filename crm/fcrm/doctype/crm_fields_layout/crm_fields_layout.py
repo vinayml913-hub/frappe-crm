@@ -57,7 +57,13 @@ def get_fields_layout(doctype: str, type: str, parent_doctype: str | None = None
 					continue
 				allowed_fields.extend(column.get("fields"))
 
-	fields = frappe.get_meta(doctype).fields
+	# Use a fresh (non-cached) meta so a field that was just added to the
+	# doctype (e.g. a new fetched field like "trainer_name") shows up on
+	# the Data tab immediately after migrate, instead of only appearing
+	# in the Fields Layout editor (which already fetches fresh) while
+	# staying missing from the actual rendered tab because of a stale
+	# frappe.get_meta() cache.
+	fields = frappe.get_meta(doctype, cached=False).fields
 	fields = [field for field in fields if field.fieldname in allowed_fields]
 
 	required_fields = []
@@ -134,7 +140,8 @@ def get_sidepanel_sections(doctype: str):
 		"Column Break",
 	]
 
-	fields = frappe.get_meta(doctype).fields
+	# Fresh meta here too, for the same reason as get_fields_layout above.
+	fields = frappe.get_meta(doctype, cached=False).fields
 	fields = [field for field in fields if field.fieldtype not in not_allowed_fieldtypes]
 
 	for section in layout:
