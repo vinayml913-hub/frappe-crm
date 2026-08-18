@@ -229,7 +229,10 @@ def save_fields_layout(doctype: str, type: str, layout: str):
 
 
 def get_default_layout(doctype: str):
-	fields = frappe.get_meta(doctype).fields
+	# Fresh meta here too (see get_fields_layout above) - this builds the
+	# fallback layout from scratch when no CRM Fields Layout is saved
+	# yet, so it should reflect every field currently on the doctype.
+	fields = frappe.get_meta(doctype, cached=False).fields
 
 	tabs = []
 
