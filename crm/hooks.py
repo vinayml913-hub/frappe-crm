@@ -176,10 +176,14 @@ doc_events = {
 		"on_update": ["crm.api.whatsapp.on_update"],
 	},
 	"CRM Deal": {
+		"validate": ["crm.api.status_guard.validate_status_change"],
 		"on_update": [
 			"crm.fcrm.doctype.erpnext_crm_settings.erpnext_crm_settings.create_customer_in_erpnext",
 			"crm.fcrm.doctype.pbs_sales_order.pbs_sales_order.create_sales_order_from_deal"
 		],
+	},
+	"CRM Lead": {
+		"validate": ["crm.api.status_guard.validate_status_change"],
 	},
 	"User": {
 		"before_validate": ["crm.api.live_demo.validate_user"],
