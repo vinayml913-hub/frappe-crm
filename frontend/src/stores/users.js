@@ -65,12 +65,6 @@ export const usersStore = defineStore('crm-users', () => {
     return getUser(email).role === 'Sales User'
   }
 
-  // getUserRole returns the highest role, so 'Solution Manager' here means the
-  // user has no System Manager / Sales Manager / Sales User role.
-  function isSolutionManager(email) {
-    return getUser(email).role === 'Solution Manager'
-  }
-
   function isTelephonyAgent(email) {
     return getUser(email).is_telphony_agent
   }
@@ -96,7 +90,6 @@ export const usersStore = defineStore('crm-users', () => {
     isAdmin,
     isManager,
     isSalesUser,
-    isSolutionManager,
     isTelephonyAgent,
     getUserRole,
     isWebsiteUser,
