@@ -10,7 +10,7 @@
       </Breadcrumbs>
       <div class="absolute right-0">
         <Dropdown
-          v-if="doc && !isSolutionManager()"
+          v-if="doc"
           :options="
             statusOptions(
               'deal',
@@ -303,7 +303,6 @@ import { getView } from '@/utils/view'
 import { getSettings } from '@/stores/settings'
 import { globalStore } from '@/stores/global'
 import { statusesStore } from '@/stores/statuses'
-import { usersStore } from '@/stores/users'
 import { getMeta } from '@/stores/meta'
 import { useDocument } from '@/data/document'
 import {
@@ -328,7 +327,6 @@ import { useRoute, useRouter } from 'vue-router'
 const { brand } = getSettings()
 const { $dialog, $socket } = globalStore()
 const { statusOptions, getDealStatus } = statusesStore()
-const { isSolutionManager } = usersStore()
 const { doctypeMeta } = getMeta('CRM Deal')
 const route = useRoute()
 const router = useRouter()
